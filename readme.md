@@ -1,10 +1,10 @@
-# 🌸 Niva — AI Prenatal Health Monitor
+# Niva — AI Prenatal Health Monitor
 
 Niva is an AI-powered prenatal health monitoring system designed to assist pregnant women—especially in low-resource settings—by tracking daily health data, identifying risk conditions early, and providing actionable guidance.
 
 ---
 
-## 🚀 Overview
+##  Overview
 
 Niva combines:
 
