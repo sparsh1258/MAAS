@@ -1,0 +1,135 @@
+name: prenatal_health
+version: "1.0.0"
+description: >
+  Niva — AI maternal health assistant for rural India.
+  Monitors prenatal health via daily & 3-day check-ins and classifies
+  risk conditions (preeclampsia, gestational diabetes, anemia, preterm
+  risk, fetal distress, low risk) with appropriate urgency levels.
+
+# ── Action Space ─────────────────────────────────────────────────────────────
+action_space:
+  type: discrete
+  actions:
+    - action_type: assess
+      description: Review current observation without committing to a diagnosis.
+
+    - action_type: diagnose
+      description: Commit to a condition and urgency level. Ends the episode.
+      parameters:
+        target:
+          type: string
+          enum:
+            - preeclampsia
+            - gestational_diabetes
+            - anemia
+            - preterm_risk
+            - fetal_distress
+            - low_risk
+        urgency:
+          type: string
+          enum:
+            - monitor_at_home
+            - visit_phc_this_week
+            - go_to_hospital_today
+
+# ── Observation Space ────────────────────────────────────────────────────────
+observation_space:
+  type: object
+  fields:
+    user_id:               { type: integer }
+    weeks_pregnant:        { type: integer, min: 1, max: 42 }
+    trimester:             { type: integer, enum: [1, 2, 3] }
+    region:                { type: string }
+    risk_flags:
+      type: array
+      items:
+        type: string
+        enum:
+          - DANGER_BP_CRITICAL
+          - DANGER_BLEEDING
+          - DANGER_LOW_KICKS
+          - DANGER_VISION_HEADACHE
+          - HIGH_BP
+          - HIGH_PREECLAMPSIA_SIGNAL
+          - BP_RISING_TREND
+          - LOW_NUTRITION
+          - LOW_KICK_AVG
+    bp_trend:              { type: string, enum: [rising, stable, falling] }
+    avg_kick_count:        { type: number, nullable: true }
+    avg_meals:             { type: number }
+    avg_sleep:             { type: number }
+    latest_weight_kg:      { type: number, nullable: true }
+    latest_energy:         { type: integer, min: 1, max: 10, nullable: true }
+    latest_breathlessness: { type: integer, min: 1, max: 10, nullable: true }
+    history_flags:
+      type: array
+      items:
+        type: string
+        enum:
+          - family_diabetes
+          - family_hypertension
+          - prev_preeclampsia
+          - prev_complication
+    days_of_data:          { type: integer, min: 0, max: 3 }
+
+# ── Tasks ────────────────────────────────────────────────────────────────────
+tasks:
+  - id: task_preeclampsia_danger
+    description: >
+      Patient shows critically high BP (>=160/110) with headache and swelling.
+      Agent must identify preeclampsia and escalate to go_to_hospital_today.
+
+  - id: task_fetal_distress_low_kicks
+    description: >
+      Third-trimester patient reports fewer than 3 kicks in 2 hours.
+      Agent must identify fetal distress and escalate to go_to_hospital_today.
+
+  - id: task_gestational_diabetes_history
+    description: >
+      Patient has family history of diabetes, low energy, and breathlessness.
+      Agent must identify gestational diabetes and recommend visit_phc_this_week.
+
+# ── Reward ───────────────────────────────────────────────────────────────────
+reward:
+  description: >
+    Reward is computed by comparing the agent's predicted condition and urgency
+    against the ground-truth classification derived from the patient's data.
+  range: [-15.0, 17.0]
+  scoring:
+    correct_condition:   +10.0
+    wrong_condition:      -5.0
+    correct_urgency:      +5.0
+    over_escalated:       -2.0
+    under_escalated:      -(condition_severity)
+    three_days_data:      +2.0
+    two_days_data:        +1.0
+    safety_override:      -5.0  # DANGER flag present but urgency not hospital
+
+# ── Environment Endpoints ────────────────────────────────────────────────────
+endpoints:
+  reset:
+    method: POST
+    path: /reset
+    body:
+      user_id: integer
+    returns: observation
+
+  step:
+    method: POST
+    path: /step
+    body:
+      action_type: string
+      target:      string   # required when action_type = diagnose
+      urgency:     string   # required when action_type = diagnose
+    returns: step_result
+
+  state:
+    method: GET
+    path: /state
+    returns: environment_state
+
+# ── Runtime ──────────────────────────────────────────────────────────────────
+runtime:
+  language: python
+  entrypoint: uvicorn main:app --host 0.0.0.0 --port 7860
+  port: 7860
