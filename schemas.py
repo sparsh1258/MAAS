@@ -1,5 +1,5 @@
-from pydantic import BaseModel, Field, field_validator
-from typing import Optional
+from pydantic import BaseModel, Field, field_validator, ValidationInfo
+from typing import Optional, List
 from datetime import datetime
 
 class UserProfileCreate(BaseModel):
@@ -21,7 +21,7 @@ class UserProfileResponse(UserProfileCreate):
     created_at: datetime
 
     class Config:
-        from_attributes = True  
+        from_attributes = True
 
 class DailyCheckinCreate(BaseModel):
     user_id: int
@@ -39,14 +39,15 @@ class DailyCheckinCreate(BaseModel):
     meals_count: int = Field(..., ge=0, le=5)
     water_litres: float = Field(..., ge=0, le=10)
     sleep_hours: float = Field(..., ge=0, le=24)
-    notes: Optional[str] = None 
+    notes: Optional[str] = None
 
-    @field_validator("kick_count")
-    def kick_required_after_first_trimester(cls, v, values):
-            weeks = values.get("weeks_pregnant_at_checkin", 0)
-            if weeks > 12 and v is None:
-                raise ValueError("2nd aur 3rd trimester mein kick count mandatory hai")
-            return v
+    @field_validator('kick_count')
+    @classmethod
+    def kick_required_after_first_trimester(cls, value: Optional[int], info: ValidationInfo):
+        weeks = info.data.get('weeks_pregnant_at_checkin', 0)
+        if weeks > 12 and value is None:
+            raise ValueError('2nd aur 3rd trimester mein kick count mandatory hai')
+        return value
 
 class DailyCheckinResponse(DailyCheckinCreate):
     id: int
@@ -69,3 +70,15 @@ class Checkin3DayResponse(Checkin3DayCreate):
 
     class Config:
         from_attributes = True
+
+class DiagnosisResponse(BaseModel):
+    user_id: int
+    predicted_condition: str
+    urgency: str
+    rationale: str
+    reward: float
+    risk_flags: List[str]
+    history_flags: List[str]
+    diet_advice: List[str]
+    days_of_data: int
+    latest_checkin_at: Optional[datetime] = None

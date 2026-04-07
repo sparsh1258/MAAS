@@ -1,0 +1,1657 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Niva — Prenatal Health Monitor</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;1,400&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&display=swap" rel="stylesheet"/>
+<style>
+:root {
+  --rose:        #f2a7b8;
+  --rose-deep:   #e07590;
+  --rose-crit:   #dc2626;
+  --blush:       #fde8ee;
+  --lavender:    #ede0f7;
+  --lav-mid:     #c9a8e8;
+  --mint:        #d4f0e8;
+  --mint-deep:   #7ecbb0;
+  --cream:       #fff8f5;
+  --text:        #3b2a35;
+  --text-soft:   #8a6a78;
+  --card:        rgba(255,255,255,0.76);
+  --shadow:      0 8px 32px rgba(224,117,144,0.13);
+  --r:           22px;
+  --r-sm:        14px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{
+  font-family:'DM Sans',sans-serif;
+  background:var(--cream);
+  color:var(--text);
+  min-height:100vh;
+  overflow-x:hidden;
+}
+body::before{
+  content:'';
+  position:fixed;inset:0;z-index:0;
+  background:
+    radial-gradient(ellipse 65% 55% at 5% 0%,#fce4ec99,transparent),
+    radial-gradient(ellipse 50% 45% at 95% 100%,#ede0f777,transparent),
+    radial-gradient(ellipse 45% 35% at 85% 5%,#d4f0e855,transparent);
+  pointer-events:none;
+}
+/* floating blobs */
+.blob{position:fixed;border-radius:50%;filter:blur(60px);pointer-events:none;z-index:0;animation:float 8s ease-in-out infinite}
+.blob1{width:180px;height:180px;background:#f9b8cc44;top:5%;left:4%;animation-delay:0s}
+.blob2{width:220px;height:220px;background:#c9a8e833;top:60%;right:3%;animation-delay:2s}
+.blob3{width:140px;height:140px;background:#b2e4d433;top:30%;right:20%;animation-delay:4s}
+@keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-18px)}}
+
+/* ═══ LAYOUT ══════════════════════════════════════════════════════ */
+.shell{position:relative;z-index:1;max-width:480px;margin:0 auto;padding:0 0 90px;min-height:100vh}
+
+/* ═══ HEADER ══════════════════════════════════════════════════════ */
+.header{padding:48px 22px 18px;display:flex;justify-content:space-between;align-items:flex-start}
+.hg{font-size:12px;color:var(--text-soft);letter-spacing:.07em;text-transform:uppercase;font-weight:500}
+.hn{font-family:'Playfair Display',serif;font-size:26px;margin-top:3px;background:linear-gradient(135deg,#c84b6e,#9b5de5);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.hav{width:48px;height:48px;border-radius:50%;background:linear-gradient(135deg,var(--rose),var(--lav-mid));display:flex;align-items:center;justify-content:center;font-size:22px;box-shadow:0 4px 18px rgba(224,117,144,.3);position:relative;cursor:pointer}
+.notif-badge{position:absolute;top:-4px;right:-4px;width:20px;height:20px;background:var(--rose-crit);border-radius:50%;font-size:10px;color:#fff;font-weight:700;display:flex;align-items:center;justify-content:center;border:2px solid var(--cream)}
+
+/* ═══ HERO ════════════════════════════════════════════════════════ */
+.hero{margin:0 14px 18px;border-radius:28px;background:linear-gradient(135deg,#f9d0dd 0%,#ede0f7 55%,#d4f0e8 100%);padding:24px;position:relative;overflow:hidden;box-shadow:0 14px 44px rgba(224,117,144,.22)}
+.hero::after{content:'';position:absolute;right:-28px;bottom:-22px;width:140px;height:140px;border-radius:50%;background:radial-gradient(circle at 35% 35%,rgba(255,255,255,.5),rgba(255,255,255,0) 58%),linear-gradient(135deg,rgba(255,255,255,.22),rgba(255,255,255,.04));opacity:.8;pointer-events:none}
+.hero-wl{font-size:11px;color:var(--text-soft);font-weight:500;letter-spacing:.08em;text-transform:uppercase}
+.hero-w{font-family:'Playfair Display',serif;font-size:44px;font-weight:600;color:var(--text);line-height:1}
+.hero-sub{font-size:13px;color:var(--text-soft);margin-top:4px}
+.hero-trim{display:inline-block;margin-top:13px;background:rgba(255,255,255,.65);backdrop-filter:blur(8px);border-radius:30px;padding:6px 16px;font-size:13px;font-weight:600;color:var(--rose-deep);border:1.5px solid rgba(255,255,255,.8)}
+.hero-prog{margin-top:18px;height:8px;background:rgba(255,255,255,.45);border-radius:10px;overflow:hidden}
+.hero-fill{height:100%;border-radius:10px;background:linear-gradient(90deg,var(--rose-deep),var(--lav-mid));transition:width .7s ease}
+.hero-freq{margin-top:9px;font-size:12px;color:var(--text-soft);display:flex;align-items:center;gap:5px}
+
+/* ═══ DIAGNOSIS STRIP ═════════════════════════════════════════════ */
+.diag-strip{margin:0 14px 16px;border-radius:20px;padding:16px 18px;display:flex;align-items:center;gap:14px;border:1.5px solid;cursor:pointer;transition:transform .2s}
+.diag-strip:hover{transform:translateY(-2px)}
+.diag-strip.safe{background:#f0fdf4;border-color:#86efac}
+.diag-strip.warn{background:#fffbeb;border-color:#fcd34d}
+.diag-strip.danger{background:#fff1f2;border-color:#fca5a5}
+.diag-icon{font-size:28px;flex-shrink:0}
+.diag-cond{font-family:'Playfair Display',serif;font-size:17px;font-weight:600}
+.diag-urg{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;margin-top:2px;opacity:.8}
+.diag-arrow{margin-left:auto;font-size:18px;opacity:.5}
+
+/* ═══ SECTION ═════════════════════════════════════════════════════ */
+.sec{padding:4px 20px 10px;font-family:'Playfair Display',serif;font-size:18px;color:var(--text)}
+
+/* ═══ CARD ════════════════════════════════════════════════════════ */
+.card{margin:0 14px 14px;background:var(--card);backdrop-filter:blur(14px);border-radius:var(--r);padding:18px 20px;border:1.5px solid rgba(255,255,255,.78);box-shadow:var(--shadow)}
+.card-t{font-size:11px;letter-spacing:.07em;text-transform:uppercase;color:var(--text-soft);font-weight:600;margin-bottom:13px;display:flex;align-items:center;gap:6px}
+.card-t span{font-size:16px}
+
+.icon-inline{width:18px;height:18px;stroke:currentColor;stroke-width:2;fill:none;stroke-linecap:round;stroke-linejoin:round;display:block}
+.icon-badge{width:34px;height:34px;border-radius:12px;display:inline-flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#fde8ee,#ede0f7);color:var(--rose-deep);box-shadow:0 6px 16px rgba(224,117,144,.14);flex-shrink:0}
+.icon-badge.sm{width:30px;height:30px;border-radius:10px}
+.card-t .icon-badge{margin-right:2px}
+.diag-icon{width:44px;height:44px;border-radius:14px;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,.72);color:var(--rose-deep);flex-shrink:0}
+.diag-icon .icon-inline{width:24px;height:24px}
+.hav svg{width:22px;height:22px;stroke:#fff;stroke-width:2;fill:none;stroke-linecap:round;stroke-linejoin:round}
+.hero::after{content:'';position:absolute;right:-28px;bottom:-22px;width:140px;height:140px;border-radius:50%;background:radial-gradient(circle at 35% 35%,rgba(255,255,255,.5),rgba(255,255,255,0) 58%),linear-gradient(135deg,rgba(255,255,255,.22),rgba(255,255,255,.04));opacity:.8;pointer-events:none}
+.metric-icon{margin-bottom:10px}
+.hist-dot svg{width:18px;height:18px;stroke:currentColor;stroke-width:2;fill:none;stroke-linecap:round;stroke-linejoin:round}
+
+/* ═══ BP ══════════════════════════════════════════════════════════ */
+.bp-box{display:flex;align-items:center;gap:16px;background:linear-gradient(135deg,#fff0f5,#fce4ec);border-radius:var(--r-sm);padding:16px 18px;border:1.5px solid #fcd4de}
+.bp-num{display:flex;align-items:baseline;gap:3px}
+.bp-s{font-family:'Playfair Display',serif;font-size:40px;color:var(--rose-deep);font-weight:600}
+.bp-sl{font-size:26px;color:var(--rose);margin:0 2px}
+.bp-d{font-family:'Playfair Display',serif;font-size:30px;color:var(--rose-deep)}
+.bp-lbl{font-size:11px;color:var(--text-soft);text-transform:uppercase;letter-spacing:.07em;font-weight:500}
+.bp-st{margin-left:auto;font-size:12px;font-weight:600;padding:4px 13px;border-radius:20px}
+.bp-st.n{background:#d4f0e8;color:#2d8c6f}
+.bp-st.e{background:#fef3c7;color:#b45309}
+.bp-st.h{background:#fee2e2;color:#b91c1c}
+
+/* ═══ METRICS ═════════════════════════════════════════════════════ */
+.metrics{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.met{border-radius:var(--r-sm);padding:13px;border:1.5px solid rgba(255,255,255,.9);background:linear-gradient(135deg,#fff,var(--blush))}
+.met.l{background:linear-gradient(135deg,#fff,var(--lavender))}
+.met.m{background:linear-gradient(135deg,#fff,var(--mint))}
+.met-lbl{font-size:10px;color:var(--text-soft);font-weight:500;letter-spacing:.05em;text-transform:uppercase}
+.met-val{font-family:'Playfair Display',serif;font-size:24px;color:var(--text);margin-top:2px}
+.met-u{font-size:11px;color:var(--text-soft)}
+
+/* ═══ RANKING BARS ════════════════════════════════════════════════ */
+.rank-item{border-radius:var(--r-sm);padding:13px 16px;border:1.5px solid;margin-bottom:8px;transition:transform .2s}
+.rank-item:last-child{margin-bottom:0}
+.rank-item.top{background:#fce8ee;border-color:#f5a0b4}
+.rank-item.mid{background:#fff8f5;border-color:#f0e0e8}
+.rank-item.low{background:#f8fff8;border-color:#c8e8d4}
+.rank-row{display:flex;align-items:center;gap:10px}
+.rank-ico{font-size:22px;flex-shrink:0}
+.rank-name{font-weight:600;font-size:14px}
+.rank-sc{font-size:12px;color:var(--text-soft);margin-top:1px}
+.rank-bar-wrap{flex:1;height:6px;background:rgba(0,0,0,.06);border-radius:10px;overflow:hidden;margin-top:8px}
+.rank-bar{height:100%;border-radius:10px;background:linear-gradient(90deg,var(--rose-deep),var(--lav-mid));transition:width .6s ease}
+.reason-box{background:rgba(255,240,245,.8);border:1.5px solid #fce4ec;border-radius:var(--r-sm);padding:12px 14px;font-size:13px;color:var(--text-soft);line-height:1.6;margin-top:10px}
+
+/* ═══ SIMULATOR SLIDERS ══════════════════════════════════════════ */
+.sim-field{background:#fff;border:1.5px solid #f0e0ea;border-radius:var(--r-sm);padding:14px}
+.sim-lbl{font-size:13px;font-weight:600;color:var(--text);margin-bottom:10px;display:flex;justify-content:space-between}
+.sim-lbl span{color:var(--rose-deep);font-family:'Playfair Display',serif;font-size:16px}
+input[type=range]{-webkit-appearance:none;width:100%;height:6px;border-radius:10px;background:linear-gradient(90deg,var(--rose) var(--pct,50%),#f0e0e8 var(--pct,50%));outline:none}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:22px;height:22px;border-radius:50%;background:var(--rose-deep);cursor:pointer;box-shadow:0 2px 10px rgba(224,117,144,.5);border:2px solid #fff}
+
+/* ═══ SYMPTOM PILLS ═══════════════════════════════════════════════ */
+.pills{display:flex;flex-wrap:wrap;gap:7px}
+.pill{display:flex;align-items:center;gap:4px;padding:6px 12px;border-radius:20px;font-size:12px;font-weight:500;border:1.5px solid;cursor:pointer;transition:all .2s;user-select:none}
+.pill.off{background:#f8f8f8;border-color:#e8e0e4;color:var(--text-soft)}
+.pill.on{background:#fee2e2;border-color:#fca5a5;color:#b91c1c}
+
+/* ═══ ALERTS ══════════════════════════════════════════════════════ */
+.alert-item{border-radius:var(--r-sm);padding:13px 15px;border:1.5px solid;margin-bottom:8px;position:relative;animation:fadeSlide .3s ease}
+.alert-item:last-child{margin-bottom:0}
+.alert-item.urgent{background:#fff1f2;border-color:#fca5a5;color:#991b1b}
+.alert-item.reminder{background:#fffbeb;border-color:#fcd34d;color:#92400e}
+.alert-item.tip{background:#f5f0ff;border-color:#d8b4fe;color:#6b21a8}
+.alert-item.read{background:#f8f8f8;border-color:#e2e2e2;color:#888}
+.alert-title{font-weight:600;font-size:14px;display:flex;align-items:center;gap:7px}
+.alert-dot{width:8px;height:8px;border-radius:50%;background:var(--rose-crit);flex-shrink:0}
+.alert-text{font-size:12px;margin-top:4px;line-height:1.5;opacity:.85}
+.alert-badge{position:absolute;top:10px;right:12px;font-size:10px;font-weight:600;padding:2px 9px;border-radius:20px;background:rgba(255,255,255,.6);border:1px solid currentColor;text-transform:capitalize}
+
+/* ═══ NOTIFICATION DRAWER ════════════════════════════════════════ */
+.drawer-overlay{position:fixed;inset:0;background:rgba(0,0,0,.18);z-index:200;opacity:0;pointer-events:none;transition:opacity .3s}
+.drawer-overlay.open{opacity:1;pointer-events:all}
+.drawer{position:fixed;right:0;top:0;height:100%;width:100%;max-width:400px;background:rgba(255,248,250,.97);backdrop-filter:blur(24px);z-index:201;transform:translateX(100%);transition:transform .35s cubic-bezier(.34,1.2,.64,1);padding:28px 20px 30px;overflow-y:auto;border-left:1.5px solid #fce4ec}
+.drawer.open{transform:translateX(0)}
+.drawer-head{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:20px}
+.drawer-title{font-family:'Playfair Display',serif;font-size:22px}
+.drawer-sub{font-size:13px;color:var(--text-soft);margin-top:2px}
+.drawer-close{width:36px;height:36px;border-radius:50%;background:var(--blush);border:none;cursor:pointer;font-size:18px;display:flex;align-items:center;justify-content:center}
+.filter-row{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px}
+.fchip{padding:6px 14px;border-radius:20px;font-size:12px;font-weight:600;cursor:pointer;border:1.5px solid transparent;transition:all .2s}
+.fchip.active{background:var(--rose-deep);color:#fff}
+.fchip.inactive{background:var(--blush);color:var(--text-soft)}
+
+/* ═══ FORM ════════════════════════════════════════════════════════ */
+.form-group{margin-bottom:13px}
+.form-lbl{font-size:11px;color:var(--text-soft);font-weight:500;letter-spacing:.06em;text-transform:uppercase;margin-bottom:5px;display:block}
+.form-input{width:100%;padding:12px 14px;border:1.5px solid #ecdde5;border-radius:var(--r-sm);background:rgba(255,255,255,.85);font-family:'DM Sans',sans-serif;font-size:15px;color:var(--text);outline:none;transition:border-color .2s}
+.form-input:focus{border-color:var(--rose-deep)}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.toggle-row{display:flex;gap:6px;flex-wrap:wrap}
+.tgl{padding:7px 14px;border-radius:20px;font-size:13px;font-weight:500;border:1.5px solid #ecdde5;background:#fff;cursor:pointer;transition:all .2s;color:var(--text-soft)}
+.tgl.active{background:var(--rose-deep);border-color:var(--rose-deep);color:#fff}
+
+/* ═══ KICK TRACKER ════════════════════════════════════════════════ */
+.kick-display{font-family:'Playfair Display',serif;font-size:48px;color:var(--rose-deep);text-align:center;line-height:1;margin:8px 0 2px}
+.kick-sub{font-size:12px;color:var(--text-soft);text-align:center;margin-bottom:10px}
+.kick-dots{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-bottom:12px}
+.kd{width:34px;height:34px;border-radius:50%;border:2px solid var(--rose);background:#fff;display:flex;align-items:center;justify-content:center;font-size:13px;cursor:pointer;transition:all .2s;color:var(--rose)}
+.kd.on{background:var(--rose-deep);color:#fff;border-color:var(--rose-deep);transform:scale(1.12)}
+
+/* ═══ BUTTONS ═════════════════════════════════════════════════════ */
+.btn-p{width:100%;padding:14px;border-radius:var(--r-sm);background:linear-gradient(135deg,var(--rose-deep),var(--lav-mid));border:none;color:#fff;font-family:'DM Sans',sans-serif;font-size:15px;font-weight:600;cursor:pointer;box-shadow:0 6px 20px rgba(224,117,144,.4);transition:transform .18s,box-shadow .18s;letter-spacing:.03em}
+.btn-p:hover{transform:translateY(-2px);box-shadow:0 10px 28px rgba(224,117,144,.5)}
+.btn-s{width:100%;padding:12px;border-radius:var(--r-sm);background:rgba(255,255,255,.85);border:1.5px solid var(--rose);color:var(--rose-deep);font-family:'DM Sans',sans-serif;font-size:14px;font-weight:600;cursor:pointer;transition:all .18s;margin-top:8px}
+.btn-s:hover{background:var(--blush)}
+.btn-mini{padding:8px 14px;border-radius:20px;font-size:12px;font-weight:600;border:1.5px solid var(--rose);background:#fff;color:var(--rose-deep);cursor:pointer;transition:all .18s}
+.btn-mini:hover{background:var(--blush)}
+.btn-mini.danger{border-color:#fca5a5;color:#dc2626}
+
+/* ═══ TEXTAREA ════════════════════════════════════════════════════ */
+textarea.form-input{min-height:80px;resize:vertical}
+
+/* ═══ CUSTOM ALERT FORM ═══════════════════════════════════════════ */
+.custom-preview{background:rgba(255,240,245,.8);border:1.5px dashed #f5a0b4;border-radius:var(--r-sm);padding:14px;margin-top:10px}
+.custom-preview-lbl{font-size:11px;color:var(--text-soft);letter-spacing:.06em;text-transform:uppercase;font-weight:600;margin-bottom:8px}
+
+/* ═══ NAV ═════════════════════════════════════════════════════════ */
+.navbar{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:480px;background:rgba(255,248,245,.92);backdrop-filter:blur(20px);border-top:1.5px solid #fce4ec;display:flex;padding:8px 0 18px;z-index:100}
+.nav-item{flex:1;display:flex;flex-direction:column;align-items:center;gap:6px;cursor:pointer;transition:transform .22s ease,opacity .22s ease;padding:4px 0;position:relative;opacity:.9}
+.nav-item:hover{transform:translateY(-2px);opacity:1}
+.nav-item.tap{animation:navTap .35s ease}
+.nav-ico{width:52px;height:52px;border-radius:18px;display:flex;align-items:center;justify-content:center;line-height:1;position:relative;overflow:hidden;transition:transform .24s ease,background .24s ease,box-shadow .24s ease}
+.nav-ico::before{content:'';position:absolute;inset:0;border-radius:inherit;background:linear-gradient(135deg,rgba(242,167,184,.16),rgba(201,168,232,.08));opacity:0;transition:opacity .24s ease,transform .32s ease;transform:scale(.88)}
+.nav-ico svg{width:23px;height:23px;stroke:#8a6a78;stroke-width:2;fill:none;stroke-linecap:round;stroke-linejoin:round;position:relative;z-index:1;transition:stroke .24s ease,transform .24s ease}
+.nav-lbl{font-size:10px;font-weight:500;color:var(--text-soft);letter-spacing:.02em;text-transform:none;transition:color .24s ease,font-weight .24s ease}
+.nav-item.active .nav-ico{background:linear-gradient(135deg,rgba(242,167,184,.24),rgba(253,232,238,.95));box-shadow:0 8px 24px rgba(224,117,144,.18)}
+.nav-item.active .nav-ico::before{opacity:1;transform:scale(1)}
+.nav-item.active .nav-ico svg{stroke:var(--rose-deep);transform:scale(1.06)}
+.nav-item.active .nav-lbl{color:#ff6fa4;font-weight:700}
+.nav-item.active{opacity:1}
+.nav-item.active::after{content:'';position:absolute;bottom:-6px;width:26px;height:4px;border-radius:999px;background:linear-gradient(90deg,var(--rose),var(--lav-mid));animation:navGlow 2.2s ease-in-out infinite}
+@keyframes navGlow{0%,100%{transform:scaleX(.9);opacity:.7}50%{transform:scaleX(1.1);opacity:1}}
+@keyframes navTap{0%{transform:scale(1)}50%{transform:scale(.95)}100%{transform:scale(1)}}
+
+/* ═══ TABS ════════════════════════════════════════════════════════ */
+.tabs{display:flex;gap:6px;padding:0 14px 12px;overflow-x:auto;scrollbar-width:none}
+.tabs::-webkit-scrollbar{display:none}
+.tab{padding:8px 18px;border-radius:20px;font-size:13px;font-weight:600;white-space:nowrap;cursor:pointer;transition:all .2s;border:1.5px solid transparent;flex-shrink:0}
+.tab.a{background:var(--rose-deep);color:#fff;box-shadow:0 4px 14px rgba(224,117,144,.35)}
+.tab.i{background:rgba(255,255,255,.75);color:var(--text-soft);border-color:#ecdde5}
+.tab.i:hover{background:var(--blush);border-color:var(--rose)}
+
+/* ═══ PAGES ═══════════════════════════════════════════════════════ */
+.page{display:none}
+.page.active{display:block;animation:fadeSlide .35s ease}
+@keyframes fadeSlide{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+.card,.hero,.diag-strip{animation:softRise .55s ease both}
+@keyframes softRise{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:translateY(0)}}
+
+/* ═══ TOAST ═══════════════════════════════════════════════════════ */
+.toast{position:fixed;top:20px;left:50%;transform:translateX(-50%) translateY(-80px);background:var(--text);color:#fff;padding:12px 24px;border-radius:30px;font-size:13px;font-weight:500;z-index:999;transition:transform .35s cubic-bezier(.34,1.56,.64,1);white-space:nowrap;max-width:340px;text-align:center}
+.toast.show{transform:translateX(-50%) translateY(0)}
+
+/* ═══ LOADER ══════════════════════════════════════════════════════ */
+.loader{display:flex;align-items:center;justify-content:center;gap:9px;padding:22px;color:var(--text-soft);font-size:14px}
+.ld-dots span{display:inline-block;width:7px;height:7px;background:var(--rose);border-radius:50%;animation:bounce 1.2s infinite}
+.ld-dots span:nth-child(2){animation-delay:.2s}
+.ld-dots span:nth-child(3){animation-delay:.4s}
+@keyframes bounce{0%,80%,100%{transform:scale(.8);opacity:.5}40%{transform:scale(1.2);opacity:1}}
+
+/* tips */
+.tip-row{display:flex;align-items:center;gap:14px;padding:12px 0;border-bottom:1px solid #f0e6eb;transition:transform .2s ease}
+.tip-row:hover{transform:translateX(4px)}
+.tip-row:last-child{border-bottom:none}
+.tip-icon{width:44px;height:44px;border-radius:14px;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#fde8ee,#ede0f7);box-shadow:0 6px 18px rgba(224,117,144,.18);transition:all .25s ease;flex-shrink:0}
+.tip-icon svg{width:22px;height:22px;stroke:var(--rose-deep);stroke-width:2;fill:none;stroke-linecap:round;stroke-linejoin:round;transition:transform .25s ease}
+.tip-row:hover .tip-icon{transform:scale(1.08)}
+.tip-row:hover .tip-icon svg{transform:rotate(6deg)}
+.tip-title{font-weight:600;font-size:14px}
+.tip-sub{font-size:12px;color:var(--text-soft);margin-top:2px}
+
+/* history */
+.hist-item{display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid #f0e6eb}
+.hist-item:last-child{border-bottom:none}
+.hist-dot{width:38px;height:38px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:16px}
+.hist-info{flex:1}
+.hist-t{font-size:14px;font-weight:600}
+.hist-s{font-size:12px;color:var(--text-soft);margin-top:1px}
+.hist-badge{font-size:11px;font-weight:600;padding:3px 10px;border-radius:20px;flex-shrink:0}
+
+/* profile history pills */
+.h-pill{padding:6px 12px;border-radius:20px;font-size:12px;font-weight:500;border:1.5px solid}
+.h-pill.on{background:#fee2e2;border-color:#fca5a5;color:#b91c1c}
+.h-pill.off{background:#f8f8f8;border-color:#e8e0e4;color:var(--text-soft)}
+
+
+
+/* ═══ GESTURE / PHYSICS CARDS ═══════════════════════════════════ */
+.gesture-card{
+  position:relative;
+  transform-style:preserve-3d;
+  will-change:transform, box-shadow;
+  touch-action:pan-y;
+  transition:box-shadow .22s ease, border-color .22s ease, background .22s ease;
+}
+.gesture-card::after{
+  content:'';
+  position:absolute;
+  inset:0;
+  border-radius:inherit;
+  background:linear-gradient(135deg,rgba(255,255,255,.28),rgba(255,255,255,0) 45%,rgba(242,167,184,.12));
+  opacity:0;
+  pointer-events:none;
+  transition:opacity .2s ease;
+}
+.gesture-card.is-dragging{
+  box-shadow:0 24px 60px rgba(224,117,144,.24),0 10px 28px rgba(75,42,53,.08);
+  z-index:8;
+}
+.gesture-card.is-dragging::after{opacity:1}
+.gesture-card.is-swiping-left,
+.gesture-card.is-swiping-right{
+  transition:transform .32s cubic-bezier(.22,1,.36,1), opacity .32s ease;
+}
+.gesture-card .swipe-hint{
+  position:absolute;
+  top:14px;
+  right:14px;
+  padding:6px 11px;
+  border-radius:999px;
+  font-size:10px;
+  font-weight:700;
+  letter-spacing:.08em;
+  text-transform:uppercase;
+  background:rgba(255,255,255,.82);
+  border:1px solid rgba(224,117,144,.18);
+  color:var(--rose-deep);
+  box-shadow:0 10px 22px rgba(224,117,144,.10);
+  opacity:0;
+  transform:translateY(-6px) scale(.92);
+  transition:opacity .18s ease, transform .18s ease;
+  pointer-events:none;
+  backdrop-filter:blur(10px);
+}
+.gesture-card.show-hint .swipe-hint{
+  opacity:1;
+  transform:translateY(0) scale(1);
+}
+.gesture-card .drag-glow{
+  position:absolute;
+  inset:-1px;
+  border-radius:inherit;
+  background:radial-gradient(circle at var(--gx,50%) var(--gy,35%), rgba(255,255,255,.75), rgba(255,255,255,0) 32%), linear-gradient(135deg, rgba(255,255,255,.16), rgba(255,255,255,0));
+  opacity:0;
+  pointer-events:none;
+  transition:opacity .18s ease;
+}
+.gesture-card.is-dragging .drag-glow{opacity:1}
+
+.gesture-card.is-hovering{
+  box-shadow:0 18px 42px rgba(224,117,144,.18),0 8px 22px rgba(75,42,53,.06);
+}
+.gesture-card.is-pressed{
+  transition:none !important;
+}
+.gesture-card .card-action-rail{
+  position:absolute;
+  left:14px;
+  right:14px;
+  bottom:12px;
+  display:flex;
+  justify-content:space-between;
+  gap:10px;
+  pointer-events:none;
+  opacity:0;
+  transform:translateY(8px);
+  transition:opacity .22s ease, transform .22s ease;
+}
+.gesture-card.is-hovering .card-action-rail,
+.gesture-card.is-dragging .card-action-rail{
+  opacity:1;
+  transform:translateY(0);
+}
+.gesture-card .card-action{
+  min-width:78px;
+  padding:7px 10px;
+  border-radius:999px;
+  font-size:10px;
+  font-weight:700;
+  letter-spacing:.08em;
+  text-transform:uppercase;
+  background:rgba(255,255,255,.74);
+  border:1px solid rgba(255,255,255,.8);
+  backdrop-filter:blur(12px);
+  color:var(--text-soft);
+  box-shadow:0 10px 24px rgba(59,42,53,.06);
+  transition:transform .16s ease, opacity .16s ease, background .16s ease, color .16s ease;
+}
+.gesture-card .card-action.left{text-align:left}
+.gesture-card .card-action.right{text-align:right}
+.gesture-card[data-drag-dir="left"] .card-action.left{
+  background:rgba(255,241,242,.92);
+  color:#b91c1c;
+  transform:scale(1.04);
+}
+.gesture-card[data-drag-dir="right"] .card-action.right{
+  background:rgba(240,253,244,.94);
+  color:#15803d;
+  transform:scale(1.04);
+}
+.gesture-card .card-shine{
+  position:absolute;
+  inset:-35%;
+  background:linear-gradient(115deg,rgba(255,255,255,0) 30%,rgba(255,255,255,.26) 46%,rgba(255,255,255,0) 62%);
+  transform:translate3d(var(--shineX,-120%),var(--shineY,0),0) rotate(8deg);
+  opacity:.65;
+  pointer-events:none;
+  transition:transform .12s linear, opacity .22s ease;
+}
+.gesture-card.is-dragging .card-shine,
+.gesture-card.is-hovering .card-shine{opacity:.92}
+.gesture-card .depth-layer{
+  will-change:transform;
+  transition:transform .18s ease;
+}
+.gesture-card .depth-layer.depth-1{transform:translate3d(calc(var(--mx,0px)*.06),calc(var(--my,0px)*.06),0)}
+.gesture-card .depth-layer.depth-2{transform:translate3d(calc(var(--mx,0px)*.1),calc(var(--my,0px)*.1),0)}
+.gesture-card .depth-layer.depth-3{transform:translate3d(calc(var(--mx,0px)*.16),calc(var(--my,0px)*.16),0)}
+
+/* scrollbar */
+::-webkit-scrollbar{width:4px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--rose);border-radius:10px}
+</style>
+</head>
+<body>
+
+<svg aria-hidden="true" style="position:absolute;width:0;height:0;overflow:hidden">
+  <symbol id="i-home" viewBox="0 0 24 24"><path d="M3 10.5 12 3l9 7.5"></path><path d="M5.5 9.5V20h13V9.5"></path><path d="M9.5 20v-5h5v5"></path></symbol>
+  <symbol id="i-chart" viewBox="0 0 24 24"><path d="M5 19V9"></path><path d="M10 19V5"></path><path d="M15 19v-8"></path><path d="M20 19v-4"></path></symbol>
+  <symbol id="i-bell" viewBox="0 0 24 24"><path d="M15 18H9"></path><path d="M18 16v-5a6 6 0 1 0-12 0v5l-2 2h16z"></path></symbol>
+  <symbol id="i-user" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"></circle><path d="M5 20c1.8-3.3 4.2-5 7-5s5.2 1.7 7 5"></path></symbol>
+  <symbol id="i-ai" viewBox="0 0 24 24"><path d="M12 3l1.8 4.7L18.5 9l-4.7 1.3L12 15l-1.8-4.7L5.5 9l4.7-1.3z"></path><path d="M18.5 15.5l.9 2.1 2.1.9-2.1.9-.9 2.1-.9-2.1-2.1-.9 2.1-.9z"></path></symbol>
+  <symbol id="i-heart" viewBox="0 0 24 24"><path d="M12 20s-7-4.35-9-8.2C1.3 8.5 3.7 5.5 7 6.2c2 .4 3.4 2 5 3.9 1.6-1.9 3-3.5 5-3.9 3.3-.7 5.7 2.3 4 5.6C19 15.65 12 20 12 20z"></path></symbol>
+  <symbol id="i-baby" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"></circle><path d="M8 19c1.2-2.6 6.8-2.6 8 0"></path></symbol>
+  <symbol id="i-alert" viewBox="0 0 24 24"><path d="M12 4 3.8 18h16.4L12 4z"></path><path d="M12 9v4"></path><path d="M12 16h.01"></path></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="m5 13 4 4L19 7"></path></symbol>
+  <symbol id="i-drop" viewBox="0 0 24 24"><path d="M12 3s-5.5 6.4-5.5 10.4a5.5 5.5 0 0 0 11 0C17.5 9.4 12 3 12 3z"></path></symbol>
+  <symbol id="i-moon" viewBox="0 0 24 24"><path d="M20.5 14.5A8.5 8.5 0 0 1 9.5 3.5 9 9 0 1 0 20.5 14.5z"></path></symbol>
+  <symbol id="i-meal" viewBox="0 0 24 24"><path d="M6 3v8"></path><path d="M9 3v8"></path><path d="M7.5 11v10"></path><path d="M15 3v18"></path><path d="M15 8h3"></path></symbol>
+  <symbol id="i-calendar" viewBox="0 0 24 24"><path d="M7 3v4"></path><path d="M17 3v4"></path><rect x="4" y="5" width="16" height="15" rx="2"></rect><path d="M4 10h16"></path></symbol>
+  <symbol id="i-milk" viewBox="0 0 24 24"><path d="M8 3h8l-1.1 3.2V19a2 2 0 0 1-2 2h-1.8a2 2 0 0 1-2-2V6.2L8 3z"></path><path d="M9 7h6"></path></symbol>
+  <symbol id="i-banana" viewBox="0 0 24 24"><path d="M7 6c.4 2.7 1.7 5.2 3.9 7.1 2.2 2 4.8 3.1 7.6 3.3"></path><path d="M9 18c-2.2.8-4.5-.3-5.4-2.4-.7-1.8-.3-3.8 1.1-5.1l2.4-2.4"></path><path d="M18 16c1.4 1.4 1.5 3.6.2 5.1"></path></symbol>
+  <symbol id="i-walk" viewBox="0 0 24 24"><circle cx="14" cy="5" r="2"></circle><path d="M12.5 8.5 10 12l2.5 2.5"></path><path d="m11 14-2 6"></path><path d="m12 12 4 4"></path><path d="m16 16 2 4"></path></symbol>
+  <symbol id="i-pill" viewBox="0 0 24 24"><path d="M10 14l4-4"></path><path d="M7 17a5 5 0 0 1 0-7l3-3a5 5 0 1 1 7 7l-3 3a5 5 0 0 1-7 0z"></path></symbol>
+  <symbol id="i-clipboard" viewBox="0 0 24 24"><rect x="6" y="5" width="12" height="16" rx="2"></rect><path d="M9 5.5h6"></path><path d="M9 10h6"></path><path d="M9 14h6"></path></symbol>
+  <symbol id="i-scale" viewBox="0 0 24 24"><path d="M12 5v14"></path><path d="M5 8h14"></path><path d="m7 8-3 5h6l-3-5z"></path><path d="m17 8-3 5h6l-3-5z"></path></symbol>
+  <symbol id="i-edit" viewBox="0 0 24 24"><path d="m4 20 4.5-1 9-9a2.1 2.1 0 0 0-3-3l-9 9L4 20z"></path></symbol>
+  <symbol id="i-close" viewBox="0 0 24 24"><path d="m6 6 12 12"></path><path d="M18 6 6 18"></path></symbol>
+  <symbol id="i-spark" viewBox="0 0 24 24"><path d="M12 3l1.6 4.4L18 9l-4.4 1.6L12 15l-1.6-4.4L6 9l4.4-1.6z"></path></symbol>
+</svg>
+
+<div class="blob blob1"></div>
+<div class="blob blob2"></div>
+<div class="blob blob3"></div>
+
+<div class="shell">
+
+<!-- ══════════ HOME ══════════════════════════════════════════════ -->
+<div class="page active" id="page-home">
+  <div class="header">
+    <div>
+      <div class="hg">Namaste</div>
+      <div class="hn" id="home-name">Loading…</div>
+    </div>
+    <div class="hav" onclick="openDrawer()">
+      <svg aria-hidden="true"><use href="#i-bell"/></svg>
+      <div class="notif-badge" id="notif-badge" style="display:none">0</div>
+    </div>
+  </div>
+
+  <!-- Hero -->
+  <div class="hero">
+    <div class="hero-wl">You are pregnant for</div>
+    <div class="hero-w" id="hero-weeks">— Weeks</div>
+    <div class="hero-sub" id="hero-sub">Set up your profile to begin</div>
+    <div class="hero-trim" id="hero-trim">— Trimester</div>
+    <div class="hero-prog"><div class="hero-fill" id="hero-fill" style="width:0%"></div></div>
+    <div class="hero-freq" id="hero-freq"><span class="icon-badge sm"><svg class="icon-inline"><use href="#i-calendar"/></svg></span><span>—</span></div>
+  </div>
+
+  <!-- Live Diagnosis strip -->
+  <div class="diag-strip safe" id="diag-strip" onclick="openAIPage()">
+    <div class="diag-icon" id="diag-icon"><svg class="icon-inline"><use href="#i-check"/></svg></div>
+    <div>
+      <div class="diag-cond" id="diag-cond">Low Risk — All Clear</div>
+      <div class="diag-urg" id="diag-urg">Monitor at Home</div>
+    </div>
+    <div class="diag-arrow">›</div>
+  </div>
+
+  <!-- BP -->
+  <div class="sec">Today at a glance</div>
+  <div class="card">
+    <div class="card-t"><span class="icon-badge sm"><svg class="icon-inline"><use href="#i-heart"/></svg></span> Blood Pressure</div>
+    <div class="bp-box">
+      <div>
+        <div class="bp-lbl">Latest Reading</div>
+        <div class="bp-num">
+          <div class="bp-s" id="bp-s">—</div>
+          <div class="bp-sl">/</div>
+          <div class="bp-d" id="bp-d">—</div>
+        </div>
+        <div class="bp-lbl">mmHg</div>
+      </div>
+      <div class="bp-st n" id="bp-st">—</div>
+    </div>
+  </div>
+
+  <!-- Quick metrics -->
+  <div class="card">
+    <div class="card-t"><span class="icon-badge sm"><svg class="icon-inline"><use href="#i-baby"/></svg></span> Baby & Nutrition</div>
+    <div class="metrics">
+      <div class="met"><div class="metric-icon icon-badge sm"><svg class="icon-inline"><use href="#i-baby"/></svg></div><div class="met-lbl">Kicks</div><div class="met-val" id="m-kicks">—</div><div class="met-u">movements</div></div>
+      <div class="met l"><div class="metric-icon icon-badge sm"><svg class="icon-inline"><use href="#i-meal"/></svg></div><div class="met-lbl">Meals</div><div class="met-val" id="m-meals">—</div><div class="met-u">today</div></div>
+      <div class="met m"><div class="metric-icon icon-badge sm"><svg class="icon-inline"><use href="#i-drop"/></svg></div><div class="met-lbl">Water</div><div class="met-val" id="m-water">—</div><div class="met-u">litres</div></div>
+      <div class="met l"><div class="metric-icon icon-badge sm"><svg class="icon-inline"><use href="#i-moon"/></svg></div><div class="met-lbl">Sleep</div><div class="met-val" id="m-sleep">—</div><div class="met-u">hours</div></div>
+    </div>
+  </div>
+
+  <!-- Tips -->
+  <div class="sec">Healthy tips</div>
+  <div class="card">
+    <div class="tip-row">
+      <div class="tip-icon">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M8 3h8l-1.1 3.2V19a2 2 0 0 1-2 2h-1.8a2 2 0 0 1-2-2V6.2L8 3z"></path>
+          <path d="M9 7h6"></path>
+        </svg>
+      </div>
+      <div>
+        <div class="tip-title">2 Glass of Pure Milk</div>
+        <div class="tip-sub">Rich in calcium for baby's bones</div>
+      </div>
+    </div>
+    <div class="tip-row">
+      <div class="tip-icon">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M7 6c.4 2.7 1.7 5.2 3.9 7.1 2.2 2 4.8 3.1 7.6 3.3"></path>
+          <path d="M9 18c-2.2.8-4.5-.3-5.4-2.4-.7-1.8-.3-3.8 1.1-5.1l2.4-2.4"></path>
+          <path d="M18 16c1.4 1.4 1.5 3.6.2 5.1"></path>
+        </svg>
+      </div>
+      <div>
+        <div class="tip-title">6 Bananas Weekly</div>
+        <div class="tip-sub">Potassium prevents leg cramps</div>
+      </div>
+    </div>
+    <div class="tip-row">
+      <div class="tip-icon">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <circle cx="14" cy="5" r="2"></circle>
+          <path d="M12.5 8.5 10 12l2.5 2.5"></path>
+          <path d="M12 12v4l-2.5 4"></path>
+          <path d="M12 16h4l2 4"></path>
+          <path d="M10 12 7 14"></path>
+        </svg>
+      </div>
+      <div>
+        <div class="tip-title">20 min Walk Daily</div>
+        <div class="tip-sub">Keeps BP in healthy range</div>
+      </div>
+    </div>
+    <div class="tip-row">
+      <div class="tip-icon">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M9 15 15 9"></path>
+          <path d="M8.5 18.5a4.5 4.5 0 0 1 0-6.4l2.1-2.1a4.5 4.5 0 0 1 6.4 6.4l-2.1 2.1a4.5 4.5 0 0 1-6.4 0z"></path>
+        </svg>
+      </div>
+      <div>
+        <div class="tip-title">Iron + Folic Acid Daily</div>
+        <div class="tip-sub">Prevents anemia in pregnancy</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════ CHECK-IN ══════════════════════════════════════════ -->
+<div class="page" id="page-checkin">
+  <div class="header">
+    <div><div class="hg">Daily Check-in</div><div class="hn">Health Chart</div></div>
+    <div class="hav" onclick="openDrawer()"><svg aria-hidden="true"><use href="#i-clipboard"/></svg><div class="notif-badge" id="notif-badge2" style="display:none">0</div></div>
+  </div>
+  <div class="tabs">
+    <div class="tab a" id="tab-btn-daily" onclick="switchTab('daily')">Daily</div>
+    <div class="tab i" id="tab-btn-3day" onclick="switchTab('3day')">3-Day</div>
+  </div>
+
+  <!-- Daily -->
+  <div id="tab-daily">
+    <div class="card">
+      <div class="card-t"><span class="icon-badge sm"><svg class="icon-inline"><use href="#i-heart"/></svg></span> Blood Pressure</div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-lbl">Systolic (top)</label><input class="form-input" type="number" id="in-sys" placeholder="120" min="60" max="250"></div>
+        <div class="form-group"><label class="form-lbl">Diastolic (bottom)</label><input class="form-input" type="number" id="in-dia" placeholder="80" min="40" max="150"></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-t"><span class="icon-badge sm"><svg class="icon-inline"><use href="#i-baby"/></svg></span> Baby Kicks (2 hrs)</div>
+      <div class="kick-display" id="kick-num">0</div>
+      <div class="kick-sub">Tap the button each time baby kicks</div>
+      <div class="kick-dots" id="kick-dots"></div>
+      <div style="display:flex;gap:8px">
+        <button class="btn-mini" style="flex:1" onclick="addKick()">+ Add Kick</button>
+        <button class="btn-mini danger" style="flex:1" onclick="resetKicks()">Reset</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-t"><span class="icon-badge sm"><svg class="icon-inline"><use href="#i-alert"/></svg></span> Symptoms</div>
+      <div class="pills">
+        <div class="pill off" onclick="togglePill(this,'headache')" data-k="headache">Headache</div>
+        <div class="pill off" onclick="togglePill(this,'blurred_vision')" data-k="blurred_vision">Blurred Vision</div>
+        <div class="pill off" onclick="togglePill(this,'swelling')" data-k="swelling">Swelling</div>
+        <div class="pill off" onclick="togglePill(this,'abdominal_pain')" data-k="abdominal_pain">Abdominal Pain</div>
+        <div class="pill off" onclick="togglePill(this,'bleeding')" data-k="bleeding">Bleeding</div>
+        <div class="pill off" onclick="togglePill(this,'dizziness')" data-k="dizziness">Dizziness</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-t"><span class="icon-badge sm"><svg class="icon-inline"><use href="#i-meal"/></svg></span> Nutrition & Rest</div>
+      <div class="form-group">
+        <label class="form-lbl">Meals Today</label>
+        <div class="toggle-row" id="meals-tgl">
+          <div class="tgl" onclick="selMeals(this,1)">1</div>
+          <div class="tgl" onclick="selMeals(this,2)">2</div>
+          <div class="tgl active" onclick="selMeals(this,3)">3</div>
+          <div class="tgl" onclick="selMeals(this,4)">4</div>
+          <div class="tgl" onclick="selMeals(this,5)">5</div>
+        </div>
+      </div>
+      <div class="sim-field" style="margin-bottom:10px">
+        <div class="sim-lbl">Water (litres) <span id="wv">2.0</span>L</div>
+        <input type="range" min="0" max="5" step="0.5" value="2" oninput="setRange(this,'wv',1)">
+      </div>
+      <div class="sim-field" style="margin-bottom:10px">
+        <div class="sim-lbl">Sleep (hours) <span id="sv">7.0</span>h</div>
+        <input type="range" min="0" max="12" step="0.5" value="7" oninput="setRange(this,'sv',1)">
+      </div>
+      <div class="form-group" style="margin-bottom:0">
+        <label class="form-lbl">Notes</label>
+        <input class="form-input" id="in-notes" placeholder="Feeling a bit tired today…">
+      </div>
+    </div>
+    <div style="padding:0 14px 14px"><button class="btn-p" onclick="saveDailyCheckin()">Save Daily Check-in</button></div>
+  </div>
+
+  <!-- 3-Day -->
+  <div id="tab-3day" style="display:none">
+    <div class="card">
+      <div class="card-t"><span class="icon-badge sm"><svg class="icon-inline"><use href="#i-scale"/></svg></span> Weight & Energy</div>
+      <div class="form-group"><label class="form-lbl">Current Weight (kg)</label><input class="form-input" id="in-wt" type="number" placeholder="60.0" step="0.1"></div>
+      <div class="sim-field" style="margin-bottom:10px">
+        <div class="sim-lbl">Energy Level <span id="ev">6</span>/10</div>
+        <input type="range" min="1" max="10" step="1" value="6" oninput="setRange(this,'ev',0)">
+      </div>
+      <div class="sim-field" style="margin-bottom:10px">
+        <div class="sim-lbl">Breathlessness <span id="bv">3</span>/10</div>
+        <input type="range" min="1" max="10" step="1" value="3" oninput="setRange(this,'bv',0)">
+      </div>
+      <div class="form-group" style="margin-bottom:0">
+        <label class="form-lbl">Notes</label>
+        <input class="form-input" id="in-3dn" placeholder="Any changes this week…">
+      </div>
+    </div>
+    <div style="padding:0 14px 14px"><button class="btn-p" onclick="save3DayCheckin()">Save 3-Day Check-in</button></div>
+  </div>
+</div>
+
+<!-- ══════════ NIVA AI ══════════════════════════════════════════ -->
+<div class="page" id="page-ai">
+  <div class="header">
+    <div><div class="hg">AI Health Advisor</div><div class="hn">Niva</div></div>
+    <div class="hav" onclick="openDrawer()"><svg aria-hidden="true"><use href="#i-ai"/></svg><div class="notif-badge" id="notif-badge3" style="display:none">0</div></div>
+  </div>
+
+  <!-- Differential Scoring — Live Simulator -->
+  <div class="sec">Live Risk Simulator</div>
+  <div class="card">
+    <div class="card-t"><span class="icon-badge sm"><svg class="icon-inline"><use href="#i-chart"/></svg></span> Adjust Values</div>
+    <div class="sim-field" style="margin-bottom:10px">
+      <div class="sim-lbl">BP Systolic <span id="ss-sys">148</span> mmHg</div>
+      <input type="range" min="90" max="180" value="148" oninput="simUpdate(this,'ss-sys',0);runScoring()">
+    </div>
+    <div class="sim-field" style="margin-bottom:10px">
+      <div class="sim-lbl">BP Diastolic <span id="ss-dia">96</span> mmHg</div>
+      <input type="range" min="60" max="120" value="96" oninput="simUpdate(this,'ss-dia',0);runScoring()">
+    </div>
+    <div class="sim-field" style="margin-bottom:10px">
+      <div class="sim-lbl">Baby Kicks <span id="ss-kicks">8</span></div>
+      <input type="range" min="0" max="12" value="8" oninput="simUpdate(this,'ss-kicks',0);runScoring()">
+    </div>
+    <div class="sim-field" style="margin-bottom:10px">
+      <div class="sim-lbl">Water Intake <span id="ss-water">1.7</span>L</div>
+      <input type="range" min="0.5" max="4" step="0.1" value="1.7" oninput="simUpdate(this,'ss-water',1);runScoring()">
+    </div>
+    <div class="sim-field">
+      <div class="sim-lbl">Energy Level <span id="ss-energy">4</span>/10</div>
+      <input type="range" min="1" max="10" value="4" oninput="simUpdate(this,'ss-energy',0);runScoring()">
+    </div>
+  </div>
+
+  <!-- Differential Ranking -->
+  <div class="sec">Differential Diagnosis</div>
+  <div class="card">
+    <div class="card-t"><span class="icon-badge sm"><svg class="icon-inline"><use href="#i-ai"/></svg></span> Condition Ranking</div>
+    <div id="ranking-list"></div>
+    <div class="reason-box" id="reason-box">—</div>
+  </div>
+
+  <!-- Urgency card -->
+  <div class="card" id="urgency-card">
+    <div class="card-t"><span class="icon-badge sm"><svg class="icon-inline"><use href="#i-alert"/></svg></span> Urgency Level</div>
+    <div id="urg-display" style="border-radius:var(--r-sm);padding:14px 18px;border:1.5px solid #86efac;background:#f0fdf4">
+      <div style="font-size:11px;text-transform:uppercase;letter-spacing:.07em;color:#15803d;font-weight:600">Urgency</div>
+      <div style="font-family:'Playfair Display',serif;font-size:22px;color:#166534;margin-top:3px">Monitor at Home</div>
+    </div>
+  </div>
+
+  <!-- AI Claude call -->
+  <div class="sec">Niva AI Assessment</div>
+  <div class="card">
+    <div style="font-size:13px;color:var(--text-soft);line-height:1.6;margin-bottom:14px">Niva uses your full health data and medical history to give a plain-language explanation of your risk. Powered by Claude AI.</div>
+    <button class="btn-p" onclick="runNivaAI()">Ask Niva AI</button>
+  </div>
+  <div class="loader" id="ai-loader" style="display:none"><div class="ld-dots"><span></span><span></span><span></span></div>Niva is thinking…</div>
+  <div id="ai-result" style="display:none"></div>
+
+  <!-- Alerts (compact) -->
+  <div class="sec">Active Alerts</div>
+  <div class="card" id="alerts-preview"></div>
+</div>
+
+<!-- ══════════ ALERTS PAGE ═══════════════════════════════════════ -->
+<div class="page" id="page-alerts">
+  <div class="header">
+    <div><div class="hg">Notification Center</div><div class="hn">Alerts & Reminders</div></div>
+    <div class="hav" onclick="openDrawer()"><svg aria-hidden="true"><use href="#i-bell"/></svg><div class="notif-badge" id="notif-badge4" style="display:none">0</div></div>
+  </div>
+
+  <!-- Filter chips -->
+  <div class="tabs" id="alert-filter-row">
+    <div class="fchip active" onclick="setAlertFilter('all',this)">All</div>
+    <div class="fchip inactive" onclick="setAlertFilter('urgent',this)">Urgent</div>
+    <div class="fchip inactive" onclick="setAlertFilter('reminder',this)">Reminders</div>
+    <div class="fchip inactive" onclick="setAlertFilter('tip',this)">Tips</div>
+    <div class="fchip inactive" onclick="setAlertFilter('read',this)">Read</div>
+  </div>
+
+  <div class="card">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+      <div class="card-t" style="margin-bottom:0"><span class="icon-badge sm"><svg class="icon-inline"><use href="#i-bell"/></svg></span> Alerts</div>
+      <button class="btn-mini" onclick="markAllRead()">Mark all read</button>
+    </div>
+    <div id="alerts-list"></div>
+  </div>
+
+  <!-- Custom Alert Creator -->
+  <div class="sec">Create Custom Alert</div>
+  <div class="card">
+    <div class="card-t"><span class="icon-badge sm"><svg class="icon-inline"><use href="#i-edit"/></svg></span> Custom Alert</div>
+    <div class="form-group"><label class="form-lbl">Alert Title</label><input class="form-input" id="ca-title" placeholder="E.g. ANC visit tomorrow"></div>
+    <div class="form-group">
+      <label class="form-lbl">Type</label>
+      <div class="toggle-row">
+        <div class="tgl active" onclick="selAlertType(this,'urgent')">Urgent</div>
+        <div class="tgl" onclick="selAlertType(this,'reminder')">Reminder</div>
+        <div class="tgl" onclick="selAlertType(this,'tip')">Tip</div>
+      </div>
+    </div>
+    <div class="form-group"><label class="form-lbl">Message</label><textarea class="form-input" id="ca-text" placeholder="Write a short note…"></textarea></div>
+    <div class="custom-preview">
+      <div class="custom-preview-lbl">Preview</div>
+      <div id="ca-preview"></div>
+    </div>
+    <button class="btn-p" style="margin-top:12px" onclick="addCustomAlert()">+ Add Alert</button>
+  </div>
+</div>
+
+<!-- ══════════ PROFILE ═══════════════════════════════════════════ -->
+<div class="page" id="page-profile">
+  <div class="header">
+    <div><div class="hg">My Profile</div><div class="hn">Health Record</div></div>
+    <div class="hav"><svg aria-hidden="true"><use href="#i-user"/></svg></div>
+  </div>
+
+  <div id="prof-view" style="display:none">
+    <div class="card" style="text-align:center">
+      <div style="display:flex;justify-content:center;margin-bottom:8px"><span class="icon-badge" style="width:64px;height:64px;border-radius:20px"><svg class="icon-inline" style="width:30px;height:30px"><use href="#i-user"/></svg></span></div>
+      <div style="font-family:'Playfair Display',serif;font-size:24px" id="pv-name">—</div>
+      <div style="font-size:13px;color:var(--text-soft);margin-top:3px" id="pv-region">—</div>
+    </div>
+    <div class="card">
+      <div class="metrics">
+        <div class="met"><div class="met-lbl">Age</div><div class="met-val" id="pv-age">—</div><div class="met-u">years</div></div>
+        <div class="met l"><div class="met-lbl">Weeks</div><div class="met-val" id="pv-weeks">—</div><div class="met-u">pregnant</div></div>
+        <div class="met m"><div class="met-lbl">Height</div><div class="met-val" id="pv-height">—</div><div class="met-u">cm</div></div>
+        <div class="met"><div class="met-lbl">Weight</div><div class="met-val" id="pv-weight">—</div><div class="met-u">kg</div></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-t"><span class="icon-badge sm"><svg class="icon-inline"><use href="#i-clipboard"/></svg></span> Medical History</div>
+      <div class="pills" id="pv-history"></div>
+    </div>
+    <div style="padding:0 14px 14px"><button class="btn-s" onclick="showForm()">Edit / New Profile</button></div>
+  </div>
+
+  <div id="prof-form">
+    <div class="card">
+      <div class="card-t"><span class="icon-badge sm"><svg class="icon-inline"><use href="#i-user"/></svg></span> Personal Details</div>
+      <div class="form-group"><label class="form-lbl">Full Name</label><input class="form-input" id="f-name" placeholder="Priya Sharma"></div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-lbl">Age</label><input class="form-input" id="f-age" type="number" placeholder="25" min="15" max="55"></div>
+        <div class="form-group"><label class="form-lbl">Region</label><input class="form-input" id="f-region" placeholder="Punjab"></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-lbl">Height (cm)</label><input class="form-input" id="f-ht" type="number" placeholder="155"></div>
+        <div class="form-group"><label class="form-lbl">Weight (kg)</label><input class="form-input" id="f-wt" type="number" placeholder="58"></div>
+      </div>
+      <div class="form-group"><label class="form-lbl">Weeks Pregnant</label><input class="form-input" id="f-wks" type="number" placeholder="24" min="1" max="42"></div>
+    </div>
+    <div class="card">
+      <div class="card-t"><span class="icon-badge sm"><svg class="icon-inline"><use href="#i-clipboard"/></svg></span> Medical History</div>
+      <div style="display:flex;flex-direction:column;gap:10px">
+        <label style="display:flex;align-items:center;gap:10px;cursor:pointer"><input type="checkbox" id="f-db" style="accent-color:var(--rose-deep);width:18px;height:18px"><span style="font-size:14px">Diabetes in family</span></label>
+        <label style="display:flex;align-items:center;gap:10px;cursor:pointer"><input type="checkbox" id="f-ht2" style="accent-color:var(--rose-deep);width:18px;height:18px"><span style="font-size:14px">Hypertension history</span></label>
+        <label style="display:flex;align-items:center;gap:10px;cursor:pointer"><input type="checkbox" id="f-pe" style="accent-color:var(--rose-deep);width:18px;height:18px"><span style="font-size:14px">Previous preeclampsia</span></label>
+        <label style="display:flex;align-items:center;gap:10px;cursor:pointer"><input type="checkbox" id="f-co" style="accent-color:var(--rose-deep);width:18px;height:18px"><span style="font-size:14px">Previous complications</span></label>
+      </div>
+    </div>
+    <div style="padding:0 14px 14px"><button class="btn-p" onclick="saveProfile()">Save Profile</button></div>
+  </div>
+</div>
+
+</div><!-- /shell -->
+
+<!-- NAV -->
+<nav class="navbar">
+  <div class="nav-item active" onclick="goPage('home',this);navTap(this)">
+    <div class="nav-ico" aria-hidden="true">
+      <svg viewBox="0 0 24 24"><path d="M3 10.5 12 3l9 7.5"></path><path d="M5.5 9.5V20h13V9.5"></path><path d="M9.5 20v-5h5v5"></path></svg>
+    </div>
+    <div class="nav-lbl">Home</div>
+  </div>
+  <div class="nav-item" onclick="goPage('checkin',this);navTap(this)">
+    <div class="nav-ico" aria-hidden="true">
+      <svg viewBox="0 0 24 24"><path d="M5 19V9"></path><path d="M10 19V5"></path><path d="M15 19v-8"></path><path d="M20 19v-4"></path></svg>
+    </div>
+    <div class="nav-lbl">Chart</div>
+  </div>
+  <div class="nav-item" onclick="goPage('ai',this);navTap(this)">
+    <div class="nav-ico" aria-hidden="true">
+      <svg viewBox="0 0 24 24"><path d="M12 3l1.8 4.7L18.5 9l-4.7 1.3L12 15l-1.8-4.7L5.5 9l4.7-1.3z"></path><path d="M18.5 15.5l.9 2.1 2.1.9-2.1.9-.9 2.1-.9-2.1-2.1-.9 2.1-.9z"></path></svg>
+    </div>
+    <div class="nav-lbl">Niva AI</div>
+  </div>
+  <div class="nav-item" onclick="goPage('alerts',this);navTap(this)">
+    <div class="nav-ico" aria-hidden="true">
+      <svg viewBox="0 0 24 24"><path d="M15 18H9"></path><path d="M18 16v-5a6 6 0 1 0-12 0v5l-2 2h16z"></path></svg>
+    </div>
+    <div class="nav-lbl">Alerts</div>
+  </div>
+  <div class="nav-item" onclick="goPage('profile',this);navTap(this)">
+    <div class="nav-ico" aria-hidden="true">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"></circle><path d="M5 20c1.8-3.3 4.2-5 7-5s5.2 1.7 7 5"></path></svg>
+    </div>
+    <div class="nav-lbl">Profile</div>
+  </div>
+</nav>
+
+<!-- NOTIFICATION DRAWER -->
+<div class="drawer-overlay" id="drawer-overlay" onclick="closeDrawer()"></div>
+<div class="drawer" id="drawer">
+  <div class="drawer-head">
+    <div><div class="drawer-title">Notifications</div><div class="drawer-sub" id="drawer-sub">0 unread</div></div>
+    <button class="drawer-close" onclick="closeDrawer()"><svg class="icon-inline"><use href="#i-close"/></svg></button>
+  </div>
+  <div class="filter-row" id="drawer-filter-row">
+    <div class="fchip active" onclick="setDrawerFilter('all',this)">All</div>
+    <div class="fchip inactive" onclick="setDrawerFilter('urgent',this)">Urgent</div>
+    <div class="fchip inactive" onclick="setDrawerFilter('reminder',this)">Reminders</div>
+    <div class="fchip inactive" onclick="setDrawerFilter('tip',this)">Tips</div>
+  </div>
+  <div style="display:flex;justify-content:flex-end;margin-bottom:10px">
+    <button class="btn-mini" onclick="markAllRead()">Mark all read</button>
+  </div>
+  <div id="drawer-alerts"></div>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<script>
+// ══════════════════════════════════════════════
+// STATE
+// ══════════════════════════════════════════════
+const API = 'http://localhost:7860';
+let uid=null, user=null;
+let kickCount=0, mealsCount=3, symptoms={};
+let customAlertType='urgent';
+let readIds=new Set();
+let alertFilter='all', drawerFilter='all';
+let customAlerts=[];
+
+// Simulator state (from JSX)
+let sim={bpSys:148,bpDia:96,kicks:8,water:1.7,energy:4,meals:2,sleep:5.5};
+
+// ══════════════════════════════════════════════
+// SCORING ENGINE (from JSX)
+// ══════════════════════════════════════════════
+function scoreObs(o){
+  let pe=0,fd=0,an=0;
+  if(o.bpSys>=160||o.bpDia>=110) pe+=10;
+  else if(o.bpSys>=140||o.bpDia>=90) pe+=4;
+  if(o.bpSys>=145) pe+=2;
+  if(o.kicks<3) fd+=10; else if(o.kicks<6) fd+=5;
+  if(o.meals<2) an+=3;
+  if(o.energy<=3) an+=3;
+  if(o.sleep<5) an+=1;
+
+  const ranking=[
+    {key:'preeclampsia',label:'Preeclampsia',score:pe,icon:'i-alert'},
+    {key:'fetal_distress',label:'Fetal Distress',score:fd,icon:'i-baby'},
+    {key:'anemia',label:'Anemia',score:an,icon:'i-pill'},
+    {key:'low_risk',label:'Low Risk',score:0,icon:'i-check'},
+  ].sort((a,b)=>b.score-a.score);
+
+  const primary=ranking[0].score>=2?ranking[0].key:'low_risk';
+  let urgency='monitor_at_home';
+  if(o.bpSys>=160||o.bpDia>=110||o.kicks<3) urgency='go_to_hospital_today';
+  else if(primary!=='low_risk') urgency='visit_phc_this_week';
+  if(primary==='preeclampsia'&&o.bpSys>=140) urgency='go_to_hospital_today';
+
+  const reason=
+    primary==='preeclampsia'?'Blood pressure is the strongest signal. BP-related risk stays at the top.':
+    primary==='fetal_distress'?'Baby kick count is critically low. Fetal risk is the top priority right now.':
+    primary==='anemia'?'Low meals and low energy together make anemia the most likely condition.':
+    'No major signal crosses the danger threshold — you look stable! Keep monitoring.';
+
+  return{primary,urgency,ranking,reason};
+}
+
+// ══════════════════════════════════════════════
+// ALERTS ENGINE (from JSX)
+// ══════════════════════════════════════════════
+function buildAlerts(o){
+  const a=[];
+  if(o.bpSys>=160||o.bpDia>=110)
+    a.push({id:'bp-crit',title:'Critical blood pressure',text:'BP is in the danger range. Seek hospital care today.',type:'urgent'});
+  else if(o.bpSys>=140||o.bpDia>=90)
+    a.push({id:'bp-high',title:'High blood pressure',text:'BP is elevated. Consider immediate clinical review.',type:'urgent'});
+  if(o.water<2)
+    a.push({id:'water',title:'Hydration reminder',text:'Water intake looks low. Try to drink more fluids gradually.',type:'reminder'});
+  if(o.sleep<6)
+    a.push({id:'sleep',title:'Sleep is lower than ideal',text:'Less sleep worsens fatigue. Try extra rest today.',type:'tip'});
+  if(o.kicks<3)
+    a.push({id:'kick-crit',title:'Baby kicks are very low',text:'Kick count is critically low. Seek urgent care today.',type:'urgent'});
+  else if(o.kicks<6)
+    a.push({id:'kick-low',title:'Reduced baby movement',text:'Track kicks again and stay alert for further drop.',type:'reminder'});
+  if(o.meals<2)
+    a.push({id:'meals',title:'Low meal count',text:'Try to eat at least 3 meals a day for you and baby.',type:'reminder'});
+  if(a.length===0)
+    a.push({id:'clear',title:'All clear for now',text:'No major alerts from current readings. Keep it up!',type:'tip'});
+  return [...customAlerts,...a];
+}
+
+function getAllAlerts(){
+  return buildAlerts(sim).map(al=>({...al,unread:!readIds.has(al.id)}));
+}
+function unreadCount(){return getAllAlerts().filter(a=>a.unread).length}
+
+// ══════════════════════════════════════════════
+// RENDER ALERTS
+// ══════════════════════════════════════════════
+const alertIconMap={urgent:'i-alert',reminder:'i-calendar',tip:'i-spark',read:'i-check'};
+function iconUse(id,cls='icon-inline'){ return `<svg class="${cls}" aria-hidden="true"><use href="#${id}"></use></svg>`; }
+function alertHTML(al,compact=false){
+  const c=al.type==='urgent'?'urgent':al.type==='reminder'?'reminder':al.type==='tip'?'tip':'read';
+  return `<div class="alert-item ${al.unread?c:'read'}" id="al-${al.id}">
+    <div class="alert-title"><span class="icon-badge sm">${iconUse(alertIconMap[al.type]||'i-bell')}</span> ${al.title} ${al.unread?'<span class="alert-dot"></span>':''}</div>
+    ${compact?'':`<div class="alert-text">${al.text}</div>`}
+    <span class="alert-badge">${al.type}</span>
+  </div>`;
+}
+function renderAlerts(){
+  const all=getAllAlerts();
+  const uc=unreadCount();
+  // badges
+  ['notif-badge','notif-badge2','notif-badge3','notif-badge4'].forEach(id=>{
+    const el=document.getElementById(id);
+    if(el){el.textContent=uc;el.style.display=uc>0?'flex':'none';}
+  });
+  // drawer
+  const df=drawerFilter;
+  const dlist=all.filter(a=>df==='all'||a.type===df);
+  document.getElementById('drawer-alerts').innerHTML=dlist.map(a=>alertHTML(a)).join('');
+  document.getElementById('drawer-sub').textContent=uc+' unread';
+  // full page
+  const af=alertFilter;
+  const alist=all.filter(a=>{
+    if(af==='all') return true;
+    if(af==='urgent') return a.type==='urgent';
+    if(af==='reminder') return a.type==='reminder';
+    if(af==='tip') return a.type==='tip';
+    if(af==='read') return !a.unread;
+    return true;
+  });
+  document.getElementById('alerts-list').innerHTML=alist.map(a=>alertHTML(a)).join('');
+  // preview in AI page
+  const top=all.slice(0,3);
+  document.getElementById('alerts-preview').innerHTML=top.map(a=>alertHTML(a,true)).join('');
+}
+
+function markAllRead(){
+  getAllAlerts().forEach(a=>readIds.add(a.id));
+  renderAlerts();
+  toast('All alerts marked as read');
+}
+
+// ══════════════════════════════════════════════
+// SCORING RENDER
+// ══════════════════════════════════════════════
+const diagInfo={
+  preeclampsia:{icon:'i-alert',cls:'danger',urgCls:'danger'},
+  fetal_distress:{icon:'i-heart',cls:'danger',urgCls:'danger'},
+  anemia:{icon:'i-pill',cls:'warn',urgCls:'warn'},
+  gestational_diabetes:{icon:'i-drop',cls:'warn',urgCls:'warn'},
+  preterm_risk:{icon:'i-calendar',cls:'warn',urgCls:'warn'},
+  low_risk:{icon:'i-check',cls:'safe',urgCls:'safe'},
+};
+const urgLabel={monitor_at_home:'Monitor at Home',visit_phc_this_week:'Visit PHC This Week',go_to_hospital_today:'Go to Hospital Today'};
+const urgStyle={
+  monitor_at_home:'border:1.5px solid #86efac;background:#f0fdf4;color:#166534',
+  visit_phc_this_week:'border:1.5px solid #fcd34d;background:#fffbeb;color:#92400e',
+  go_to_hospital_today:'border:1.5px solid #fca5a5;background:#fff1f2;color:#b91c1c',
+};
+
+function runScoring(){
+  const res=scoreObs(sim);
+  // ranking bars
+  const maxScore=Math.max(...res.ranking.map(r=>r.score),1);
+  const rl=document.getElementById('ranking-list');
+  rl.innerHTML=res.ranking.map((item,i)=>{
+    const pct=Math.round((item.score/maxScore)*100);
+    const cls=i===0&&item.score>0?'top':item.key==='low_risk'?'low':'mid';
+    return `<div class="rank-item ${cls}">
+      <div class="rank-row">
+        <div class="rank-ico">${iconUse(item.icon)}</div>
+        <div><div class="rank-name">${item.label}</div><div class="rank-sc">Score: ${item.score}</div></div>
+        ${i===0&&item.score>0?'<div style="margin-left:auto;font-size:11px;font-weight:700;color:var(--rose-deep)">PRIMARY</div>':''}
+      </div>
+      <div class="rank-bar-wrap"><div class="rank-bar" style="width:${pct}%"></div></div>
+    </div>`;
+  }).join('');
+  document.getElementById('reason-box').textContent=res.reason;
+  // urgency
+  document.getElementById('urg-display').style.cssText=urgStyle[res.urgency]+';border-radius:var(--r-sm);padding:14px 18px';
+  document.getElementById('urg-display').innerHTML=`<div style="font-size:11px;text-transform:uppercase;letter-spacing:.07em;font-weight:600">Urgency</div><div style="font-family:'Playfair Display',serif;font-size:22px;margin-top:3px">${urgLabel[res.urgency]}</div>`;
+  // home strip
+  const info=diagInfo[res.primary]||diagInfo.low_risk;
+  const strip=document.getElementById('diag-strip');
+  strip.className='diag-strip '+info.cls;
+  document.getElementById('diag-icon').innerHTML=iconUse(info.icon);
+  document.getElementById('diag-cond').textContent=res.ranking.find(r=>r.key===res.primary)?.label||'Low Risk';
+  document.getElementById('diag-urg').textContent=urgLabel[res.urgency];
+  // re-render alerts based on sim
+  renderAlerts();
+}
+
+function simUpdate(input,spanId,dec){
+  const v=parseFloat(input.value);
+  sim[{
+    'ss-sys':'bpSys','ss-dia':'bpDia','ss-kicks':'kicks','ss-water':'water','ss-energy':'energy'
+  }[spanId]||spanId]=v;
+  document.getElementById(spanId).textContent=dec?v.toFixed(dec):v;
+  // update range gradient
+  const min=parseFloat(input.min),max=parseFloat(input.max);
+  const pct=((v-min)/(max-min)*100).toFixed(1);
+  input.style.background=`linear-gradient(90deg,var(--rose) ${pct}%,#f0e0e8 ${pct}%)`;
+}
+
+// ══════════════════════════════════════════════
+// CUSTOM ALERT
+// ══════════════════════════════════════════════
+function selAlertType(el,type){
+  customAlertType=type;
+  document.querySelectorAll('#page-alerts .toggle-row .tgl').forEach(b=>b.classList.remove('active'));
+  el.classList.add('active');
+  updatePreview();
+}
+function updatePreview(){
+  const t=document.getElementById('ca-title').value||'Your alert title';
+  const m=document.getElementById('ca-text').value||'Your custom message will appear here.';
+  document.getElementById('ca-preview').innerHTML=`<div class="alert-item ${customAlertType}" style="margin-bottom:0">
+    <div class="alert-title">${alertEmoji[customAlertType]} ${t} <span class="alert-dot"></span></div>
+    <div class="alert-text">${m}</div>
+    <span class="alert-badge">${customAlertType}</span>
+  </div>`;
+}
+document.addEventListener('input',function(e){if(e.target.id==='ca-title'||e.target.id==='ca-text')updatePreview();});
+function addCustomAlert(){
+  const t=document.getElementById('ca-title').value.trim();
+  if(!t){toast('Alert title required');return;}
+  const id='c-'+Date.now();
+  customAlerts.unshift({id,title:t,text:document.getElementById('ca-text').value||'Custom prenatal note.',type:customAlertType,unread:true});
+  document.getElementById('ca-title').value='';
+  document.getElementById('ca-text').value='';
+  renderAlerts();
+  toast('Alert added!');
+  updatePreview();
+}
+
+// ══════════════════════════════════════════════
+// FILTER
+// ══════════════════════════════════════════════
+function setAlertFilter(f,el){
+  alertFilter=f;
+  document.querySelectorAll('#alert-filter-row .fchip').forEach(c=>{c.className='fchip inactive';});
+  el.className='fchip active';
+  renderAlerts();
+}
+function setDrawerFilter(f,el){
+  drawerFilter=f;
+  document.querySelectorAll('#drawer-filter-row .fchip').forEach(c=>{c.className='fchip inactive';});
+  el.className='fchip active';
+  renderAlerts();
+}
+
+// ══════════════════════════════════════════════
+// DRAWER
+// ══════════════════════════════════════════════
+function openDrawer(){document.getElementById('drawer').classList.add('open');document.getElementById('drawer-overlay').classList.add('open');}
+function closeDrawer(){document.getElementById('drawer').classList.remove('open');document.getElementById('drawer-overlay').classList.remove('open');}
+
+// ══════════════════════════════════════════════
+// NAVIGATION
+// ══════════════════════════════════════════════
+function goPage(name,el){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+  document.getElementById('page-'+name).classList.add('active');
+  if(el) el.classList.add('active');
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+function openAIPage(){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.getElementById('page-ai').classList.add('active');
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+function navTap(el){
+  if(!el) return;
+  el.classList.remove('tap');
+  void el.offsetWidth;
+  el.classList.add('tap');
+}
+
+// ══════════════════════════════════════════════
+// TABS
+// ══════════════════════════════════════════════
+function switchTab(t){
+  document.getElementById('tab-daily').style.display=t==='daily'?'':'none';
+  document.getElementById('tab-3day').style.display=t==='3day'?'':'none';
+  document.getElementById('tab-btn-daily').className='tab '+(t==='daily'?'a':'i');
+  document.getElementById('tab-btn-3day').className='tab '+(t==='3day'?'a':'i');
+}
+
+// ══════════════════════════════════════════════
+// RANGE UTIL
+// ══════════════════════════════════════════════
+function setRange(input,spanId,dec){
+  const v=parseFloat(input.value);
+  document.getElementById(spanId).textContent=dec?v.toFixed(dec):v;
+  const min=parseFloat(input.min),max=parseFloat(input.max);
+  const pct=((v-min)/(max-min)*100).toFixed(1);
+  input.style.background=`linear-gradient(90deg,var(--rose) ${pct}%,#f0e0e8 ${pct}%)`;
+}
+
+// ══════════════════════════════════════════════
+// KICK TRACKER
+// ══════════════════════════════════════════════
+function addKick(){
+  kickCount++;
+  document.getElementById('kick-num').textContent=kickCount;
+  const d=document.getElementById('kick-dots');
+  const dot=document.createElement('div');
+  dot.className='kd on';dot.innerHTML=iconUse('i-baby');
+  d.appendChild(dot);
+  // update sim kicks too
+  sim.kicks=kickCount;
+  runScoring();
+}
+function resetKicks(){kickCount=0;document.getElementById('kick-num').textContent=0;document.getElementById('kick-dots').innerHTML='';sim.kicks=0;runScoring();}
+
+// ══════════════════════════════════════════════
+// PILLS & MEALS
+// ══════════════════════════════════════════════
+function togglePill(el,k){const on=el.classList.toggle('on');el.classList.toggle('off',!on);symptoms[k]=on;}
+function selMeals(el,n){mealsCount=n;document.querySelectorAll('#meals-tgl .tgl').forEach(b=>b.classList.remove('active'));el.classList.add('active');sim.meals=n;runScoring();}
+
+// ══════════════════════════════════════════════
+// TOAST
+// ══════════════════════════════════════════════
+function toast(msg,dur=2800){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),dur);}
+
+// ══════════════════════════════════════════════
+// API HELPERS
+// ══════════════════════════════════════════════
+async function api(path,method='GET',body=null){
+  const opts={method,headers:{'Content-Type':'application/json'}};
+  if(body) opts.body=JSON.stringify(body);
+  const r=await fetch(API+path,opts);
+  if(!r.ok){const e=await r.json().catch(()=>({}));throw new Error(e.detail||r.statusText);}
+  return r.json();
+}
+
+// ══════════════════════════════════════════════
+// PROFILE
+// ══════════════════════════════════════════════
+async function saveProfile(){
+  const name=document.getElementById('f-name').value.trim();
+  const age=parseInt(document.getElementById('f-age').value);
+  const region=document.getElementById('f-region').value.trim();
+  const height=parseFloat(document.getElementById('f-ht').value);
+  const weight=parseFloat(document.getElementById('f-wt').value);
+  const weeks=parseInt(document.getElementById('f-wks').value);
+  if(!name||!age||!region||!height||!weight||!weeks){toast('Please fill all fields');return;}
+  try{
+    const u=await api('/users/setup','POST',{
+      name,age,height_cm:height,weight_kg:weight,region,weeks_pregnant:weeks,
+      history_diabetes:document.getElementById('f-db').checked,
+      history_hypertension:document.getElementById('f-ht2').checked,
+      history_preeclampsia:document.getElementById('f-pe').checked,
+      history_prev_comp:document.getElementById('f-co').checked,
+    });
+    uid=u.id;user=u;
+    try{localStorage.setItem('niva_user',JSON.stringify(u));}catch(e){}
+    renderProfile(u);refreshHome(u);
+    toast('Profile saved! Namaste '+u.name+'!');
+  }catch(e){toast(e.message);}
+}
+
+function renderProfile(u){
+  document.getElementById('prof-form').style.display='none';
+  document.getElementById('prof-view').style.display='';
+  document.getElementById('pv-name').textContent=u.name;
+  document.getElementById('pv-region').textContent=u.region+' · '+['','1st','2nd','3rd'][u.trimester]+' Trimester';
+  document.getElementById('pv-age').textContent=u.age;
+  document.getElementById('pv-weeks').textContent=u.weeks_pregnant;
+  document.getElementById('pv-height').textContent=u.height_cm;
+  document.getElementById('pv-weight').textContent=u.weight_kg;
+  const h=document.getElementById('pv-history');
+  h.innerHTML=[
+    [u.history_diabetes,'Diabetes'],
+    [u.history_hypertension,'Hypertension'],
+    [u.history_preeclampsia,'Preeclampsia'],
+    [u.history_prev_comp,'Prev. Complication'],
+  ].map(([v,l])=>`<div class="h-pill ${v?'on':'off'}" style="cursor:default">${l}</div>`).join('');
+}
+
+function showForm(){document.getElementById('prof-form').style.display='';document.getElementById('prof-view').style.display='none';}
+
+function refreshHome(u){
+  if(!u)return;
+  document.getElementById('home-name').textContent=u.name.split(' ')[0];
+  document.getElementById('hero-weeks').textContent=u.weeks_pregnant+' Weeks';
+  document.getElementById('hero-sub').textContent=u.weeks_pregnant+' weeks · '+['','1st','2nd','3rd'][u.trimester]+' Trimester';
+  document.getElementById('hero-trim').textContent=['','1st Trimester','2nd Trimester','3rd Trimester'][u.trimester];
+  document.getElementById('hero-fill').style.width=Math.round((u.weeks_pregnant/40)*100)+'%';
+  document.getElementById('hero-freq').innerHTML='<span class="icon-badge sm"><svg class="icon-inline"><use href="#i-calendar"/></svg></span><span>Check-in: '+u.checkin_frequency+'</span>';
+}
+
+// ══════════════════════════════════════════════
+// CHECKIN SAVE
+// ══════════════════════════════════════════════
+async function saveDailyCheckin(){
+  if(!uid){toast('Create a profile first');return;}
+  const sys=parseInt(document.getElementById('in-sys').value);
+  const dia=parseInt(document.getElementById('in-dia').value);
+  if(!sys||!dia){toast('Please enter blood pressure');return;}
+  const dailyRanges=document.querySelectorAll('#tab-daily input[type=range]');
+  const water=parseFloat(dailyRanges[0]?.value ?? '0');
+  const sleep=parseFloat(dailyRanges[1]?.value ?? '0');
+  const body={
+    user_id:uid,weeks_pregnant_at_checkin:user.weeks_pregnant,
+    bp_systolic:sys,bp_diastolic:dia,
+    kick_count:kickCount||null,kick_count_normal:kickCount>=3,
+    symptom_headache:!!symptoms.headache,symptom_blurred_vision:!!symptoms.blurred_vision,
+    symptom_swelling:!!symptoms.swelling,symptom_abdominal_pain:!!symptoms.abdominal_pain,
+    symptom_bleeding:!!symptoms.bleeding,symptom_dizziness:!!symptoms.dizziness,
+    meals_count:mealsCount,water_litres:water,sleep_hours:sleep,
+    notes:document.getElementById('in-notes').value||null,
+  };
+  try{
+    await api('/checkin/daily/','POST',body);
+    // update home metrics
+    document.getElementById('bp-s').textContent=sys;
+    document.getElementById('bp-d').textContent=dia;
+    document.getElementById('m-kicks').textContent=kickCount;
+    document.getElementById('m-meals').textContent=mealsCount;
+    document.getElementById('m-water').textContent=water.toFixed(1);
+    document.getElementById('m-sleep').textContent=sleep.toFixed(1);
+    const st=document.getElementById('bp-st');
+    if(sys>=160||dia>=110){st.className='bp-st h';st.textContent='Critical!';}
+    else if(sys>=140||dia>=90){st.className='bp-st e';st.textContent='Elevated';}
+    else{st.className='bp-st n';st.textContent='Normal';}
+    // sync sim
+    sim={...sim,bpSys:sys,bpDia:dia,kicks:kickCount,water:water,sleep:sleep,meals:mealsCount};
+    runScoring();
+    toast('Daily check-in saved!');
+  }catch(e){
+    // offline demo
+    document.getElementById('bp-s').textContent=sys;
+    document.getElementById('bp-d').textContent=dia;
+    document.getElementById('m-kicks').textContent=kickCount;
+    document.getElementById('m-meals').textContent=mealsCount;
+    document.getElementById('m-water').textContent=water.toFixed(1);
+    document.getElementById('m-sleep').textContent=sleep.toFixed(1);
+    sim={...sim,bpSys:sys,bpDia:dia,kicks:kickCount,water:water,sleep:sleep,meals:mealsCount};
+    runScoring();
+    toast('Saved locally (API offline)');
+  }
+}
+
+async function save3DayCheckin(){
+  if(!uid){toast('Create a profile first');return;}
+  const wt=parseFloat(document.getElementById('in-wt').value);
+  if(!wt){toast('Please enter your weight');return;}
+  const threeDayRanges=document.querySelectorAll('#tab-3day input[type=range]');
+  const energy=parseInt(threeDayRanges[0]?.value ?? '0');
+  const breath=parseInt(threeDayRanges[1]?.value ?? '0');
+  const body={user_id:uid,weeks_pregnant_at_checkin:user.weeks_pregnant,weight_kg:wt,energy_level:energy,breathlessness:breath,notes:document.getElementById('in-3dn').value||null};
+  try{
+    await api('/checkin/3day/','POST',body);
+    sim={...sim,energy};runScoring();
+    toast('3-Day check-in saved!');
+  }catch(e){
+    sim={...sim,energy};runScoring();
+    toast('Saved locally (API offline)');
+  }
+}
+
+// ══════════════════════════════════════════════
+// NIVA AI
+// ══════════════════════════════════════════════
+async function runNivaAI(){
+  document.getElementById('ai-loader').style.display='flex';
+  document.getElementById('ai-result').style.display='none';
+  const obs=JSON.stringify({...sim,history:user?{diabetes:user.history_diabetes,hypertension:user.history_hypertension,preeclampsia:user.history_preeclampsia,prev_comp:user.history_prev_comp}:{}});
+  try{
+    const resp=await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        model:'claude-sonnet-4-20250514',max_tokens:600,
+        system:`You are Niva, an AI maternal health assistant for rural India. Given patient health data, respond ONLY with valid JSON (no markdown):
+{"target":"<condition>","urgency":"<urgency>","explanation":"<2-3 sentences in simple, warm English>","advice":"<1 actionable tip>"}
+Conditions: preeclampsia|gestational_diabetes|anemia|preterm_risk|fetal_distress|low_risk
+Urgencies: monitor_at_home|visit_phc_this_week|go_to_hospital_today
+DANGER flags (BP>=160/110 or kicks<3) always → go_to_hospital_today.`,
+        messages:[{role:'user',content:`Patient data: ${obs}`}]
+      })
+    });
+    const data=await resp.json();
+    let raw=data.content.map(c=>c.text||'').join('').replace(/```json|```/g,'').trim();
+    const d=JSON.parse(raw);
+    renderAIResult(d);
+  }catch(e){
+    const local=scoreObs(sim);
+    renderAIResult({
+      target:local.primary,urgency:local.urgency,
+      explanation:local.reason,
+      advice:'Keep logging your daily check-ins and stay hydrated!'
+    });
+  }
+  document.getElementById('ai-loader').style.display='none';
+}
+
+function renderAIResult(d){
+  const info=diagInfo[d.target]||diagInfo.low_risk;
+  const condLabels={preeclampsia:'Preeclampsia',gestational_diabetes:'Gestational Diabetes',anemia:'Anemia',preterm_risk:'Preterm Risk',fetal_distress:'Fetal Distress',low_risk:'Low Risk — All Clear'};
+  const el=document.getElementById('ai-result');
+  el.style.display='';
+  el.innerHTML=`<div class="card" style="border:2px solid ${info.cls==='danger'?'#fca5a5':info.cls==='warn'?'#fcd34d':'#86efac'};background:${info.cls==='danger'?'#fff1f2':info.cls==='warn'?'#fffbeb':'#f0fdf4'}">
+    <div style="font-size:40px;margin-bottom:10px">${info.icon}</div>
+    <div style="font-family:'Playfair Display',serif;font-size:22px;font-weight:600;margin-bottom:6px">${condLabels[d.target]||d.target}</div>
+    <div style="${urgStyle[d.urgency]};border-radius:20px;display:inline-block;padding:4px 14px;font-size:12px;font-weight:600;margin-bottom:12px">${urgLabel[d.urgency]}</div>
+    <div style="font-size:14px;color:var(--text);line-height:1.65;margin-bottom:10px">${d.explanation||''}</div>
+    ${d.advice?`<div style="background:rgba(255,255,255,.7);border-radius:var(--r-sm);padding:10px 14px;font-size:13px;color:var(--text-soft)">${d.advice}</div>`:''}
+  </div>`;
+  // update strip
+  const strip=document.getElementById('diag-strip');
+  strip.className='diag-strip '+info.cls;
+  document.getElementById('diag-icon').innerHTML=iconUse(info.icon);
+  document.getElementById('diag-cond').textContent=condLabels[d.target]||d.target;
+  document.getElementById('diag-urg').textContent=urgLabel[d.urgency];
+}
+
+async function runNivaAI(){
+  document.getElementById('ai-loader').style.display='flex';
+  document.getElementById('ai-result').style.display='none';
+  try{
+    if(!uid) throw new Error('Create a profile first');
+    const diagnosis=await api(`/diagnosis/${uid}`);
+    renderAIResult({
+      target:diagnosis.predicted_condition,
+      urgency:diagnosis.urgency,
+      explanation:diagnosis.rationale,
+      advice:(diagnosis.diet_advice||[]).slice(0,2).join(' '),
+      risk_flags:diagnosis.risk_flags||[],
+      days_of_data:diagnosis.days_of_data||0
+    });
+    toast('Diagnosis loaded from backend API');
+  }catch(e){
+    const local=scoreObs(sim);
+    renderAIResult({
+      target:local.primary,
+      urgency:local.urgency,
+      explanation:local.reason,
+      advice:'Keep logging your daily check-ins and stay hydrated!'
+    });
+    toast(e.message||'Using local fallback diagnosis');
+  }
+  document.getElementById('ai-loader').style.display='none';
+}
+
+function renderAIResult(d){
+  const info=diagInfo[d.target]||diagInfo.low_risk;
+  const condLabels={preeclampsia:'Preeclampsia',gestational_diabetes:'Gestational Diabetes',anemia:'Anemia',preterm_risk:'Preterm Risk',fetal_distress:'Fetal Distress',low_risk:'Low Risk - All Clear'};
+  const riskFlags=(d.risk_flags||[]).length ? `<div style="font-size:12px;color:var(--text-soft);margin-bottom:10px">Flags: ${d.risk_flags.join(', ')}</div>` : '';
+  const dataHint=d.days_of_data ? `<div style="font-size:12px;color:var(--text-soft);margin-top:8px">Based on ${d.days_of_data} recent daily check-in${d.days_of_data===1?'':'s'}.</div>` : '';
+  const el=document.getElementById('ai-result');
+  el.style.display='';
+  el.innerHTML=`<div class="card" style="border:2px solid ${info.cls==='danger'?'#fca5a5':info.cls==='warn'?'#fcd34d':'#86efac'};background:${info.cls==='danger'?'#fff1f2':info.cls==='warn'?'#fffbeb':'#f0fdf4'}">
+    <div style="font-size:40px;margin-bottom:10px">${iconUse(info.icon)}</div>
+    <div style="font-family:'Playfair Display',serif;font-size:22px;font-weight:600;margin-bottom:6px">${condLabels[d.target]||d.target}</div>
+    <div style="${urgStyle[d.urgency]};border-radius:20px;display:inline-block;padding:4px 14px;font-size:12px;font-weight:600;margin-bottom:12px">${urgLabel[d.urgency]}</div>
+    ${riskFlags}
+    <div style="font-size:14px;color:var(--text);line-height:1.65;margin-bottom:10px">${d.explanation||''}</div>
+    ${d.advice?`<div style="background:rgba(255,255,255,.7);border-radius:var(--r-sm);padding:10px 14px;font-size:13px;color:var(--text-soft)">${d.advice}</div>`:''}
+    ${dataHint}
+  </div>`;
+  const strip=document.getElementById('diag-strip');
+  strip.className='diag-strip '+info.cls;
+  document.getElementById('diag-icon').innerHTML=iconUse(info.icon);
+  document.getElementById('diag-cond').textContent=condLabels[d.target]||d.target;
+  document.getElementById('diag-urg').textContent=urgLabel[d.urgency];
+}
+
+
+// ══════════════════════════════════════════════
+// CARD GESTURE ENGINE
+// ══════════════════════════════════════════════
+function initInteractiveCards(){
+  const cards=[...document.querySelectorAll('.card, .hero, .diag-strip')].filter(el=>!el.closest('#prof-form'));
+  cards.forEach((card,index)=>{
+    if(card.dataset.gestureReady==='1') return;
+    card.dataset.gestureReady='1';
+    card.classList.add('gesture-card');
+    card.style.setProperty('--gx','50%');
+    card.style.setProperty('--gy','35%');
+    card.style.setProperty('--mx','0px');
+    card.style.setProperty('--my','0px');
+    card.style.setProperty('--shineX','-120%');
+    card.style.setProperty('--shineY','0px');
+
+    const nodes=[...card.childNodes];
+    nodes.forEach(node=>{
+      if(node.nodeType===1 && !node.classList.contains('drag-glow') && !node.classList.contains('swipe-hint') && !node.classList.contains('card-action-rail') && !node.classList.contains('card-shine')){
+        const depth=document.createElement('div');
+        depth.className='depth-layer depth-'+(((Math.random()*3)|0)+1);
+        node.parentNode.insertBefore(depth,node);
+        depth.appendChild(node);
+      }
+    });
+
+    const glow=document.createElement('div');
+    glow.className='drag-glow';
+    const shine=document.createElement('div');
+    shine.className='card-shine';
+    const hint=document.createElement('div');
+    hint.className='swipe-hint';
+    hint.textContent='Drag me';
+    const rail=document.createElement('div');
+    rail.className='card-action-rail';
+    rail.innerHTML='<div class="card-action left">Dismiss</div><div class="card-action right">Pin</div>';
+    card.appendChild(glow);
+    card.appendChild(shine);
+    card.appendChild(hint);
+    card.appendChild(rail);
+
+    let active=false,startX=0,startY=0,currentX=0,currentY=0,lastDX=0,lastDY=0;
+    let hoverX=0,hoverY=0, frame=0;
+    const baseRotate=(index%2===0?-.6:.6);
+    const stopSelectors='input, textarea, select, button, a, label, .tgl, .pill, .tab, .fchip, .btn-mini, .btn-p, .btn-s';
+    const clamp=(v,min,max)=>Math.max(min,Math.min(max,v));
+
+    const render=()=>{
+      frame=0;
+      const rect=card.getBoundingClientRect();
+      const dx=active?(currentX-startX):0;
+      const dy=active?(currentY-startY):0;
+      lastDX=dx; lastDY=dy;
+
+      const localX=(active?currentX:hoverX)-rect.left;
+      const localY=(active?currentY:hoverY)-rect.top;
+      const px=clamp((localX/rect.width)-0.5,-0.5,0.5);
+      const py=clamp((localY/rect.height)-0.5,-0.5,0.5);
+
+      let tx=dx;
+      let ty=active?(dy*0.35):(py*4);
+      let rot=active?clamp(dx/18,-10,10)+baseRotate:(px*4)+baseRotate;
+      let rx=active?clamp(-dy/10,-10,10):clamp(-py*10,-6,6);
+      let ry=active?clamp(dx/9,-12,12):clamp(px*12,-7,7);
+      let scale=active?(1+Math.min(.022,(Math.abs(dx)+Math.abs(dy))/1600)):1.005;
+
+      card.style.transform=`translate3d(${tx}px, ${ty}px, 0) rotate(${rot}deg) rotateX(${rx}deg) rotateY(${ry}deg) scale(${scale})`;
+      card.style.setProperty('--mx',`${(px*20).toFixed(2)}px`);
+      card.style.setProperty('--my',`${(py*18).toFixed(2)}px`);
+      card.style.setProperty('--gx',`${50+px*38}%`);
+      card.style.setProperty('--gy',`${35+py*28}%`);
+      card.style.setProperty('--shineX',`${-40 + ((localX/rect.width)*160)}%`);
+      card.style.setProperty('--shineY',`${py*12}px`);
+
+      const swipeStrength=Math.abs(dx);
+      if(active && swipeStrength>48){
+        card.classList.add('show-hint');
+        const dir=dx>0?'right':'left';
+        card.dataset.dragDir=dir;
+        hint.textContent=dx>0?'Pin card':'Dismiss card';
+        hint.style.color=dx>0?'#15803d':'#b91c1c';
+      }else{
+        card.classList.toggle('show-hint', active);
+        card.dataset.dragDir='';
+        hint.textContent=active?'Drag me':'Swipe';
+        hint.style.color='';
+      }
+    };
+
+    const queueRender=()=>{ if(!frame) frame=requestAnimationFrame(render); };
+
+    const resetDepth=()=>{
+      card.style.setProperty('--mx','0px');
+      card.style.setProperty('--my','0px');
+      card.style.setProperty('--shineX','-120%');
+      card.style.setProperty('--shineY','0px');
+    };
+
+    const reset=(withSpring=true)=>{
+      active=false;
+      card.classList.remove('is-dragging','is-pressed','show-hint','is-swiping-left','is-swiping-right');
+      card.dataset.dragDir='';
+      card.style.transition=withSpring?'transform 560ms cubic-bezier(.22,1,.36,1), box-shadow .22s ease':'none';
+      card.style.transform='translate3d(0,0,0) rotate(0deg) rotateX(0deg) rotateY(0deg) scale(1)';
+      card.style.setProperty('--gx','50%');
+      card.style.setProperty('--gy','35%');
+      resetDepth();
+      setTimeout(()=>{card.style.transition='box-shadow .22s ease, border-color .22s ease, background .22s ease';},560);
+    };
+
+    const commitSwipe=(dir)=>{
+      const sign=dir==='right'?1:-1;
+      card.classList.remove('is-dragging','is-pressed');
+      card.classList.add(sign>0?'is-swiping-right':'is-swiping-left');
+      card.dataset.dragDir=sign>0?'right':'left';
+      card.style.transition='transform 360ms cubic-bezier(.22,1,.36,1), opacity 320ms ease';
+      card.style.transform=`translate3d(${sign*(window.innerWidth*0.92)}px, ${lastDY*0.15}px, 0) rotate(${sign*18}deg) scale(.98)`;
+      card.style.opacity='.55';
+      setTimeout(()=>{
+        card.style.transition='none';
+        card.style.opacity='1';
+        card.style.transform=`translate3d(${sign*-28}px,0,0) rotate(${sign*-4}deg) scale(.985)`;
+        requestAnimationFrame(()=>reset(true));
+      },320);
+    };
+
+    card.addEventListener('pointerenter',e=>{
+      if(e.target.closest(stopSelectors)) return;
+      card.classList.add('is-hovering');
+      hoverX=e.clientX; hoverY=e.clientY;
+      queueRender();
+    });
+    card.addEventListener('pointerleave',()=>{
+      if(active) return;
+      card.classList.remove('is-hovering');
+      card.classList.remove('show-hint');
+      card.dataset.dragDir='';
+      card.style.transition='transform 420ms cubic-bezier(.22,1,.36,1), box-shadow .22s ease';
+      card.style.transform='translate3d(0,0,0) rotate(0deg) rotateX(0deg) rotateY(0deg) scale(1)';
+      resetDepth();
+      setTimeout(()=>{card.style.transition='box-shadow .22s ease, border-color .22s ease, background .22s ease';},420);
+    });
+
+    card.addEventListener('pointerdown',e=>{
+      if(e.pointerType==='mouse' && e.button!==0) return;
+      if(e.target.closest(stopSelectors)) return;
+      active=true;
+      startX=e.clientX;
+      startY=e.clientY;
+      currentX=e.clientX;
+      currentY=e.clientY;
+      lastDX=0; lastDY=0;
+      card.classList.add('is-hovering','is-dragging','is-pressed');
+      card.style.transition='none';
+      if(card.setPointerCapture) try{card.setPointerCapture(e.pointerId);}catch(err){}
+      queueRender();
+    });
+
+    card.addEventListener('pointermove',e=>{
+      if(active){
+        currentX=e.clientX;
+        currentY=e.clientY;
+      }else{
+        hoverX=e.clientX;
+        hoverY=e.clientY;
+      }
+      queueRender();
+    });
+
+    const end=(e)=>{
+      if(!active) return;
+      if(frame){ cancelAnimationFrame(frame); frame=0; render(); }
+      const absX=Math.abs(lastDX);
+      const absY=Math.abs(lastDY);
+      if(card.releasePointerCapture) try{card.releasePointerCapture(e.pointerId);}catch(err){}
+      if(absX>110 && absX>absY*1.15){
+        commitSwipe(lastDX>0?'right':'left');
+      }else{
+        reset(true);
+      }
+      active=false;
+    };
+
+    card.addEventListener('pointerup',end);
+    card.addEventListener('pointercancel',end);
+    card.addEventListener('lostpointercapture',()=>{ if(active) reset(true); active=false; });
+  });
+}
+
+// ══════════════════════════════════════════════
+// INIT
+// ══════════════════════════════════════════════
+window.addEventListener('load',()=>{
+  // init range gradients
+  document.querySelectorAll('input[type=range]').forEach(r=>{
+    const min=parseFloat(r.min),max=parseFloat(r.max),v=parseFloat(r.value);
+    const pct=((v-min)/(max-min)*100).toFixed(1);
+    r.style.background=`linear-gradient(90deg,var(--rose) ${pct}%,#f0e0e8 ${pct}%)`;
+  });
+  // restore profile
+  try{
+    const s=localStorage.getItem('niva_user');
+    if(s){const u=JSON.parse(s);uid=u.id;user=u;refreshHome(u);renderProfile(u);}
+  }catch(e){}
+  // initial render
+  runScoring();
+  updatePreview();
+  renderAlerts();
+  initInteractiveCards();
+});
+</script>
+</body>
+</html>

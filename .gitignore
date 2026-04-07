@@ -1,2 +1,2 @@
-inference.py
-main.py
+__pycache__/
+*.pyc
