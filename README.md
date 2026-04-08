@@ -9,10 +9,12 @@ It combines daily health check-ins, symptom tracking, and an LLM-based inference
 Maternal complications are common — and commonly missed:
 
 | Condition | Prevalence |
+|--|--|
 | Gestational Diabetes | ~40% of pregnancies |
 | Anemia | ~14% of pregnancies |
 | Preeclampsia | ~1 in 12 pregnancies |
 | Preterm Labor | Significant cause of neonatal mortality |
+
 These conditions often go undetected until they become emergencies especially in areas with limited medical access, inconsistent monitoring, or low awareness.
 
 ## What Niva Does
@@ -24,6 +26,7 @@ Niva acts as a **digital prenatal companion** that:
 
 ### Urgency Tiers
 | Level | Meaning |
+|--|--|
 | `monitor_at_home` | No immediate danger — continue daily check-ins |
 | `visit_phc_this_week` | Concerning signs — see a doctor within days |
 | `go_to_hospital_today` | DANGER — immediate medical attention required |
@@ -115,12 +118,14 @@ Each call to `step()` sends structured health observations to an LLM (via the Op
 
 ## Evaluation Tasks
 | Task | Difficulty | Scenario |
+|--|--|--|
 | Task 1 | Easy | Preeclampsia danger — basic pattern detection |
 | Task 2 | Medium | Fetal distress — multi-signal reasoning |
 | Task 3 | Hard | Gestational diabetes — noisy/ambiguous signals |
 
 ### Reward Logic
 | Outcome | Effect |
+|--|--|
 | Correct condition diagnosis | + reward |
 | Correct urgency level | + extra reward |
 | Efficient decision-making | + bonus |
@@ -133,6 +138,7 @@ This project is containerised for HF Spaces using Docker.
 
 ### Environment Variables
 | Variable | Description | Required |
+|--|--|--|
 | `API_BASE_URL` | LLM API endpoint (OpenAI-compatible) | Yes |
 | `MODEL_NAME` | Model identifier (e.g. `gpt-4o`) | Yes |
 | `HF_TOKEN` | Hugging Face / API key | Yes |
@@ -140,6 +146,7 @@ Never commit API keys to the repo. Use Hugging Face Secrets for deployment.
 
 ## Tech Stack
 | Layer | Technology |
+|--|--|
 | Backend | FastAPI, SQLAlchemy, SQLite |
 | Frontend | HTML, CSS, JavaScript |
 | AI Layer | OpenAI-compatible LLM (any provider) |
