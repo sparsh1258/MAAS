@@ -889,7 +889,7 @@ textarea.form-input{min-height:80px;resize:vertical}
 // ══════════════════════════════════════════════
 // STATE
 // ══════════════════════════════════════════════
-const API = 'http://localhost:7860';
+const API = window.location.protocol === 'file:' ? 'http://localhost:7860' : window.location.origin;
 let uid=null, user=null;
 let kickCount=0, mealsCount=3, symptoms={};
 let customAlertType='urgent';
