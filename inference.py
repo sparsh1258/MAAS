@@ -34,8 +34,8 @@ from tasks import TASKS
 # ── Environment variables ──────────────────────────────────────────────────────
 API_BASE_URL = os.environ.get("API_BASE_URL", "https://api.openai.com/v1")
 MODEL_NAME   = os.environ.get("MODEL_NAME",   "gpt-4o")
-HF_TOKEN     = os.environ.get("HF_TOKEN",     "")
-BENCHMARK    = os.environ.get("BENCHMARK",    "prenatal_health")
+HF_TOKEN     = os.environ.get("HF_TOKEN")
+BENCHMARK    = "prenatal_health"
 
 SUCCESS_SCORE_THRESHOLD = 0.5  # score >= 0.5 counts as success
 
@@ -133,6 +133,7 @@ def run_agent(task: dict) -> dict:
     success    = False
     action     = FALLBACK_ACTION.copy()
     api_error  = None
+    result     = {"score": 0.0, "passed": False, "feedback": "No grading result produced."}
 
     log_start(task=task_id, env=BENCHMARK, model=MODEL_NAME)
 
