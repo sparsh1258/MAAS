@@ -89,25 +89,45 @@ Final score range:0.0 → 1.0
 
 # Project Structure
 niva-prenatal-health/
+
 ├── inference.py          # Baseline agent — runs all tasks, emits judge-compliant logs
-├── main.py               # FastAPI app entry point
+
+├── main.py               # FastAPI app entry 
+
 ├── openenv.yaml          # OpenEnv spec — tasks, action space, observation space
+
 ├── environment.py        # Environment logic
+
 ├── models.py             # SQLAlchemy database models
+
 ├── schemas.py            # Pydantic schemas
+
 ├── database.py           # DB connection setup
+
 ├── requirements.txt      # Python dependencies
+
 ├── Dockerfile            # Container config for HF Spaces
+
 ├── preview.html          # Frontend UI
+
 ├── tasks/
+
 │   ├── __init__.py
-│   ├── task_1_easy.py    # Preeclampsia danger task
+
+│   ├── task_1_easy.py  # Preeclampsia danger task
+
 │   ├── task_2_medium.py  # Fetal distress task
+
 │   └── task_3_hard.py    # Gestational diabetes task
+
 └── routers/
+
     ├── users.py
+    
     ├── checkin_daily.py
+    
     ├── checkin_3day.py
+    
     └── diagnosis.py
 
 # Live Demo
