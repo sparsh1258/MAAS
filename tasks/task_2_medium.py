@@ -61,7 +61,7 @@ ADJACENT_CONDITIONS = {"preterm_risk"}
 def grade(action: dict) -> dict:
     if action.get("action_type") != "diagnose":
         return {
-            "score": 0.0,
+            "score": 0.01,
             "passed": False,
             "feedback": "Must use action_type='diagnose' to complete this task.",
         }
@@ -74,7 +74,7 @@ def grade(action: dict) -> dict:
     under_escalated = urgency == "monitor_at_home"
 
     if correct_condition and urgency == EXPECTED_URGENCY:
-        score = 1.0
+        score = 0.99
         feedback = (
             "Perfect: preeclampsia correctly identified with visit_phc_this_week urgency. "
             "Rising BP, headache+swelling, and hypertension history all point to this."
@@ -107,7 +107,7 @@ def grade(action: dict) -> dict:
             "strongly indicate preeclampsia."
         )
     else:
-        score = 0.0
+        score = 0.01
         feedback = (
             f"Both condition ('{predicted}') and urgency ('{urgency}') are incorrect. "
             "Key signals: HIGH_BP, BP_RISING_TREND, HIGH_PREECLAMPSIA_SIGNAL (headache+swelling), "
@@ -116,7 +116,7 @@ def grade(action: dict) -> dict:
 
     return {
         "score": round(score, 4),
-        "passed": score >= 1.0,
+        "passed": score >= 0.99,
         "feedback": feedback,
         "expected": {
             "condition": EXPECTED_CONDITION,

@@ -38,6 +38,8 @@ HF_TOKEN     = os.environ.get("HF_TOKEN")
 BENCHMARK    = "prenatal_health"
 
 SUCCESS_SCORE_THRESHOLD = 0.5  # score >= 0.5 counts as success
+MIN_STRICT_SCORE = 0.01
+MAX_STRICT_SCORE = 0.99
 
 if not HF_TOKEN:
     print("[ERROR] HF_TOKEN environment variable is required.", file=sys.stderr)
@@ -133,7 +135,7 @@ def run_agent(task: dict) -> dict:
     success    = False
     action     = FALLBACK_ACTION.copy()
     api_error  = None
-    result     = {"score": 0.0, "passed": False, "feedback": "No grading result produced."}
+    result     = {"score": 0.01, "passed": False, "feedback": "No grading result produced."}
 
     log_start(task=task_id, env=BENCHMARK, model=MODEL_NAME)
 
@@ -162,7 +164,7 @@ def run_agent(task: dict) -> dict:
         # ── Grade ──────────────────────────────────────────────────────────────
         result  = grade_fn(action)
         score   = float(result["score"])
-        score   = min(max(score, 0.0), 1.0)   # clamp to [0, 1]
+        score   = min(max(score, MIN_STRICT_SCORE), MAX_STRICT_SCORE)   # clamp to strict (0, 1)
         reward  = score                        # single-step: reward == score
         success = score >= SUCCESS_SCORE_THRESHOLD
 

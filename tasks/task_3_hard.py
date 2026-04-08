@@ -75,7 +75,7 @@ DISQUALIFYING_CONDITIONS = {"low_risk", "gestational_diabetes", "anemia"}
 def grade(action: dict) -> dict:
     if action.get("action_type") != "diagnose":
         return {
-            "score": 0.0,
+            "score": 0.01,
             "passed": False,
             "feedback": "Must use action_type='diagnose' to complete this task.",
         }
@@ -99,7 +99,7 @@ def grade(action: dict) -> dict:
                 f"Condition '{predicted}' {'was correct' if is_primary or is_also_valid else 'was also wrong'}."
             )
         else:  # monitor_at_home
-            score = 0.0
+            score = 0.01
             feedback = (
                 "CRITICAL SAFETY FAILURE: 'monitor_at_home' with active DANGER flags "
                 "(DANGER_BP_CRITICAL + DANGER_LOW_KICKS) could cost the patient's life. "
@@ -115,7 +115,7 @@ def grade(action: dict) -> dict:
 
     # ── Urgency is correct (go_to_hospital_today) ──────────
     if is_primary:
-        score = 1.0
+        score = 0.99
         feedback = (
             "Perfect: preeclampsia correctly identified as primary (DANGER_BP_CRITICAL is the "
             "highest-priority flag) with go_to_hospital_today. "
@@ -154,7 +154,7 @@ def grade(action: dict) -> dict:
 
     return {
         "score": round(score, 4),
-        "passed": score >= 1.0,
+        "passed": score >= 0.99,
         "feedback": feedback,
         "expected": {
             "condition": PRIMARY_EXPECTED,

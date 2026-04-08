@@ -65,7 +65,7 @@ def grade(action: dict) -> dict:
     """
     if action.get("action_type") != "diagnose":
         return {
-            "score": 0.0,
+            "score": 0.01,
             "passed": False,
             "feedback": "Must use action_type='diagnose' to complete this task.",
         }
@@ -77,7 +77,7 @@ def grade(action: dict) -> dict:
     correct_urgency = urgency == EXPECTED_URGENCY
 
     if correct_condition and correct_urgency:
-        score = 1.0
+        score = 0.99
         feedback = "Perfect: correctly identified low_risk with monitor_at_home urgency."
     elif correct_condition and urgency == "visit_phc_this_week":
         score = 0.5
@@ -98,7 +98,7 @@ def grade(action: dict) -> dict:
             "There are no signals for any specific condition here."
         )
     else:
-        score = 0.0
+        score = 0.01
         feedback = (
             f"Both condition ('{predicted}') and urgency ('{urgency}') are incorrect. "
             f"Expected: condition={EXPECTED_CONDITION}, urgency={EXPECTED_URGENCY}. "
@@ -107,7 +107,7 @@ def grade(action: dict) -> dict:
 
     return {
         "score": round(score, 4),
-        "passed": score >= 1.0,
+        "passed": score >= 0.99,
         "feedback": feedback,
         "expected": {"condition": EXPECTED_CONDITION, "urgency": EXPECTED_URGENCY},
         "predicted": {"condition": predicted, "urgency": urgency},
