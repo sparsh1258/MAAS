@@ -1,4 +1,12 @@
-# Niva — AI Prenatal Health Monitor
+﻿---
+title: Niva Prenatal Health
+emoji: "🤰"
+colorFrom: pink
+colorTo: blue
+sdk: docker
+pinned: false
+---
+# Niva â€” AI Prenatal Health Monitor
 Early risk detection for maternal health using AI + real-time monitoring
 
 ## What is Niva?
@@ -6,7 +14,7 @@ Niva is an AI-powered prenatal health monitoring system that detects early warni
 It combines daily health check-ins, symptom tracking, and an LLM-based inference pipeline to classify risk and generate urgency-based guidance in real time.
 
 ## The Problem
-Maternal complications are common — and commonly missed:
+Maternal complications are common â€” and commonly missed:
 
 | Condition | Prevalence |
 |--|--|
@@ -27,16 +35,16 @@ Niva acts as a **digital prenatal companion** that:
 ### Urgency Tiers
 | Level | Meaning |
 |--|--|
-| `monitor_at_home` | No immediate danger — continue daily check-ins |
-| `visit_phc_this_week` | Concerning signs — see a doctor within days |
-| `go_to_hospital_today` | DANGER — immediate medical attention required |
+| `monitor_at_home` | No immediate danger â€” continue daily check-ins |
+| `visit_phc_this_week` | Concerning signs â€” see a doctor within days |
+| `go_to_hospital_today` | DANGER â€” immediate medical attention required |
 
 ### Conditions Detected
-- **Preeclampsia** — critically high BP (≥160/110), headaches, swelling → emergency escalation
-- **Gestational Diabetes** — family history + low energy + breathlessness → PHC referral
-- **Anemia** — low nutrition markers + fatigue patterns
-- **Fetal Distress** — kick count < 3 in 2 hours → immediate hospital alert
-- **Preterm Risk** — early warning from symptom combinations
+- **Preeclampsia** â€” critically high BP (â‰¥160/110), headaches, swelling â†’ emergency escalation
+- **Gestational Diabetes** â€” family history + low energy + breathlessness â†’ PHC referral
+- **Anemia** â€” low nutrition markers + fatigue patterns
+- **Fetal Distress** â€” kick count < 3 in 2 hours â†’ immediate hospital alert
+- **Preterm Risk** â€” early warning from symptom combinations
 
 ## Getting Started
 ### Prerequisites
@@ -76,26 +84,26 @@ This runs all three evaluation tasks (easy, medium, hard) and outputs structured
 
 ```
 niva-prenatal-health/
-├── inference.py           # Baseline agent — runs all tasks, emits judge-compliant logs
-├── main.py                # FastAPI app entry
-├── openenv.yaml           # OpenEnv spec — tasks, action space, observation space
-├── environment.py         # RL-style environment logic
-├── models.py              # SQLAlchemy database models
-├── schemas.py             # Pydantic schemas
-├── database.py            # DB connection setup
-├── requirements.txt       # Python dependencies
-├── Dockerfile             # Container config for HF Spaces
-├── preview.html           # Frontend UI
-├── tasks/
-│   ├── __init__.py
-│   ├── task_1_easy.py     # Preeclampsia danger task
-│   ├── task_2_medium.py   # Fetal distress task
-│   └── task_3_hard.py     # Gestational diabetes task
-└── routers/
-    ├── users.py
-    ├── checkin_daily.py
-    ├── checkin_3day.py
-    └── diagnosis.py
+â”œâ”€â”€ inference.py           # Baseline agent â€” runs all tasks, emits judge-compliant logs
+â”œâ”€â”€ main.py                # FastAPI app entry
+â”œâ”€â”€ openenv.yaml           # OpenEnv spec â€” tasks, action space, observation space
+â”œâ”€â”€ environment.py         # RL-style environment logic
+â”œâ”€â”€ models.py              # SQLAlchemy database models
+â”œâ”€â”€ schemas.py             # Pydantic schemas
+â”œâ”€â”€ database.py            # DB connection setup
+â”œâ”€â”€ requirements.txt       # Python dependencies
+â”œâ”€â”€ Dockerfile             # Container config for HF Spaces
+â”œâ”€â”€ preview.html           # Frontend UI
+â”œâ”€â”€ tasks/
+â”‚   â”œâ”€â”€ __init__.py
+â”‚   â”œâ”€â”€ task_1_easy.py     # Preeclampsia danger task
+â”‚   â”œâ”€â”€ task_2_medium.py   # Fetal distress task
+â”‚   â””â”€â”€ task_3_hard.py     # Gestational diabetes task
+â””â”€â”€ routers/
+    â”œâ”€â”€ users.py
+    â”œâ”€â”€ checkin_daily.py
+    â”œâ”€â”€ checkin_3day.py
+    â””â”€â”€ diagnosis.py
 ```
 
 ## AI + OpenEnv Integration
@@ -119,9 +127,9 @@ Each call to `step()` sends structured health observations to an LLM (via the Op
 ## Evaluation Tasks
 | Task | Difficulty | Scenario |
 |--|--|--|
-| Task 1 | Easy | Preeclampsia danger — basic pattern detection |
-| Task 2 | Medium | Fetal distress — multi-signal reasoning |
-| Task 3 | Hard | Gestational diabetes — noisy/ambiguous signals |
+| Task 1 | Easy | Preeclampsia danger â€” basic pattern detection |
+| Task 2 | Medium | Fetal distress â€” multi-signal reasoning |
+| Task 3 | Hard | Gestational diabetes â€” noisy/ambiguous signals |
 
 ### Reward Logic
 | Outcome | Effect |
@@ -129,9 +137,9 @@ Each call to `step()` sends structured health observations to an LLM (via the Op
 | Correct condition diagnosis | + reward |
 | Correct urgency level | + extra reward |
 | Efficient decision-making | + bonus |
-| Unsafe / incorrect predictions | − penalty |
+| Unsafe / incorrect predictions | âˆ’ penalty |
 
-**Final score range: `0.0 → 1.0`**
+**Final score range: `0.0 â†’ 1.0`**
 
 ## Deployment (Hugging Face Spaces)
 This project is containerised for HF Spaces using Docker.
@@ -160,4 +168,6 @@ OpenEnv pre-validation passed successfully.
 Built by **Muskaan Kohli**, **Nancy Garg**, and **Sparsh Gupta** as a hackathon submission.
 
 ## License
-MIT License — see [LICENSE](LICENSE) for details.
+MIT License â€” see [LICENSE](LICENSE) for details.
+
+
