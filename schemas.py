@@ -82,3 +82,9 @@ class DiagnosisResponse(BaseModel):
     diet_advice: List[str]
     days_of_data: int
     latest_checkin_at: Optional[datetime] = None
+
+
+class ResetRequest(BaseModel):
+    user_id: Optional[int] = None
+    task_id: Optional[str] = None
+    difficulty: Optional[str] = None

@@ -1,0 +1,21 @@
+[project]
+name = "maas-prenatal-openenv"
+version = "0.1.0"
+description = "OpenEnv-compatible prenatal health monitoring environment for the Meta x PyTorch hackathon."
+readme = "readme.md"
+requires-python = ">=3.11"
+dependencies = [
+  "fastapi>=0.111.0",
+  "uvicorn[standard]>=0.29.0",
+  "sqlalchemy>=2.0.0",
+  "pydantic>=2.0.0",
+  "openai>=1.0.0",
+  "openenv-core>=0.2.0",
+]
+
+[project.scripts]
+server = "server.app:main"
+
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
