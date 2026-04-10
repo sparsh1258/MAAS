@@ -138,8 +138,14 @@ body::before{
 .sim-field{background:#fff;border:1.5px solid #f0e0ea;border-radius:var(--r-sm);padding:14px}
 .sim-lbl{font-size:13px;font-weight:600;color:var(--text);margin-bottom:10px;display:flex;justify-content:space-between}
 .sim-lbl span{color:var(--rose-deep);font-family:'Playfair Display',serif;font-size:16px}
-input[type=range]{-webkit-appearance:none;width:100%;height:6px;border-radius:10px;background:linear-gradient(90deg,var(--rose) var(--pct,50%),#f0e0e8 var(--pct,50%));outline:none}
-input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:22px;height:22px;border-radius:50%;background:var(--rose-deep);cursor:pointer;box-shadow:0 2px 10px rgba(224,117,144,.5);border:2px solid #fff}
+input[type=range]{-webkit-appearance:none;width:100%;height:6px;border-radius:10px;background:linear-gradient(90deg,var(--rose) var(--pct,50%),#f0e0e8 var(--pct,50%));outline:none;transition:height .18s ease,transform .18s ease,filter .18s ease,box-shadow .18s ease}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:22px;height:22px;border-radius:50%;background:var(--rose-deep);cursor:pointer;box-shadow:0 2px 10px rgba(224,117,144,.5);border:2px solid #fff;transition:width .18s ease,height .18s ease,box-shadow .18s ease,transform .18s ease}
+input[type=range].range-active{height:12px;transform:scaleY(1.18);filter:drop-shadow(0 12px 18px rgba(224,117,144,.22))}
+input[type=range].range-active::-webkit-slider-thumb{width:34px;height:34px;box-shadow:0 8px 26px rgba(224,117,144,.62),0 0 0 9px rgba(224,117,144,.13);transform:scale(1.02)}
+.range-pop{position:fixed;z-index:650;pointer-events:none;opacity:0;transform:translate(-50%,-18px) scale(.92);transition:opacity .16s ease,transform .16s cubic-bezier(.19,1,.22,1);background:rgba(55,36,48,.94);color:#fff;border:1px solid rgba(255,255,255,.2);box-shadow:0 18px 46px rgba(55,36,48,.25);border-radius:18px;padding:8px 12px;min-width:74px;text-align:center}
+.range-pop.show{opacity:1;transform:translate(-50%,-30px) scale(1)}
+.range-pop .rp-value{font-family:'Playfair Display',serif;font-size:24px;line-height:1;font-weight:700}
+.range-pop .rp-label{font-size:10px;letter-spacing:.09em;text-transform:uppercase;opacity:.72;margin-top:3px;white-space:nowrap}
 
 /* ═══ SYMPTOM PILLS ═══════════════════════════════════════════════ */
 .pills{display:flex;flex-wrap:wrap;gap:7px}
@@ -206,8 +212,74 @@ textarea.form-input{min-height:80px;resize:vertical}
 .custom-preview{background:rgba(255,240,245,.8);border:1.5px dashed #f5a0b4;border-radius:var(--r-sm);padding:14px;margin-top:10px}
 .custom-preview-lbl{font-size:11px;color:var(--text-soft);letter-spacing:.06em;text-transform:uppercase;font-weight:600;margin-bottom:8px}
 
+/* medicine reminder */
+.medicine-list{display:flex;flex-direction:column;gap:8px;margin-top:12px}
+.medicine-item{border:1.5px solid #fcd34d;background:linear-gradient(135deg,#fffdf2,#fff7ed);border-radius:var(--r-sm);padding:12px 13px;display:flex;align-items:center;gap:10px;position:relative;overflow:hidden}
+.medicine-item:before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:linear-gradient(180deg,#f59e0b,#f472b6)}
+.medicine-pill{width:36px;height:36px;border-radius:14px;background:#fff7ed;color:#92400e;border:1px solid #fed7aa;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.medicine-main{flex:1;min-width:0}
+.medicine-name{font-weight:700;font-size:14px;color:var(--text)}
+.medicine-meta{font-size:12px;color:var(--text-soft);margin-top:2px}
+.medicine-time{font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:#92400e;background:rgba(255,255,255,.72);border:1px solid #fde68a;border-radius:999px;padding:5px 9px;white-space:nowrap}
+.medicine-empty{font-size:13px;color:var(--text-soft);line-height:1.55;background:rgba(255,255,255,.62);border:1px dashed #f7bfd0;border-radius:var(--r-sm);padding:12px}
+.medicine-delete{border:none;background:#fff1f2;color:#be123c;border-radius:999px;width:30px;height:30px;font-weight:800;cursor:pointer}
+
+/* husband companion + dynamic calendar */
+.companion-card{background:linear-gradient(145deg,rgba(255,255,255,.95),rgba(239,246,255,.88));border-color:#bfdbfe}
+.companion-status{display:flex;gap:10px;align-items:center;padding:12px;border-radius:var(--r-sm);background:rgba(255,255,255,.64);border:1px solid rgba(96,165,250,.22);margin-bottom:12px}
+.companion-avatar{width:42px;height:42px;border-radius:16px;display:grid;place-items:center;background:linear-gradient(135deg,#dbeafe,#fce7f3);color:#1d4ed8}
+.companion-name{font-weight:800;color:var(--text);font-size:14px}
+.companion-meta{font-size:12px;color:var(--text-soft);margin-top:2px}
+.family-basic-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:10px}
+.family-basic{border-radius:16px;padding:10px;background:rgba(255,255,255,.62);border:1px solid rgba(255,255,255,.72)}
+.family-basic b{display:block;font-size:15px;color:var(--text)}
+.family-basic span{font-size:10px;text-transform:uppercase;letter-spacing:.07em;color:var(--text-soft);font-weight:700}
+.calendar-card{background:linear-gradient(145deg,rgba(255,255,255,.96),rgba(255,247,237,.86));border-color:#fed7aa}
+.calendar-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
+.calendar-title{font-family:'Playfair Display',serif;font-size:22px;color:var(--text)}
+.calendar-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;margin-top:8px}
+.cal-dow{text-align:center;font-size:10px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--text-soft)}
+.cal-day{min-height:42px;border-radius:15px;border:1px solid rgba(244,114,182,.14);background:rgba(255,255,255,.62);padding:6px;font-size:12px;font-weight:700;color:var(--text);position:relative;cursor:pointer;transition:transform .16s ease,background .16s ease,border .16s ease}
+.cal-day:hover{transform:translateY(-2px);background:#fff;border-color:#f9a8d4}
+.cal-day.muted{opacity:.38}
+.cal-day.today{background:#eff6ff;border-color:#93c5fd;color:#1d4ed8}
+.cal-day.has-event:after{content:"";position:absolute;right:7px;bottom:7px;width:7px;height:7px;border-radius:999px;background:#f97316;box-shadow:0 0 0 4px rgba(249,115,22,.12)}
+.calendar-event-list{display:flex;flex-direction:column;gap:8px;margin-top:12px}
+.family-event{border-radius:20px;border:1.5px solid #fed7aa;background:linear-gradient(145deg,#fffaf2,#fff7ed);padding:14px;display:grid;grid-template-columns:38px 1fr;gap:10px;align-items:start;position:relative;box-shadow:0 10px 28px rgba(154,52,18,.06)}
+.family-event .event-icon{width:38px;height:38px;border-radius:15px;background:#ffedd5;color:#c2410c;display:grid;place-items:center;flex-shrink:0;grid-row:1 / span 3}
+.event-main{flex:1;min-width:0}
+.event-title{font-weight:800;font-size:14px;color:var(--text)}
+.event-meta{font-size:12px;color:var(--text-soft);margin-top:3px;line-height:1.45;overflow-wrap:anywhere}
+.family-event > .medicine-time{grid-column:2;justify-self:start;margin-top:2px}
+.event-actions{grid-column:2;display:grid;grid-template-columns:repeat(3,minmax(0,1fr)) 34px;gap:7px;align-items:center;width:100%;margin-left:0;justify-content:stretch}
+.event-send{border:none;background:#fff;color:#9a3412;border-radius:999px;padding:9px 7px;font-size:10px;font-weight:900;letter-spacing:.035em;text-transform:uppercase;cursor:pointer;box-shadow:0 6px 18px rgba(154,52,18,.08);transition:transform .16s ease,background .16s ease}
+.event-send:hover{transform:translateY(-1px);background:#ffedd5}
+.event-delete{margin-left:0;border:none;background:#fff1f2;color:#be123c;border-radius:999px;width:34px;height:34px;font-weight:800;cursor:pointer}
+.calendar-tools{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0 8px}
+.calendar-tools .btn-mini{flex:1;min-width:128px}
+.quick-plan-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-bottom:12px}
+.quick-plan{border:1px solid rgba(249,115,22,.18);background:rgba(255,247,237,.82);border-radius:16px;padding:10px;text-align:left;font-size:12px;color:#9a3412;font-weight:800;cursor:pointer;transition:transform .16s ease,background .16s ease,border .16s ease}
+.quick-plan:hover{transform:translateY(-2px);background:#fff;border-color:#fdba74}
+.reminder-helper{font-size:12px;line-height:1.5;color:var(--text-soft);margin-top:10px;background:rgba(255,255,255,.66);border:1px dashed #fed7aa;border-radius:16px;padding:10px}
+.reminder-popup-overlay{position:fixed;inset:0;background:rgba(38,24,34,.22);backdrop-filter:blur(8px);z-index:500;opacity:0;pointer-events:none;transition:opacity .22s ease}
+.reminder-popup-overlay.show{opacity:1;pointer-events:all}
+.reminder-popup{position:fixed;left:50%;bottom:22px;transform:translate(-50%,30px) scale(.96);width:min(92vw,390px);z-index:501;background:rgba(255,255,255,.96);border:1.5px solid #fbcfe8;border-radius:28px;padding:18px;box-shadow:0 28px 80px rgba(76,29,55,.24);opacity:0;pointer-events:none;transition:opacity .24s ease,transform .24s cubic-bezier(.19,1,.22,1)}
+.reminder-popup.show{opacity:1;pointer-events:all;transform:translate(-50%,0) scale(1)}
+.popup-kicker{font-size:11px;font-weight:900;letter-spacing:.1em;text-transform:uppercase;color:var(--rose-deep);margin-bottom:6px}
+.popup-title{font-family:'Playfair Display',serif;font-size:24px;color:var(--text);margin-bottom:6px}
+.popup-text{font-size:13px;line-height:1.55;color:var(--text-soft);margin-bottom:14px}
+.popup-actions{display:flex;gap:8px}
+.popup-actions button{flex:1}
+@media(max-width:380px){
+  .family-event{grid-template-columns:34px 1fr;padding:12px}
+  .family-event .event-icon{width:34px;height:34px}
+  .event-actions{grid-template-columns:1fr 1fr;grid-column:1 / -1}
+  .event-delete{width:100%;grid-column:1 / -1}
+  .quick-plan-grid{grid-template-columns:1fr}
+}
+
 /* ═══ NAV ═════════════════════════════════════════════════════════ */
-.navbar{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:480px;background:rgba(255,248,245,.92);backdrop-filter:blur(20px);border-top:1.5px solid #fce4ec;display:flex;padding:8px 0 18px;z-index:100}
+.navbar{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:480px;background:rgba(255,248,245,.94);backdrop-filter:blur(22px);border-top:1px solid rgba(252,228,236,.82);display:flex;padding:8px 0 calc(14px + env(safe-area-inset-bottom));z-index:100;box-shadow:0 -18px 44px rgba(75,42,53,.08)}
 .nav-item{flex:1;display:flex;flex-direction:column;align-items:center;gap:6px;cursor:pointer;transition:transform .22s ease,opacity .22s ease;padding:4px 0;position:relative;opacity:.9}
 .nav-item:hover{transform:translateY(-2px);opacity:1}
 .nav-item.tap{animation:navTap .35s ease}
@@ -220,7 +292,7 @@ textarea.form-input{min-height:80px;resize:vertical}
 .nav-item.active .nav-ico svg{stroke:var(--rose-deep);transform:scale(1.06)}
 .nav-item.active .nav-lbl{color:#ff6fa4;font-weight:700}
 .nav-item.active{opacity:1}
-.nav-item.active::after{content:'';position:absolute;bottom:-6px;width:26px;height:4px;border-radius:999px;background:linear-gradient(90deg,var(--rose),var(--lav-mid));animation:navGlow 2.2s ease-in-out infinite}
+.nav-item.active::after{display:none}
 @keyframes navGlow{0%,100%{transform:scaleX(.9);opacity:.7}50%{transform:scaleX(1.1);opacity:1}}
 @keyframes navTap{0%{transform:scale(1)}50%{transform:scale(.95)}100%{transform:scale(1)}}
 
@@ -409,10 +481,105 @@ textarea.form-input{min-height:80px;resize:vertical}
 .gesture-card .depth-layer.depth-2{transform:translate3d(calc(var(--mx,0px)*.1),calc(var(--my,0px)*.1),0)}
 .gesture-card .depth-layer.depth-3{transform:translate3d(calc(var(--mx,0px)*.16),calc(var(--my,0px)*.16),0)}
 
+/* Gesture rails were too noisy for the medical workflow; keep cards calm. */
+.swipe-hint,.card-action-rail,.drag-glow,.card-shine{display:none!important}
+
 /* scrollbar */
 ::-webkit-scrollbar{width:4px}
 ::-webkit-scrollbar-track{background:transparent}
 ::-webkit-scrollbar-thumb{background:var(--rose);border-radius:10px}
+
+
+/* Judge polish layer: animated, tactile, and accessible */
+body::after{
+  content:"";
+  position:fixed;
+  inset:0;
+  pointer-events:none;
+  z-index:-1;
+  background:
+    radial-gradient(circle at 16% 22%,rgba(244,114,182,.16),transparent 22%),
+    radial-gradient(circle at 82% 12%,rgba(14,165,233,.14),transparent 24%),
+    radial-gradient(circle at 72% 78%,rgba(34,197,94,.10),transparent 20%);
+  animation:ambient-drift 15s ease-in-out infinite alternate;
+}
+.shell{animation:app-rise .7s cubic-bezier(.19,1,.22,1) both}
+.page.active .header,.page.active .hero,.page.active .diag-strip,.page.active .card,.page.active .sec{
+  animation:soft-reveal .58s cubic-bezier(.19,1,.22,1) both;
+}
+.page.active .card:nth-of-type(2){animation-delay:.04s}
+.page.active .card:nth-of-type(3){animation-delay:.08s}
+.page.active .card:nth-of-type(4){animation-delay:.12s}
+.hero{position:relative;overflow:hidden;isolation:isolate}
+.hero::after{
+  content:"";
+  position:absolute;
+  inset:-45%;
+  background:conic-gradient(from 20deg,transparent,rgba(255,255,255,.46),transparent 28%);
+  animation:hero-scan 8s linear infinite;
+  opacity:.44;
+  z-index:-1;
+}
+.diag-strip.danger,.urgency.danger{animation:clinical-pulse 1.85s ease-in-out infinite}
+.diag-strip.warn,.urgency.warn{animation:caution-breathe 2.6s ease-in-out infinite}
+.btn-p,.btn-mini,.tab,.pill,.tgl,.hav{position:relative;overflow:hidden;transform:translateZ(0)}
+.btn-p::after,.btn-mini::after{
+  content:"";
+  position:absolute;
+  width:16px;height:16px;border-radius:999px;
+  background:rgba(255,255,255,.55);
+  left:var(--tap-x,50%);top:var(--tap-y,50%);
+  transform:translate(-50%,-50%) scale(0);
+  opacity:0;
+  pointer-events:none;
+}
+.btn-p.tapped::after,.btn-mini.tapped::after{animation:ripple .52s ease-out}
+.judge-ribbon{
+  margin:0 14px 14px;
+  border:1px solid rgba(219,39,119,.16);
+  background:linear-gradient(135deg,rgba(255,255,255,.92),rgba(255,241,248,.86));
+  box-shadow:0 16px 40px rgba(83,56,72,.10);
+  border-radius:22px;
+  padding:12px 14px;
+  display:flex;gap:10px;align-items:center;
+  color:var(--text-soft);
+  font-size:12px;
+  line-height:1.45;
+}
+.judge-ribbon strong{color:var(--text);font-size:13px;display:block;letter-spacing:.02em}
+.judge-ribbon .spark{
+  width:34px;height:34px;border-radius:14px;display:grid;place-items:center;
+  background:linear-gradient(135deg,#fce7f3,#e0f2fe);
+  color:var(--rose-deep);
+  animation:spark-float 2.8s ease-in-out infinite;
+}
+.risk-constellation{display:flex;gap:6px;margin-top:10px;flex-wrap:wrap}
+.risk-dot{
+  width:8px;height:8px;border-radius:999px;background:var(--rose);
+  box-shadow:0 0 0 5px rgba(244,114,182,.10);
+  animation:dot-wave 1.6s ease-in-out infinite;
+}
+.risk-dot:nth-child(2){animation-delay:.16s}.risk-dot:nth-child(3){animation-delay:.32s}.risk-dot:nth-child(4){animation-delay:.48s}.risk-dot:nth-child(5){animation-delay:.64s}
+.ml-chip{
+  display:inline-flex;align-items:center;gap:6px;margin-top:8px;padding:7px 10px;border-radius:999px;
+  font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;
+  background:rgba(255,255,255,.75);border:1px solid rgba(219,39,119,.18);color:var(--rose-deep);
+}
+.ml-chip::before{content:"";width:6px;height:6px;border-radius:999px;background:#22c55e;box-shadow:0 0 0 5px rgba(34,197,94,.14);animation:live-dot 1.3s ease-in-out infinite}
+.toast.show{animation:toast-pop .28s cubic-bezier(.2,1,.2,1) both}
+@keyframes app-rise{from{opacity:0;transform:translateY(18px) scale(.985)}to{opacity:1;transform:translateY(0) scale(1)}}
+@keyframes soft-reveal{from{opacity:0;transform:translateY(16px);filter:blur(6px)}to{opacity:1;transform:translateY(0);filter:blur(0)}}
+@keyframes ambient-drift{from{transform:translate3d(-1.5%,0,0) scale(1)}to{transform:translate3d(1.5%,-1%,0) scale(1.04)}}
+@keyframes hero-scan{to{transform:rotate(360deg)}}
+@keyframes clinical-pulse{0%,100%{box-shadow:0 16px 42px rgba(244,63,94,.14)}50%{box-shadow:0 20px 54px rgba(244,63,94,.34);transform:translateY(-1px)}}
+@keyframes caution-breathe{0%,100%{box-shadow:0 16px 38px rgba(245,158,11,.12)}50%{box-shadow:0 20px 46px rgba(245,158,11,.26)}}
+@keyframes ripple{0%{opacity:.8;transform:translate(-50%,-50%) scale(0)}100%{opacity:0;transform:translate(-50%,-50%) scale(18)}}
+@keyframes spark-float{0%,100%{transform:translateY(0) rotate(-4deg)}50%{transform:translateY(-4px) rotate(4deg)}}
+@keyframes dot-wave{0%,100%{transform:scale(.75);opacity:.55}50%{transform:scale(1.25);opacity:1}}
+@keyframes live-dot{0%,100%{transform:scale(.8);opacity:.75}50%{transform:scale(1.25);opacity:1}}
+@keyframes toast-pop{from{transform:translate(-50%,16px) scale(.96);opacity:0}to{transform:translate(-50%,0) scale(1);opacity:1}}
+@media (prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
+
 </style>
 </head>
 <body>
@@ -750,6 +917,22 @@ textarea.form-input{min-height:80px;resize:vertical}
     <div id="alerts-list"></div>
   </div>
 
+  <!-- Medicine Reminder -->
+  <div class="sec">Medicine Reminder</div>
+  <div class="card">
+    <div class="card-t"><span class="icon-badge sm"><svg class="icon-inline"><use href="#i-pill"/></svg></span> Daily Medicine Schedule</div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-lbl">Medicine</label><input class="form-input" id="med-name" placeholder="Iron + folic acid"></div>
+      <div class="form-group"><label class="form-lbl">Dose</label><input class="form-input" id="med-dose" placeholder="1 tablet"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-lbl">Time</label><input class="form-input" id="med-time" type="time" value="09:00"></div>
+      <div class="form-group"><label class="form-lbl">Note</label><input class="form-input" id="med-note" placeholder="After breakfast"></div>
+    </div>
+    <button class="btn-p" onclick="addMedicineReminder()">+ Add Medicine Reminder</button>
+    <div class="medicine-list" id="medicine-list"></div>
+  </div>
+
   <!-- Custom Alert Creator -->
   <div class="sec">Create Custom Alert</div>
   <div class="card">
@@ -884,6 +1067,17 @@ textarea.form-input{min-height:80px;resize:vertical}
 
 <!-- TOAST -->
 <div class="toast" id="toast"></div>
+<div class="reminder-popup-overlay" id="reminder-popup-overlay" onclick="closeReminderPopup(false)"></div>
+<div class="reminder-popup" id="reminder-popup" role="dialog" aria-modal="true" aria-live="polite">
+  <div class="popup-kicker" id="popup-kicker">Reminder</div>
+  <div class="popup-title" id="popup-title">Time to check in</div>
+  <div class="popup-text" id="popup-text">A reminder is due now.</div>
+  <div class="popup-actions">
+    <button class="btn-mini" onclick="snoozeReminderPopup()">Snooze 15 min</button>
+    <button class="btn-mini" id="popup-send-btn" onclick="sendActiveReminder()" style="display:none">Send</button>
+    <button class="btn-p" onclick="closeReminderPopup(true)">Done</button>
+  </div>
+</div>
 
 <script>
 // ══════════════════════════════════════════════
@@ -896,6 +1090,15 @@ let customAlertType='urgent';
 let readIds=new Set();
 let alertFilter='all', drawerFilter='all';
 let customAlerts=[];
+let medicineReminders=[];
+let partnerProfile=null;
+let partnerSignedIn=false;
+let familyEvents=[];
+let calendarCursor=new Date();
+let activeReminderPopup=null;
+let popupSnoozes={};
+let dismissedPopupIds=new Set();
+let notifiedReminderIds=new Set();
 
 // Simulator state (from JSX)
 let sim={bpSys:148,bpDia:96,kicks:8,water:1.7,energy:4,meals:2,sleep:5.5};
@@ -956,7 +1159,64 @@ function buildAlerts(o){
     a.push({id:'meals',title:'Low meal count',text:'Try to eat at least 3 meals a day for you and baby.',type:'reminder'});
   if(a.length===0)
     a.push({id:'clear',title:'All clear for now',text:'No major alerts from current readings. Keep it up!',type:'tip'});
-  return [...customAlerts,...a];
+  return [...familyEventAlerts(),...medicineAlerts(),...customAlerts,...a];
+}
+
+function loadMedicineReminders(){
+  try{medicineReminders=JSON.parse(localStorage.getItem('niva_medicine_reminders')||'[]');}
+  catch(e){medicineReminders=[];}
+}
+function saveMedicineReminders(){
+  try{localStorage.setItem('niva_medicine_reminders',JSON.stringify(medicineReminders));}catch(e){}
+}
+function formatReminderTime(time){
+  if(!time) return 'Time not set';
+  const [h,m]=time.split(':').map(Number);
+  const d=new Date();d.setHours(h||0,m||0,0,0);
+  return d.toLocaleTimeString([], {hour:'numeric',minute:'2-digit'});
+}
+function minutesUntil(time){
+  if(!time) return 9999;
+  const [h,m]=time.split(':').map(Number);
+  const now=new Date();
+  const target=new Date();
+  target.setHours(h||0,m||0,0,0);
+  let diff=Math.round((target-now)/60000);
+  if(diff<-30) diff+=1440;
+  return diff;
+}
+function medicineAlerts(){
+  return medicineReminders.map(r=>{
+    const mins=minutesUntil(r.time);
+    const soon=mins>=0&&mins<=60;
+    const overdue=mins<0&&mins>=-30;
+    const timing=overdue?'Dose was due recently':soon?`Due in ${mins} min`:`Next dose at ${formatReminderTime(r.time)}`;
+    return {
+      id:r.id,
+      title:overdue?'Medicine dose due':soon?'Medicine due soon':'Medicine scheduled',
+      text:`${r.name}${r.dose?' - '+r.dose:''}. ${timing}${r.note?' - '+r.note:''}.`,
+      type:'reminder'
+    };
+  });
+}
+function renderMedicineReminders(){
+  const list=document.getElementById('medicine-list');
+  if(!list) return;
+  if(!medicineReminders.length){
+    list.innerHTML='<div class="medicine-empty">No medicines scheduled yet. Add iron, folic acid, calcium, or any doctor-prescribed dose and Niva will surface it in reminders.</div>';
+    return;
+  }
+  list.innerHTML=medicineReminders.map(r=>`
+    <div class="medicine-item">
+      <div class="medicine-pill">${iconUse('i-pill')}</div>
+      <div class="medicine-main">
+        <div class="medicine-name">${r.name}</div>
+        <div class="medicine-meta">${r.dose||'Dose not specified'}${r.note?' - '+r.note:''}</div>
+      </div>
+      <div class="medicine-time">${formatReminderTime(r.time)}</div>
+      <button class="medicine-delete" onclick="deleteMedicineReminder('${r.id}')" aria-label="Delete reminder">x</button>
+    </div>
+  `).join('');
 }
 
 function getAllAlerts(){
@@ -1077,6 +1337,7 @@ function simUpdate(input,spanId,dec){
 // ══════════════════════════════════════════════
 // CUSTOM ALERT
 // ══════════════════════════════════════════════
+const alertEmoji={urgent:'!',reminder:'Reminder',tip:'Tip'};
 function selAlertType(el,type){
   customAlertType=type;
   document.querySelectorAll('#page-alerts .toggle-row .tgl').forEach(b=>b.classList.remove('active'));
@@ -1103,6 +1364,376 @@ function addCustomAlert(){
   renderAlerts();
   toast('Alert added!');
   updatePreview();
+}
+
+function addMedicineReminder(){
+  const name=document.getElementById('med-name').value.trim();
+  const dose=document.getElementById('med-dose').value.trim();
+  const time=document.getElementById('med-time').value;
+  const note=document.getElementById('med-note').value.trim();
+  if(!name){toast('Medicine name required');return;}
+  if(!time){toast('Choose a reminder time');return;}
+  const reminder={id:'med-'+Date.now(),name,dose,time,note};
+  medicineReminders.unshift(reminder);
+  saveMedicineReminders();
+  renderMedicineReminders();
+  renderAlerts();
+  document.getElementById('med-name').value='';
+  document.getElementById('med-dose').value='';
+  document.getElementById('med-note').value='';
+  toast('Medicine reminder added');
+}
+function deleteMedicineReminder(id){
+  medicineReminders=medicineReminders.filter(r=>r.id!==id);
+  readIds.delete(id);
+  saveMedicineReminders();
+  renderMedicineReminders();
+  renderAlerts();
+  toast('Medicine reminder removed');
+}
+
+// ══════════════════════════════════════════════
+// FAMILY COMPANION + CALENDAR
+// ══════════════════════════════════════════════
+function loadFamilyState(){
+  try{partnerProfile=JSON.parse(localStorage.getItem('niva_partner_profile')||'null');}catch(e){partnerProfile=null;}
+  try{partnerSignedIn=localStorage.getItem('niva_partner_signed_in')==='1';}catch(e){partnerSignedIn=false;}
+  try{familyEvents=JSON.parse(localStorage.getItem('niva_family_events')||'[]');}catch(e){familyEvents=[];}
+}
+function saveFamilyState(){
+  try{localStorage.setItem('niva_partner_profile',JSON.stringify(partnerProfile));}catch(e){}
+  try{localStorage.setItem('niva_partner_signed_in',partnerSignedIn?'1':'0');}catch(e){}
+  try{localStorage.setItem('niva_family_events',JSON.stringify(familyEvents));}catch(e){}
+}
+function installFamilyFeatures(){
+  if(!document.getElementById('companion-panel')){
+    const profilePage=document.getElementById('page-profile');
+    const header=profilePage?.querySelector('.header');
+    header?.insertAdjacentHTML('afterend',`
+      <div class="sec">Family Companion</div>
+      <div class="card companion-card" id="companion-panel">
+        <div class="card-t"><span class="icon-badge sm">${iconUse('i-user')}</span> Husband / Partner Access</div>
+        <div id="companion-summary"></div>
+        <div class="form-row">
+          <div class="form-group"><label class="form-lbl">Husband Name</label><input class="form-input" id="husband-name" placeholder="Aman Gupta"></div>
+          <div class="form-group"><label class="form-lbl">Phone Number</label><input class="form-input" id="husband-phone" placeholder="+91 98765 43210"></div>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button class="btn-p" style="flex:1" onclick="savePartnerProfile()">Save / Sign In</button>
+          <button class="btn-mini" style="flex:1" onclick="partnerSignOut()">Sign Out</button>
+        </div>
+      </div>`);
+  }
+  if(!document.getElementById('family-calendar-card')){
+    const medCard=document.getElementById('medicine-list')?.closest('.card');
+    medCard?.insertAdjacentHTML('afterend',`
+      <div class="sec">Family Calendar</div>
+      <div class="card calendar-card" id="family-calendar-card">
+        <div class="calendar-head">
+          <button class="btn-mini" onclick="moveCalendar(-1)">‹</button>
+          <div class="calendar-title" id="calendar-title">Calendar</div>
+          <button class="btn-mini" onclick="moveCalendar(1)">›</button>
+        </div>
+        <div class="calendar-tools">
+          <button class="btn-mini" onclick="requestReminderPermission()">Allow notifications</button>
+          <button class="btn-mini" onclick="checkReminderPopups(true)">Preview popup</button>
+        </div>
+        <div class="calendar-grid" id="calendar-grid"></div>
+        <div class="calendar-event-list" id="calendar-event-list"></div>
+      </div>
+      <div class="card">
+        <div class="card-t"><span class="icon-badge sm">${iconUse('i-calendar')}</span> Schedule With Husband</div>
+        <div class="quick-plan-grid">
+          <button class="quick-plan" onclick="fillCalendarTemplate('appointment')">ANC doctor visit</button>
+          <button class="quick-plan" onclick="fillCalendarTemplate('scan')">Ultrasound scan</button>
+          <button class="quick-plan" onclick="fillCalendarTemplate('medicine')">Medicine pickup</button>
+          <button class="quick-plan" onclick="fillCalendarTemplate('checkin')">Evening check-in</button>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label class="form-lbl">Plan</label><input class="form-input" id="event-title" placeholder="Doctor visit / scan / medicine pickup"></div>
+          <div class="form-group"><label class="form-lbl">Type</label><select class="form-input" id="event-type"><option value="appointment">Appointment</option><option value="medicine">Medicine pickup</option><option value="scan">Scan</option><option value="checkin">Check-in</option><option value="custom">Custom</option></select></div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label class="form-lbl">Date</label><input class="form-input" id="event-date" type="date"></div>
+          <div class="form-group"><label class="form-lbl">Time</label><input class="form-input" id="event-time" type="time" value="10:00"></div>
+        </div>
+        <div class="form-group"><label class="form-lbl">Note for husband</label><input class="form-input" id="event-note" placeholder="Bring reports, water bottle, and medicines"></div>
+        <button class="btn-p" onclick="addFamilyEvent()">+ Add To Family Calendar</button>
+        <div class="reminder-helper">Events trigger in-app popups near the scheduled time. Use Send WhatsApp/SMS to open a pre-filled reminder for the saved husband phone number.</div>
+      </div>`);
+  }
+  const today=new Date().toISOString().slice(0,10);
+  const dateInput=document.getElementById('event-date');
+  if(dateInput&&!dateInput.value) dateInput.value=today;
+  renderPartnerPanel();
+  renderCalendar();
+}
+function renderPartnerPanel(){
+  const box=document.getElementById('companion-summary');
+  if(!box) return;
+  const displayName=partnerProfile?.name||'No husband signed in yet';
+  const displayPhone=partnerProfile?.phone||'Add phone number for reminders';
+  const patient=user?.name||'Patient';
+  const weeks=user?.weeks_pregnant?`${user.weeks_pregnant} weeks`:'Profile pending';
+  const trimester=user?.trimester?`${user.trimester}${user.trimester===1?'st':user.trimester===2?'nd':'rd'} trimester`:'-';
+  box.innerHTML=`
+    <div class="companion-status">
+      <div class="companion-avatar">${iconUse('i-user')}</div>
+      <div style="flex:1">
+        <div class="companion-name">${partnerSignedIn?'Signed in: ':''}${displayName}</div>
+        <div class="companion-meta">${displayPhone}</div>
+      </div>
+      <span class="medicine-time">${partnerSignedIn?'Active':'Guest'}</span>
+    </div>
+    <div class="family-basic-grid">
+      <div class="family-basic"><span>Patient</span><b>${patient.split(' ')[0]}</b></div>
+      <div class="family-basic"><span>Pregnancy</span><b>${weeks}</b></div>
+      <div class="family-basic"><span>Stage</span><b>${trimester}</b></div>
+    </div>`;
+  const n=document.getElementById('husband-name'), p=document.getElementById('husband-phone');
+  if(n&&!n.value&&partnerProfile?.name) n.value=partnerProfile.name;
+  if(p&&!p.value&&partnerProfile?.phone) p.value=partnerProfile.phone;
+}
+function savePartnerProfile(){
+  const name=document.getElementById('husband-name')?.value.trim();
+  const phone=document.getElementById('husband-phone')?.value.trim();
+  if(!name){toast('Enter husband name');return;}
+  if(!phone){toast('Enter husband phone number');return;}
+  partnerProfile={name,phone,role:'husband',saved_at:new Date().toISOString()};
+  partnerSignedIn=true;
+  saveFamilyState();
+  renderPartnerPanel();
+  toast(`${name} signed in as companion`);
+}
+function partnerSignOut(){
+  partnerSignedIn=false;
+  saveFamilyState();
+  renderPartnerPanel();
+  toast('Husband companion signed out');
+}
+function pad2(n){return String(n).padStart(2,'0');}
+function dateKey(date){return `${date.getFullYear()}-${pad2(date.getMonth()+1)}-${pad2(date.getDate())}`;}
+function eventDateTime(ev){
+  const [y,m,d]=(ev.date||dateKey(new Date())).split('-').map(Number);
+  const [hh,mm]=(ev.time||'09:00').split(':').map(Number);
+  const dt=new Date(y,m-1,d,hh||0,mm||0,0,0);
+  return dt;
+}
+function minutesUntilDateTime(ev){
+  let diff=Math.round((eventDateTime(ev)-new Date())/60000);
+  return diff;
+}
+function formatEventTime(ev){
+  return eventDateTime(ev).toLocaleString([], {month:'short',day:'numeric',hour:'numeric',minute:'2-digit'});
+}
+function eventTimeStatus(ev){
+  const mins=minutesUntilDateTime(ev);
+  if(mins<-60) return 'Past';
+  if(mins<0) return `Due ${Math.abs(mins)} min ago`;
+  if(mins===0) return 'Due now';
+  if(mins<60) return `In ${mins} min`;
+  if(mins<1440) return `In ${Math.round(mins/60)} hr`;
+  return `In ${Math.round(mins/1440)} days`;
+}
+function requestReminderPermission(){
+  if(!('Notification' in window)){toast('Device notifications are not supported here');return;}
+  if(Notification.permission==='granted'){toast('Device popups already enabled');return;}
+  if(Notification.permission==='denied'){toast('Browser blocked notifications. Enable them from site settings.');return;}
+  Notification.requestPermission().then(status=>{
+    toast(status==='granted'?'Device popups enabled':'Device popups were not enabled');
+  });
+}
+function fillCalendarTemplate(kind){
+  const presets={
+    appointment:{title:'ANC doctor visit',type:'appointment',note:'Bring ANC card, reports, water bottle, and questions for the doctor',days:1,time:'10:00'},
+    scan:{title:'Ultrasound scan',type:'scan',note:'Carry previous scan reports and arrive 20 minutes early',days:3,time:'11:00'},
+    medicine:{title:'Medicine pickup',type:'medicine',note:'Pick up iron, calcium, folic acid, and any prescribed tablets',days:0,time:'18:00'},
+    checkin:{title:'Evening health check-in',type:'checkin',note:'Ask about BP, fetal kicks, water intake, medicines, and symptoms',days:0,time:'20:00'}
+  };
+  const p=presets[kind]||presets.appointment;
+  const dt=new Date();
+  dt.setDate(dt.getDate()+p.days);
+  const title=document.getElementById('event-title'), type=document.getElementById('event-type'), date=document.getElementById('event-date'), time=document.getElementById('event-time'), note=document.getElementById('event-note');
+  if(title) title.value=p.title;
+  if(type) type.value=p.type;
+  if(date) date.value=dateKey(dt);
+  if(time) time.value=p.time;
+  if(note) note.value=p.note;
+  toast(p.title+' template loaded');
+}
+function normalizeReminderPhone(phone){
+  const digits=String(phone||'').replace(/\D/g,'');
+  if(digits.length===10) return '91'+digits;
+  return digits;
+}
+function calendarReminderMessage(ev){
+  const patient=user?.name||'Niva patient';
+  const weeks=user?.weeks_pregnant?` (${user.weeks_pregnant} weeks pregnant)`:'';
+  const note=ev.note?` Note: ${ev.note}.`:'';
+  return `Niva reminder for ${patient}${weeks}: ${ev.title} is scheduled for ${formatEventTime(ev)}.${note} Please confirm and help with transport, reports, medicines, or check-in support.`;
+}
+function sendFamilyReminder(id,channel='whatsapp'){
+  const ev=familyEvents.find(e=>e.id===id);
+  if(!ev){toast('Calendar event not found');return;}
+  if(!partnerSignedIn||!partnerProfile?.phone){toast('Save husband phone number in Profile first');return;}
+  const phone=normalizeReminderPhone(partnerProfile.phone);
+  if(phone.length<10){toast('Husband phone number looks incomplete');return;}
+  const msg=encodeURIComponent(calendarReminderMessage(ev));
+  if(channel==='sms'){
+    const sep=/iPhone|iPad|iPod/i.test(navigator.userAgent)?'&':'?';
+    window.location.href=`sms:${phone}${sep}body=${msg}`;
+    toast('Opening SMS reminder');
+    return;
+  }
+  window.open(`https://wa.me/${phone}?text=${msg}`,'_blank','noopener');
+  toast('Opening WhatsApp reminder');
+}
+function eventPopupItem(ev){
+  return {id:ev.id,eventId:ev.id,kicker:'Family calendar',title:ev.title,text:`${formatEventTime(ev)} - ${ev.note||'No note added'}. Husband: ${partnerProfile?.name||'not signed in'}.`,mins:minutesUntilDateTime(ev)};
+}
+function medicinePopupItem(r){
+  return {id:r.id,kicker:'Medicine reminder',title:r.name,text:`${r.dose||'Dose'} at ${formatReminderTime(r.time)}${r.note?' - '+r.note:''}.`,mins:minutesUntil(r.time)};
+}
+function maybeDeviceNotification(item){
+  if(!('Notification' in window) || Notification.permission!=='granted') return;
+  if(notifiedReminderIds.has(item.id)) return;
+  notifiedReminderIds.add(item.id);
+  try{new Notification('Niva reminder: '+item.title,{body:item.text});}catch(e){}
+}
+function showReminderPopup(item){
+  activeReminderPopup=item;
+  document.getElementById('popup-kicker').textContent=item.kicker||'Reminder';
+  document.getElementById('popup-title').textContent=item.title||'Reminder due';
+  document.getElementById('popup-text').textContent=item.text||'A reminder is due now.';
+  const sendBtn=document.getElementById('popup-send-btn');
+  if(sendBtn) sendBtn.style.display=item.eventId?'':'none';
+  document.getElementById('reminder-popup-overlay').classList.add('show');
+  document.getElementById('reminder-popup').classList.add('show');
+  maybeDeviceNotification(item);
+}
+function showEventPopup(id){
+  const ev=familyEvents.find(e=>e.id===id);
+  if(!ev){toast('Calendar event not found');return;}
+  showReminderPopup(eventPopupItem(ev));
+}
+function sendActiveReminder(){
+  if(!activeReminderPopup?.eventId){toast('Only calendar reminders can be sent');return;}
+  sendFamilyReminder(activeReminderPopup.eventId,'whatsapp');
+}
+function moveCalendar(offset){
+  calendarCursor=new Date(calendarCursor.getFullYear(),calendarCursor.getMonth()+offset,1);
+  renderCalendar();
+}
+function selectCalendarDate(key){
+  const input=document.getElementById('event-date');
+  if(input) input.value=key;
+  toast('Selected '+key);
+}
+function renderCalendar(){
+  const grid=document.getElementById('calendar-grid');
+  const title=document.getElementById('calendar-title');
+  const list=document.getElementById('calendar-event-list');
+  if(!grid||!title||!list) return;
+  const year=calendarCursor.getFullYear();
+  const month=calendarCursor.getMonth();
+  const first=new Date(year,month,1);
+  const start=new Date(first);
+  start.setDate(1-first.getDay());
+  title.textContent=first.toLocaleString([], {month:'long',year:'numeric'});
+  const dows=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+  let html=dows.map(d=>`<div class="cal-dow">${d}</div>`).join('');
+  const today=dateKey(new Date());
+  const eventDates=new Set(familyEvents.map(e=>e.date));
+  for(let i=0;i<42;i++){
+    const day=new Date(start); day.setDate(start.getDate()+i);
+    const key=dateKey(day);
+    const cls=['cal-day',day.getMonth()!==month?'muted':'',key===today?'today':'',eventDates.has(key)?'has-event':''].join(' ');
+    html+=`<button class="${cls}" onclick="selectCalendarDate('${key}')">${day.getDate()}</button>`;
+  }
+  grid.innerHTML=html;
+  const upcoming=[...familyEvents].sort((a,b)=>eventDateTime(a)-eventDateTime(b)).slice(0,6);
+  list.innerHTML=upcoming.length?upcoming.map(ev=>`
+    <div class="family-event">
+      <div class="event-icon">${iconUse(ev.type==='medicine'?'i-pill':ev.type==='scan'?'i-ai':'i-calendar')}</div>
+      <div class="event-main">
+        <div class="event-title">${ev.title}</div>
+        <div class="event-meta">${formatEventTime(ev)}${ev.owner?' - '+ev.owner:''}${ev.note?' - '+ev.note:''}</div>
+      </div>
+      <span class="medicine-time">${eventTimeStatus(ev)}</span>
+      <div class="event-actions">
+        <button class="event-send" onclick="showEventPopup('${ev.id}')">Preview</button>
+        <button class="event-send" onclick="sendFamilyReminder('${ev.id}','whatsapp')">WhatsApp</button>
+        <button class="event-send" onclick="sendFamilyReminder('${ev.id}','sms')">SMS</button>
+        <button class="event-delete" onclick="deleteFamilyEvent('${ev.id}')" aria-label="Delete event">x</button>
+      </div>
+    </div>`).join(''):'<div class="medicine-empty">No family events yet. Add appointments, scans, medicine pickups, or check-ins for the husband to track.</div>';
+}
+function addFamilyEvent(){
+  const title=document.getElementById('event-title')?.value.trim();
+  const type=document.getElementById('event-type')?.value||'custom';
+  const date=document.getElementById('event-date')?.value;
+  const time=document.getElementById('event-time')?.value;
+  const note=document.getElementById('event-note')?.value.trim();
+  if(!partnerSignedIn){toast('Save / sign in husband first');return;}
+  if(!title){toast('Enter a calendar plan');return;}
+  if(!date||!time){toast('Choose date and time');return;}
+  const newEvent={id:'evt-'+Date.now(),title,type,date,time,note,owner:partnerProfile?.name||'Husband'};
+  familyEvents.unshift(newEvent);
+  saveFamilyState();
+  renderCalendar();
+  renderAlerts();
+  document.getElementById('event-title').value='';
+  document.getElementById('event-note').value='';
+  toast('Family calendar event added');
+  if(minutesUntilDateTime(newEvent)<=15) setTimeout(()=>showReminderPopup(eventPopupItem(newEvent)),250);
+}
+function deleteFamilyEvent(id){
+  familyEvents=familyEvents.filter(e=>e.id!==id);
+  readIds.delete(id);
+  dismissedPopupIds.delete(id);
+  saveFamilyState();
+  renderCalendar();
+  renderAlerts();
+  toast('Calendar event removed');
+}
+function familyEventAlerts(){
+  return familyEvents.map(ev=>{
+    const mins=minutesUntilDateTime(ev);
+    const due=mins>=0&&mins<=120;
+    const overdue=mins<0&&mins>=-60;
+    const timing=overdue?'was due recently':due?`is due in ${mins} min`:`is scheduled for ${formatEventTime(ev)}`;
+    return {id:ev.id,title:due||overdue?'Family plan reminder':'Family plan scheduled',text:`${ev.title} ${timing}${partnerProfile?.phone?' - husband phone: '+partnerProfile.phone:''}.`,type:'reminder'};
+  });
+}
+function duePopupItems(){
+  const now=Date.now();
+  const snoozed=(id)=>popupSnoozes[id]&&popupSnoozes[id]>now;
+  const meds=medicineReminders.map(medicinePopupItem);
+  const events=familyEvents.map(eventPopupItem);
+  return [...meds,...events].filter(item=>item.mins<=15&&item.mins>=-30&&!dismissedPopupIds.has(item.id)&&!snoozed(item.id));
+}
+function checkReminderPopups(force=false){
+  if(activeReminderPopup) return;
+  let item=duePopupItems()[0];
+  if(!item&&force){
+    const next=[...familyEvents].sort((a,b)=>eventDateTime(a)-eventDateTime(b)).find(ev=>minutesUntilDateTime(ev)>=-60);
+    if(next) item=eventPopupItem(next);
+  }
+  if(!item){if(force) toast('No scheduled reminders yet'); return;}
+  showReminderPopup(item);
+}
+function closeReminderPopup(done=true){
+  if(activeReminderPopup&&done) dismissedPopupIds.add(activeReminderPopup.id);
+  activeReminderPopup=null;
+  document.getElementById('reminder-popup-overlay').classList.remove('show');
+  document.getElementById('reminder-popup').classList.remove('show');
+  const sendBtn=document.getElementById('popup-send-btn');
+  if(sendBtn) sendBtn.style.display='none';
+}
+function snoozeReminderPopup(){
+  if(activeReminderPopup) popupSnoozes[activeReminderPopup.id]=Date.now()+15*60000;
+  closeReminderPopup(false);
+  toast('Reminder snoozed for 15 minutes');
 }
 
 // ══════════════════════════════════════════════
@@ -1168,6 +1799,63 @@ function setRange(input,spanId,dec){
   const min=parseFloat(input.min),max=parseFloat(input.max);
   const pct=((v-min)/(max-min)*100).toFixed(1);
   input.style.background=`linear-gradient(90deg,var(--rose) ${pct}%,#f0e0e8 ${pct}%)`;
+}
+
+function rangeLabel(input){
+  const field=input.closest('.sim-field');
+  const label=field?.querySelector('.sim-lbl');
+  if(!label) return 'Value';
+  const clone=label.cloneNode(true);
+  clone.querySelectorAll('span').forEach(s=>s.remove());
+  return clone.textContent.replace(/[()]/g,'').replace(/\s+/g,' ').trim()||'Value';
+}
+function rangeValueText(input){
+  const raw=parseFloat(input.value);
+  const step=String(input.step||'1');
+  const decimals=step.includes('.')?step.split('.')[1].length:0;
+  const value=Number.isFinite(raw)?raw.toFixed(decimals):input.value;
+  const labelText=input.closest('.sim-field')?.querySelector('.sim-lbl')?.textContent||'';
+  const unit=labelText.includes('litres')||labelText.includes('Water')?'L':labelText.includes('hours')||labelText.includes('Sleep')?'h':labelText.includes('BP')||labelText.includes('Systolic')||labelText.includes('Diastolic')?' mmHg':labelText.includes('Energy')||labelText.includes('Breathlessness')?'/10':'';
+  return `${value}${unit}`;
+}
+function updateRangeBubble(input){
+  const bubble=document.getElementById('range-pop');
+  if(!bubble) return;
+  const rect=input.getBoundingClientRect();
+  const min=parseFloat(input.min||'0'), max=parseFloat(input.max||'100'), value=parseFloat(input.value||'0');
+  const pct=max===min?0.5:(value-min)/(max-min);
+  const x=rect.left+Math.max(16,Math.min(rect.width-16,rect.width*pct));
+  const y=rect.top-10;
+  bubble.style.left=x+'px';
+  bubble.style.top=y+'px';
+  bubble.innerHTML=`<div class="rp-value">${rangeValueText(input)}</div><div class="rp-label">${rangeLabel(input)}</div>`;
+}
+function showRangeBubble(input){
+  const bubble=document.getElementById('range-pop');
+  if(!bubble) return;
+  input.classList.add('range-active');
+  updateRangeBubble(input);
+  bubble.classList.add('show');
+}
+function hideRangeBubble(input){
+  const bubble=document.getElementById('range-pop');
+  input?.classList.remove('range-active');
+  if(bubble) bubble.classList.remove('show');
+}
+function installRangeTouchFeedback(){
+  if(document.getElementById('range-pop')) return;
+  document.body.insertAdjacentHTML('beforeend','<div class="range-pop" id="range-pop"></div>');
+  document.querySelectorAll('input[type=range]').forEach(input=>{
+    if(input.dataset.rangeFeedback==='1') return;
+    input.dataset.rangeFeedback='1';
+    input.addEventListener('pointerdown',()=>showRangeBubble(input));
+    input.addEventListener('pointermove',()=>{if(input.classList.contains('range-active'))updateRangeBubble(input);});
+    input.addEventListener('input',()=>showRangeBubble(input));
+    input.addEventListener('pointerup',()=>setTimeout(()=>hideRangeBubble(input),420));
+    input.addEventListener('pointercancel',()=>hideRangeBubble(input));
+    input.addEventListener('blur',()=>hideRangeBubble(input));
+    input.addEventListener('focus',()=>showRangeBubble(input));
+  });
 }
 
 // ══════════════════════════════════════════════
@@ -1250,6 +1938,7 @@ function renderProfile(u){
     [u.history_preeclampsia,'Preeclampsia'],
     [u.history_prev_comp,'Prev. Complication'],
   ].map(([v,l])=>`<div class="h-pill ${v?'on':'off'}" style="cursor:default">${l}</div>`).join('');
+  renderPartnerPanel();
 }
 
 function showForm(){document.getElementById('prof-form').style.display='';document.getElementById('prof-view').style.display='none';}
@@ -1632,6 +2321,52 @@ function initInteractiveCards(){
 }
 
 // ══════════════════════════════════════════════
+
+
+function disableGestureCardOverlays(){
+  document.querySelectorAll('.swipe-hint,.card-action-rail,.drag-glow,.card-shine').forEach(el=>el.remove());
+  document.querySelectorAll('.gesture-card').forEach(card=>{
+    card.classList.remove('gesture-card','is-hovering','is-dragging','is-pressed','show-hint','is-swiping-left','is-swiping-right');
+    card.dataset.dragDir='';
+    card.style.transform='';
+    card.style.transition='';
+    card.style.opacity='';
+    card.style.removeProperty('--gx');
+    card.style.removeProperty('--gy');
+    card.style.removeProperty('--mx');
+    card.style.removeProperty('--my');
+  });
+}
+
+function installJudgePolish(){
+  if(document.getElementById('judge-ribbon')) return;
+  const hero=document.querySelector('#page-home .hero');
+  if(hero && !hero.querySelector('.ml-chip')){
+    hero.insertAdjacentHTML('beforeend','<div class="ml-chip">RL policy online</div><div class="risk-constellation" aria-hidden="true"><span class="risk-dot"></span><span class="risk-dot"></span><span class="risk-dot"></span><span class="risk-dot"></span><span class="risk-dot"></span></div>');
+  }
+  const strip=document.getElementById('diag-strip');
+  if(strip){
+    strip.insertAdjacentHTML('afterend','<div class="judge-ribbon" id="judge-ribbon"><div class="spark">?</div><div><strong>OpenEnv-ready maternal triage</strong><span>Live profile + check-ins feed a reward-shaped RL policy while safety overrides protect danger flags.</span></div></div>');
+  }
+  document.addEventListener('pointerdown',e=>{
+    const target=e.target.closest('.btn-p,.btn-mini,.nav-item');
+    if(!target) return;
+    const rect=target.getBoundingClientRect();
+    target.style.setProperty('--tap-x',(e.clientX-rect.left)+'px');
+    target.style.setProperty('--tap-y',(e.clientY-rect.top)+'px');
+    target.classList.remove('tapped');
+    void target.offsetWidth;
+    target.classList.add('tapped');
+    setTimeout(()=>target.classList.remove('tapped'),560);
+  });
+  const observer=new IntersectionObserver(entries=>{
+    entries.forEach(entry=>{
+      if(entry.isIntersecting){entry.target.style.animationPlayState='running';}
+    });
+  },{threshold:.12});
+  document.querySelectorAll('.card,.sec,.diag-strip,.hero').forEach(el=>observer.observe(el));
+}
+
 // INIT
 // ══════════════════════════════════════════════
 window.addEventListener('load',()=>{
@@ -1646,11 +2381,19 @@ window.addEventListener('load',()=>{
     const s=localStorage.getItem('niva_user');
     if(s){const u=JSON.parse(s);uid=u.id;user=u;refreshHome(u);renderProfile(u);}
   }catch(e){}
+  loadMedicineReminders();
+  renderMedicineReminders();
+  loadFamilyState();
+  installFamilyFeatures();
   // initial render
   runScoring();
   updatePreview();
   renderAlerts();
-  initInteractiveCards();
+  disableGestureCardOverlays();
+  installJudgePolish();
+  installRangeTouchFeedback();
+  checkReminderPopups();
+  setInterval(()=>{renderMedicineReminders();renderCalendar();renderAlerts();checkReminderPopups();},30000);
 });
 </script>
 </body>

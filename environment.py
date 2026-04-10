@@ -4,6 +4,7 @@ from datetime import datetime
 
 from database import SessionLocal
 from models import UserProfile, DailyCheckin, Checkin3Day
+from rl_risk_model import RL_RISK_MODEL
 
 # PYDANTIC MODELS — what the environment returns
 
@@ -226,75 +227,14 @@ def _build_observation(user: UserProfile,
 
 def _classify_condition(obs: Observation) -> tuple[str, str]:
     """
-    Returns (predicted_condition, rationale) based on observation.
-    This is the rule-based prediction engine — no ML needed.
+    Returns (predicted_condition, rationale) using an RL-style value policy.
+
+    The policy estimates Q-values for the competition-safe condition labels and
+    also tracks wider latent maternal risks. This keeps the OpenEnv contract
+    intact while moving the diagnosis layer beyond a simple rule cascade.
     """
-    flags = obs.risk_flags
-    history = obs.history_flags
-
-    # ── IMMEDIATE DANGER: override everything ─────────────
-    if "DANGER_BLEEDING" in flags:
-        return "preterm_risk", "Bleeding detected — emergency"
-
-    if "DANGER_BP_CRITICAL" in flags:
-        return "preeclampsia", "BP critically high (>=160/110)"
-
-    if "DANGER_LOW_KICKS" in flags:
-        return "fetal_distress", "Dangerously low kick count (<3)"
-
-    # ── PREECLAMPSIA signals ──────────────────────────────
-    preeclampsia_score = 0
-    if "HIGH_BP" in flags:               preeclampsia_score += 3
-    if "BP_RISING_TREND" in flags:       preeclampsia_score += 2
-    if "HIGH_PREECLAMPSIA_SIGNAL" in flags: preeclampsia_score += 3
-    if "prev_preeclampsia" in history:   preeclampsia_score += 2
-    if "family_hypertension" in history: preeclampsia_score += 1
-    if obs.trimester == 3:               preeclampsia_score += 1
-
-    # ── GESTATIONAL DIABETES signals ─────────────────────
-    diabetes_score = 0
-    if "family_diabetes" in history:     diabetes_score += 3
-    if obs.avg_meals and obs.avg_meals > 3.5: diabetes_score += 1
-    if obs.latest_energy and obs.latest_energy <= 4: diabetes_score += 1
-    if obs.latest_breathlessness and obs.latest_breathlessness >= 6:
-        diabetes_score += 1
-
-    # ── ANEMIA signals ────────────────────────────────────
-    anemia_score = 0
-    if "LOW_NUTRITION" in flags:         anemia_score += 3
-    if obs.avg_meals and obs.avg_meals < 2: anemia_score += 2
-    if obs.latest_energy and obs.latest_energy <= 3: anemia_score += 2
-    if obs.latest_breathlessness and obs.latest_breathlessness >= 7:
-        anemia_score += 2
-
-    # ── PRETERM RISK signals ──────────────────────────────
-    preterm_score = 0
-    if "prev_complication" in history:   preterm_score += 3
-    if obs.weeks_pregnant < 37 and obs.trimester == 3: preterm_score += 1
-    if obs.avg_sleep and obs.avg_sleep < 5: preterm_score += 2
-
-    # ── FETAL DISTRESS signals ────────────────────────────
-    fetal_score = 0
-    if "LOW_KICK_AVG" in flags:          fetal_score += 4
-    if obs.avg_kick_count is not None and obs.avg_kick_count < 6:
-        fetal_score += 2
-
-    # ── PICK HIGHEST SCORE ────────────────────────────────
-    scores = {
-        "preeclampsia":         preeclampsia_score,
-        "gestational_diabetes": diabetes_score,
-        "anemia":               anemia_score,
-        "preterm_risk":         preterm_score,
-        "fetal_distress":       fetal_score,
-    }
-
-    best = max(scores, key=scores.get)
-
-    if scores[best] < 2:
-        return "low_risk", "No significant risk signals detected"
-
-    rationale = f"{best.replace('_',' ').title()} score: {scores[best]} — top signals: {', '.join(flags[:2]) if flags else 'history based'}"
-    return best, rationale
+    policy_result = RL_RISK_MODEL.predict(obs)
+    return policy_result.condition, policy_result.rationale
 
 # REWARD FUNCTION
 
@@ -417,9 +357,12 @@ class PrenatalEnvironment:
                     true_condition=self.true_condition,
                     days_of_data=obs.days_of_data,
                 )
+                RL_RISK_MODEL.update_from_reward(obs, action.target, reward)
                 _, rationale = _classify_condition(obs)
 
-            diet = DIET_ADVICE.get(action.target, DIET_ADVICE["low_risk"])
+            policy_snapshot = RL_RISK_MODEL.predict(obs)
+            latent_advice = [LATENT_CONDITION_ADVICE[k] for k in policy_snapshot.latent_risks if k in LATENT_CONDITION_ADVICE]
+            diet = DIET_ADVICE.get(action.target, DIET_ADVICE["low_risk"]) + latent_advice[:2]
             self.episode_done = True
 
             return StepResult(
