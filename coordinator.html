@@ -1,0 +1,802 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Niva Care Coordinator Portal</title>
+<style>
+  :root{
+    --bg:#f5f7fa;
+    --surface:#ffffff;
+    --surface-soft:#f7fafc;
+    --line:#d8e2ea;
+    --text:#13202e;
+    --muted:#5e6e7f;
+    --primary:#0f766e;
+    --primary-soft:#def7f3;
+    --accent:#2563eb;
+    --danger:#b42318;
+    --danger-bg:#fde7e5;
+    --warn:#b54708;
+    --warn-bg:#fff0d5;
+    --safe:#027a48;
+    --safe-bg:#e7f8ef;
+    --shadow:0 16px 40px rgba(16,24,40,.08);
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:Inter,Segoe UI,Arial,sans-serif;background:var(--bg);color:var(--text)}
+  .hidden{display:none!important}
+  .auth-screen{min-height:100vh;display:grid;place-items:center;padding:32px}
+  .auth-card{width:min(100%,420px);background:var(--surface);border:1px solid var(--line);border-radius:24px;padding:28px;box-shadow:var(--shadow)}
+  .auth-kicker{font-size:12px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--primary)}
+  .auth-title{font-size:34px;font-weight:700;line-height:1.05;margin:10px 0 8px}
+  .auth-copy{margin:0 0 20px;color:var(--muted);line-height:1.65}
+  .demo-box{margin:0 0 18px;padding:12px 14px;border-radius:16px;background:var(--surface-soft);border:1px solid var(--line)}
+  .demo-box strong{display:block;font-size:12px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:6px}
+  .demo-box div{font-size:14px;line-height:1.6}
+  .form-group{margin-bottom:14px}
+  label{display:block;font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-bottom:7px}
+  input,select,textarea{width:100%;padding:13px 14px;border-radius:14px;border:1px solid var(--line);background:#fff;font:inherit;color:var(--text);outline:none}
+  input:focus,select:focus,textarea:focus{border-color:var(--primary);box-shadow:0 0 0 4px rgba(15,118,110,.12)}
+  textarea{min-height:100px;resize:vertical}
+  .btn{appearance:none;border:none;border-radius:14px;padding:13px 16px;font:inherit;font-weight:700;cursor:pointer;transition:transform .16s ease}
+  .btn:hover{transform:translateY(-1px)}
+  .btn-primary{background:var(--primary);color:#fff}
+  .btn-secondary{background:#fff;border:1px solid var(--line);color:var(--text)}
+  .btn-inline{padding:10px 12px;border-radius:12px;font-size:13px}
+  .login-error{margin-top:12px;color:var(--danger);font-size:13px}
+  .app-shell{min-height:100vh;padding:22px 24px 28px}
+  .topbar{display:flex;justify-content:space-between;gap:16px;align-items:flex-start;margin-bottom:18px}
+  .topbar h1{margin:0;font-size:30px}
+  .topbar p{margin:6px 0 0;color:var(--muted)}
+  .topbar-actions{display:flex;gap:10px;flex-wrap:wrap}
+  .link-btn{display:inline-flex;align-items:center;justify-content:center;padding:12px 14px;border-radius:14px;border:1px solid var(--line);background:#fff;color:var(--text);text-decoration:none;font-weight:600}
+  .stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;margin-bottom:18px}
+  .stat-card{padding:18px;border-radius:20px;background:var(--surface);border:1px solid var(--line);box-shadow:var(--shadow)}
+  .stat-label{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);font-weight:700}
+  .stat-value{font-size:30px;font-weight:800;margin-top:8px}
+  .filters{display:grid;grid-template-columns:1fr 1fr auto;gap:12px;padding:14px 16px;border-radius:18px;background:var(--surface);border:1px solid var(--line);box-shadow:var(--shadow);margin-bottom:18px}
+  .analytics-grid{display:grid;grid-template-columns:1.3fr .9fr;gap:18px;margin-bottom:18px}
+  .map-panel{overflow:hidden}
+  .map-shell{padding:18px 20px 20px}
+  .map-layout{display:grid;grid-template-columns:1.1fr .9fr;gap:18px;align-items:start}
+  .map-frame{border:1px solid var(--line);border-radius:20px;background:#fbfdff;padding:16px}
+  .map-legend{display:flex;gap:10px;flex-wrap:wrap}
+  .legend-item{display:inline-flex;align-items:center;gap:8px;font-size:12px;color:var(--muted);font-weight:600}
+  .legend-dot{width:10px;height:10px;border-radius:999px}
+  .legend-dot.critical{background:var(--danger)}
+  .legend-dot.watch{background:var(--warn)}
+  .legend-dot.stable{background:var(--safe)}
+  .legend-dot.inactive{background:#c6d4df}
+  .attention-strip{display:grid;gap:10px}
+  .attention-card{border:1px solid var(--line);border-left:4px solid var(--accent);border-radius:16px;padding:14px;background:var(--surface-soft)}
+  .attention-card.critical{border-left-color:var(--danger);background:#fff6f5}
+  .attention-card.watch{border-left-color:var(--warn);background:#fffaf0}
+  .attention-card h3{margin:0 0 6px;font-size:15px}
+  .attention-copy{font-size:13px;line-height:1.6;color:var(--muted)}
+  .state-analysis{padding:14px;display:grid;gap:12px;max-height:760px;overflow:auto}
+  .state-card{border:1px solid var(--line);border-radius:18px;padding:14px;background:var(--surface-soft)}
+  .state-card.selected{border-color:var(--accent);box-shadow:inset 0 0 0 1px rgba(37,99,235,.18)}
+  .state-card-top{display:flex;justify-content:space-between;gap:12px;align-items:flex-start;margin-bottom:12px}
+  .state-card h3{margin:0;font-size:17px}
+  .state-card-copy{font-size:13px;color:var(--muted);line-height:1.6}
+  .severity-badge{display:inline-flex;align-items:center;padding:7px 10px;border-radius:999px;font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase}
+  .severity-badge.critical{background:var(--danger-bg);color:var(--danger)}
+  .severity-badge.watch{background:var(--warn-bg);color:var(--warn)}
+  .severity-badge.stable{background:var(--safe-bg);color:var(--safe)}
+  .state-metrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin-bottom:12px}
+  .metric{padding:10px;border-radius:14px;background:#fff;border:1px solid var(--line)}
+  .metric-label{font-size:11px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);font-weight:700}
+  .metric-value{margin-top:6px;font-size:18px;font-weight:800}
+  .prevention-list{margin:0;padding-left:18px;color:var(--text)}
+  .prevention-list li{margin:0 0 8px;font-size:13px;line-height:1.5}
+  .state-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px}
+  .state-actions button{padding:10px 12px}
+  .india-map{width:100%;height:auto;display:block}
+  .india-base{fill:#eef4f9;stroke:#bfd0dd;stroke-width:2}
+  .india-marker{cursor:pointer;transition:transform .14s ease}
+  .india-marker:hover{transform:translateY(-2px)}
+  .india-marker circle{stroke:#fff;stroke-width:2}
+  .india-marker text{font-size:10px;font-weight:800;text-anchor:middle;fill:#0f172a;pointer-events:none}
+  .india-marker.critical circle{fill:var(--danger)}
+  .india-marker.watch circle{fill:var(--warn)}
+  .india-marker.stable circle{fill:var(--safe)}
+  .india-marker.inactive circle{fill:#c6d4df}
+  .india-marker.selected circle{stroke:var(--accent);stroke-width:4}
+  .grid{display:grid;grid-template-columns:1.2fr .8fr;gap:18px}
+  .panel{background:var(--surface);border:1px solid var(--line);border-radius:22px;box-shadow:var(--shadow);overflow:hidden}
+  .panel-head{display:flex;justify-content:space-between;align-items:center;padding:18px 20px 14px;border-bottom:1px solid var(--line)}
+  .panel-head h2{margin:0;font-size:18px}
+  table{width:100%;border-collapse:collapse}
+  th,td{padding:14px 18px;text-align:left;border-bottom:1px solid var(--line)}
+  th{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+  td{font-size:14px;vertical-align:middle}
+  tbody tr{cursor:pointer;transition:background .14s ease}
+  tbody tr:hover{background:#f7fafc}
+  tbody tr:last-child td{border-bottom:none}
+  .patient-name{font-weight:700}
+  .subtle{font-size:12px;color:var(--muted)}
+  .risk-badge,.task-badge{display:inline-flex;align-items:center;padding:7px 10px;border-radius:999px;font-size:12px;font-weight:700}
+  .risk-badge.danger,.task-badge.critical{background:var(--danger-bg);color:var(--danger)}
+  .risk-badge.warn,.task-badge.high{background:var(--warn-bg);color:var(--warn)}
+  .risk-badge.safe,.task-badge.routine{background:var(--safe-bg);color:var(--safe)}
+  .task-list{padding:10px 14px 16px;display:grid;gap:10px}
+  .task-item{border:1px solid var(--line);border-radius:16px;padding:14px;background:var(--surface-soft)}
+  .task-title{font-weight:700;margin-bottom:4px}
+  .task-meta{font-size:12px;color:var(--muted);margin-bottom:10px}
+  .task-actions{display:flex;gap:8px;flex-wrap:wrap}
+  .task-actions button{padding:9px 11px}
+  .drawer{position:fixed;right:0;top:0;width:min(540px,100vw);height:100vh;background:var(--surface);border-left:1px solid var(--line);box-shadow:-20px 0 40px rgba(16,24,40,.08);transform:translateX(104%);transition:transform .26s ease;z-index:40;display:flex;flex-direction:column}
+  .drawer.open{transform:translateX(0)}
+  .drawer-head{padding:22px 22px 16px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;gap:10px}
+  .drawer-head h2{margin:0;font-size:24px}
+  .drawer-body{padding:18px 22px 28px;overflow:auto;display:grid;gap:16px}
+  .close-btn{border:none;background:#e7f5f3;color:var(--primary);width:38px;height:38px;border-radius:12px;font-size:22px;cursor:pointer}
+  .card{border:1px solid var(--line);border-radius:18px;padding:16px;background:#fff}
+  .card h3{margin:0 0 10px;font-size:15px}
+  .flag-list{display:flex;flex-wrap:wrap;gap:8px}
+  .flag{padding:8px 10px;border-radius:999px;background:#f6f8fb;border:1px solid var(--line);font-size:12px;font-weight:700}
+  .quick-actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+  .queue-empty,.empty{padding:24px;text-align:center;color:var(--muted)}
+  @media (max-width: 1100px){
+    .stats{grid-template-columns:repeat(2,minmax(0,1fr))}
+    .filters{grid-template-columns:1fr 1fr}
+    .analytics-grid{grid-template-columns:1fr}
+    .map-layout{grid-template-columns:1fr}
+    .grid{grid-template-columns:1fr}
+  }
+  @media (max-width: 720px){
+    .app-shell{padding:18px 14px 24px}
+    .topbar{flex-direction:column}
+    .filters{grid-template-columns:1fr}
+    .stats{grid-template-columns:1fr}
+    .state-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}
+    .quick-actions{grid-template-columns:1fr}
+  }
+</style>
+</head>
+<body>
+  <div id="login-view" class="auth-screen">
+    <div class="auth-card">
+      <div class="auth-kicker">Coordinator role</div>
+      <div class="auth-title">Care Operations Login</div>
+      <p class="auth-copy">Track escalations, create follow-up tasks, and coordinate outreach for high-risk patients.</p>
+      <div class="demo-box">
+        <strong>Demo credentials</strong>
+        <div>Email: <code>coordinator@niva.local</code></div>
+        <div>Password: <code>care123</code></div>
+      </div>
+      <div class="form-group">
+        <label for="login-email">Email</label>
+        <input id="login-email" type="email" value="coordinator@niva.local" autocomplete="email">
+      </div>
+      <div class="form-group">
+        <label for="login-password">Password</label>
+        <input id="login-password" type="password" value="care123" autocomplete="current-password">
+      </div>
+      <button class="btn btn-primary" id="login-btn" type="button">Sign In</button>
+      <div class="login-error hidden" id="login-error"></div>
+    </div>
+  </div>
+
+  <div id="app-view" class="app-shell hidden">
+    <div class="topbar">
+      <div>
+        <h1>Care Coordinator Portal</h1>
+        <p id="viewer-line">Operational queue for follow-up and escalation support</p>
+      </div>
+      <div class="topbar-actions">
+        <a class="link-btn" href="/doctor.html">Doctor Portal</a>
+        <a class="link-btn" href="/">Patient Portal</a>
+        <button class="btn btn-secondary" id="logout-btn" type="button">Logout</button>
+      </div>
+    </div>
+
+    <div class="stats" id="stats-grid">
+      <div class="stat-card"><div class="stat-label">Critical Today</div><div class="stat-value">0</div></div>
+      <div class="stat-card"><div class="stat-label">Pending Tasks</div><div class="stat-value">0</div></div>
+      <div class="stat-card"><div class="stat-label">PHC Visits Due</div><div class="stat-value">0</div></div>
+      <div class="stat-card"><div class="stat-label">Completed Today</div><div class="stat-value">0</div></div>
+    </div>
+
+    <div class="filters">
+      <div class="form-group" style="margin:0">
+        <label for="filter-region">State / Region</label>
+        <select id="filter-region"><option value="">All states</option></select>
+      </div>
+      <div class="form-group" style="margin:0">
+        <label for="filter-status">Task status</label>
+        <select id="filter-status">
+          <option value="">All tasks</option>
+          <option value="open">Open</option>
+          <option value="in_progress">In Progress</option>
+          <option value="completed">Completed</option>
+        </select>
+      </div>
+      <div style="display:flex;align-items:end">
+        <button class="btn btn-secondary" id="refresh-btn" type="button" style="width:100%">Refresh</button>
+      </div>
+    </div>
+
+    <div class="analytics-grid">
+      <div class="panel map-panel">
+        <div class="panel-head">
+          <div>
+            <h2>India State Risk Map</h2>
+            <div class="subtle" id="map-summary">State-by-state maternal risk overview</div>
+          </div>
+          <div class="map-legend">
+            <span class="legend-item"><span class="legend-dot critical"></span>Immediate attention</span>
+            <span class="legend-item"><span class="legend-dot watch"></span>Needs active follow-up</span>
+            <span class="legend-item"><span class="legend-dot stable"></span>Routine monitoring</span>
+            <span class="legend-item"><span class="legend-dot inactive"></span>No live data</span>
+          </div>
+        </div>
+        <div class="map-shell">
+          <div class="map-layout">
+            <div class="map-frame">
+              <svg id="india-map" class="india-map" viewBox="0 0 420 520" role="img" aria-label="India maternal risk map"></svg>
+            </div>
+            <div id="attention-strip" class="attention-strip"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head">
+          <h2>State Analysis</h2>
+          <div class="subtle">Grouped by state with prevention guidance</div>
+        </div>
+        <div id="state-analysis" class="state-analysis"></div>
+      </div>
+    </div>
+
+    <div class="grid">
+      <div class="panel">
+        <div class="panel-head">
+          <h2>Patient Queue</h2>
+          <div class="subtle">Sorted by urgency then open work</div>
+        </div>
+        <table>
+          <thead>
+            <tr>
+              <th>Patient</th>
+              <th>Risk</th>
+              <th>Last Check-in</th>
+              <th>Next Task</th>
+            </tr>
+          </thead>
+          <tbody id="queue-body"></tbody>
+        </table>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head">
+          <h2>Active Tasks</h2>
+          <div class="subtle">Quick status updates</div>
+        </div>
+        <div id="task-list" class="task-list"></div>
+      </div>
+    </div>
+  </div>
+
+  <aside id="drawer" class="drawer" aria-hidden="true">
+    <div class="drawer-head">
+      <div>
+        <h2 id="drawer-name">Patient Detail</h2>
+        <div class="subtle" id="drawer-subtitle">Select a patient</div>
+      </div>
+      <button class="close-btn" id="close-drawer" type="button">&times;</button>
+    </div>
+    <div class="drawer-body" id="drawer-body">
+      <div class="empty">Choose a patient from the queue to inspect and assign tasks.</div>
+    </div>
+  </aside>
+
+<script>
+const API = window.location.origin;
+const state = {
+  token: localStorage.getItem('niva_coordinator_token') || '',
+  queue: [],
+  tasks: [],
+  analytics: {},
+  selectedPatientId: null
+};
+
+const urgencyClass = {
+  go_to_hospital_today: 'danger',
+  visit_phc_this_week: 'warn',
+  monitor_at_home: 'safe'
+};
+
+function authHeaders(){
+  return {
+    'Content-Type':'application/json',
+    'Authorization': `Bearer ${state.token}`
+  };
+}
+
+function escapeHtml(value){
+  return String(value ?? '')
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#39;');
+}
+
+function formatDate(value){
+  if(!value) return 'No data';
+  return new Date(value).toLocaleString([], {day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit'});
+}
+
+function riskBadge(level){
+  const labelMap = {
+    go_to_hospital_today: 'Go To Hospital Today',
+    visit_phc_this_week: 'Visit PHC This Week',
+    monitor_at_home: 'Monitor At Home'
+  };
+  return `<span class="risk-badge ${urgencyClass[level] || 'safe'}">${labelMap[level] || level}</span>`;
+}
+
+function showLogin(message=''){
+  document.getElementById('login-view').classList.remove('hidden');
+  document.getElementById('app-view').classList.add('hidden');
+  const box = document.getElementById('login-error');
+  box.textContent = message;
+  box.classList.toggle('hidden', !message);
+}
+
+function showApp(){
+  document.getElementById('login-view').classList.add('hidden');
+  document.getElementById('app-view').classList.remove('hidden');
+}
+
+async function safeFetch(path, options={}){
+  const response = await fetch(API + path, options);
+  if(response.status === 401 || response.status === 403){
+    localStorage.removeItem('niva_coordinator_token');
+    state.token = '';
+    showLogin('Session expired. Sign in again.');
+    throw new Error('Unauthorized');
+  }
+  if(!response.ok){
+    const payload = await response.json().catch(()=>({detail:'Request failed'}));
+    throw new Error(payload.detail || 'Request failed');
+  }
+  return response.json();
+}
+
+async function login(){
+  try{
+    const payload = await safeFetch('/auth/login', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({
+        email: document.getElementById('login-email').value.trim(),
+        password: document.getElementById('login-password').value,
+        role:'coordinator'
+      })
+    });
+    state.token = payload.access_token;
+    localStorage.setItem('niva_coordinator_token', state.token);
+    document.getElementById('viewer-line').textContent = `${payload.user.display_name} · Coordinator`;
+    showApp();
+    await loadDashboard();
+  }catch(error){
+    showLogin(error.message);
+  }
+}
+
+async function bootstrap(){
+  if(!state.token){
+    showLogin();
+    return;
+  }
+  try{
+    const me = await safeFetch('/auth/me', {headers: authHeaders()});
+    if(me.role !== 'coordinator'){
+      throw new Error('This login is not a coordinator account.');
+    }
+    document.getElementById('viewer-line').textContent = `${me.display_name} · Coordinator`;
+    showApp();
+    await loadDashboard();
+  }catch(error){
+    showLogin(error.message);
+  }
+}
+
+function buildParams(){
+  const params = new URLSearchParams();
+  const region = document.getElementById('filter-region').value;
+  const status = document.getElementById('filter-status').value;
+  if(region) params.set('region', region);
+  if(status) params.set('status', status);
+  const qs = params.toString();
+  return qs ? `?${qs}` : '';
+}
+
+function renderStats(summary){
+  const grid = document.getElementById('stats-grid');
+  grid.innerHTML = `
+    <div class="stat-card"><div class="stat-label">Critical Today</div><div class="stat-value">${summary.critical_today ?? 0}</div></div>
+    <div class="stat-card"><div class="stat-label">Pending Tasks</div><div class="stat-value">${summary.pending_tasks ?? 0}</div></div>
+    <div class="stat-card"><div class="stat-label">PHC Visits Due</div><div class="stat-value">${summary.phc_visits_due ?? 0}</div></div>
+    <div class="stat-card"><div class="stat-label">Completed Today</div><div class="stat-value">${summary.completed_today ?? 0}</div></div>
+  `;
+}
+
+function renderRegions(regions){
+  const select = document.getElementById('filter-region');
+  const current = select.value;
+  select.innerHTML = `<option value="">All states</option>${regions.map(region => `<option value="${escapeHtml(region)}">${escapeHtml(region)}</option>`).join('')}`;
+  select.value = regions.includes(current) ? current : '';
+}
+
+function severityBadge(level){
+  const labelMap = {
+    critical: 'Immediate attention',
+    watch: 'Needs follow-up',
+    stable: 'Routine',
+    inactive: 'No data'
+  };
+  return `<span class="severity-badge ${level}">${labelMap[level] || level}</span>`;
+}
+
+function setRegionFilter(region){
+  document.getElementById('filter-region').value = region || '';
+  loadDashboard();
+}
+
+function renderMap(mapData, national){
+  const svg = document.getElementById('india-map');
+  const summary = document.getElementById('map-summary');
+  const statesWithData = national?.states_with_data ?? 0;
+  const criticalStates = national?.critical_states ?? 0;
+  const watchStates = national?.watch_states ?? 0;
+  summary.textContent = `${statesWithData} active state clusters, ${criticalStates} needing immediate attention, ${watchStates} in active follow-up`;
+
+  const markers = (mapData?.states || [])
+    .filter(item => Number.isFinite(item.x) && Number.isFinite(item.y))
+    .map(item => `
+      <g class="india-marker ${item.severity} ${item.selected ? 'selected' : ''}" data-state="${escapeHtml(item.state)}" transform="translate(${item.x} ${item.y})">
+        <title>${escapeHtml(item.state)} | ${item.patient_count} patients | ${item.critical_count} critical | ${item.watch_count} watch</title>
+        <circle r="${item.patient_count ? 11 : 8}"></circle>
+        <text y="4">${escapeHtml(item.short)}</text>
+      </g>
+    `)
+    .join('');
+
+  svg.innerHTML = `
+    <path class="india-base" d="${mapData?.path || ''}"></path>
+    ${markers}
+  `;
+
+  svg.querySelectorAll('[data-state]').forEach(marker => {
+    marker.addEventListener('click', () => setRegionFilter(marker.dataset.state));
+  });
+}
+
+function renderAttentionStrip(national, stateGroups){
+  const container = document.getElementById('attention-strip');
+  const topStates = (stateGroups || []).slice(0, 3);
+
+  if(!topStates.length){
+    container.innerHTML = `<div class="attention-card"><h3>No state data yet</h3><div class="attention-copy">This panel will surface the highest-risk regions and the most cost-effective prevention actions as data arrives.</div></div>`;
+    return;
+  }
+
+  container.innerHTML = `
+    <div class="attention-card">
+      <h3>National Focus</h3>
+      <div class="attention-copy">${escapeHtml(national?.recommended_focus || 'Use this view to prioritize outreach and prevention by state.')}</div>
+    </div>
+    ${topStates.map(item => `
+      <div class="attention-card ${item.severity}">
+        <h3>${escapeHtml(item.state)}</h3>
+        <div class="attention-copy">
+          ${item.critical_count} critical, ${item.watch_count} watch, ${item.patient_count} total patients.<br>
+          ${escapeHtml(item.recommended_action)}
+        </div>
+      </div>
+    `).join('')}
+  `;
+}
+
+function renderStateAnalysis(stateGroups){
+  const container = document.getElementById('state-analysis');
+  if(!stateGroups?.length){
+    container.innerHTML = `<div class="empty">No patient data available for state analysis yet.</div>`;
+    return;
+  }
+
+  container.innerHTML = stateGroups.map(item => `
+    <div class="state-card ${item.selected ? 'selected' : ''}">
+      <div class="state-card-top">
+        <div>
+          <h3>${escapeHtml(item.state)}</h3>
+          <div class="state-card-copy">${escapeHtml(item.top_condition)} pattern is driving the current risk mix.</div>
+        </div>
+        <div>${severityBadge(item.severity)}</div>
+      </div>
+      <div class="state-metrics">
+        <div class="metric"><div class="metric-label">Patients</div><div class="metric-value">${item.patient_count}</div></div>
+        <div class="metric"><div class="metric-label">Critical</div><div class="metric-value">${item.critical_count}</div></div>
+        <div class="metric"><div class="metric-label">Watch</div><div class="metric-value">${item.watch_count}</div></div>
+        <div class="metric"><div class="metric-label">Escalations</div><div class="metric-value">${item.recent_escalations}</div></div>
+      </div>
+      <div class="flag-list">${(item.dominant_flags || []).map(flag => `<span class="flag">${escapeHtml(flag)}</span>`).join('') || '<span class="subtle">No dominant flags yet.</span>'}</div>
+      <div class="state-card-copy" style="margin:12px 0 10px">${escapeHtml(item.recommended_action)}</div>
+      <ul class="prevention-list">
+        ${(item.prevention_methods || []).map(method => `<li>${escapeHtml(method)}</li>`).join('')}
+      </ul>
+      <div class="state-actions">
+        <button class="btn btn-secondary btn-inline" data-state-focus="${escapeHtml(item.state)}">Focus Queue</button>
+        ${item.selected ? '<button class="btn btn-primary btn-inline" data-state-focus="">Show All States</button>' : ''}
+      </div>
+    </div>
+  `).join('');
+
+  container.querySelectorAll('[data-state-focus]').forEach(button => {
+    button.addEventListener('click', () => setRegionFilter(button.dataset.stateFocus));
+  });
+}
+
+function renderAnalytics(analytics){
+  renderMap(analytics?.india_map || {}, analytics?.national || {});
+  renderAttentionStrip(analytics?.national || {}, analytics?.state_groups || []);
+  renderStateAnalysis(analytics?.state_groups || []);
+}
+
+function renderQueue(queue){
+  const body = document.getElementById('queue-body');
+  if(!queue.length){
+    body.innerHTML = `<tr><td colspan="4"><div class="queue-empty">No patients in this queue yet.</div></td></tr>`;
+    return;
+  }
+  body.innerHTML = queue.map(item => `
+    <tr data-id="${item.patient_id}">
+      <td>
+        <div class="patient-name">${item.patient_name}</div>
+        <div class="subtle">${item.region} · ${item.condition_flags.join(', ') || item.predicted_condition_label}</div>
+      </td>
+      <td>${riskBadge(item.effective_urgency)}</td>
+      <td>${formatDate(item.last_checkin_at)}</td>
+      <td>
+        <div>${item.next_task_title}</div>
+        <div class="subtle">${item.open_task_count} open task(s)</div>
+      </td>
+    </tr>
+  `).join('');
+
+  body.querySelectorAll('tr[data-id]').forEach(row=>{
+    row.addEventListener('click', ()=> openPatient(Number(row.dataset.id)));
+  });
+}
+
+function renderTasks(tasks){
+  const container = document.getElementById('task-list');
+  if(!tasks.length){
+    container.innerHTML = `<div class="empty">No tasks found for the current filters.</div>`;
+    return;
+  }
+  container.innerHTML = tasks.map(task => `
+    <div class="task-item">
+      <div class="task-title">${task.title}</div>
+      <div class="task-meta">${task.task_type.replaceAll('_',' ')} · ${task.status} · due ${task.due_at ? formatDate(task.due_at) : 'not set'}</div>
+      <div class="task-actions">
+        <span class="task-badge ${task.priority || 'routine'}">${task.priority || 'routine'}</span>
+        ${task.status !== 'in_progress' ? `<button class="btn btn-secondary btn-inline" data-action="in_progress" data-task="${task.id}">Start</button>` : ''}
+        ${task.status !== 'completed' ? `<button class="btn btn-primary btn-inline" data-action="completed" data-task="${task.id}">Complete</button>` : ''}
+      </div>
+    </div>
+  `).join('');
+
+  container.querySelectorAll('button[data-task]').forEach(button => {
+    button.addEventListener('click', async (event) => {
+      event.stopPropagation();
+      await updateTask(button.dataset.task, {status: button.dataset.action});
+      await loadDashboard();
+      if(state.selectedPatientId) await openPatient(state.selectedPatientId);
+    });
+  });
+}
+
+async function loadDashboard(){
+  const payload = await safeFetch(`/coordinator/dashboard${buildParams()}`, {headers: authHeaders()});
+  state.queue = payload.queue || [];
+  state.tasks = payload.tasks || [];
+  state.analytics = payload.analytics || {};
+  renderStats(payload.summary || {});
+  renderRegions(payload.regions || []);
+  renderAnalytics(state.analytics);
+  renderQueue(state.queue);
+  renderTasks(state.tasks);
+}
+
+async function openPatient(patientId){
+  state.selectedPatientId = patientId;
+  const detail = await safeFetch(`/coordinator/patients/${patientId}`, {headers: authHeaders()});
+  renderDrawer(detail);
+}
+
+function renderDrawer(detail){
+  document.getElementById('drawer-name').textContent = detail.profile.name;
+  document.getElementById('drawer-subtitle').textContent = `${detail.profile.region} · ${detail.profile.weeks_pregnant} weeks pregnant`;
+  const drawerBody = document.getElementById('drawer-body');
+
+  drawerBody.innerHTML = `
+    <div class="card">
+      <h3>Current Status</h3>
+      <div>${riskBadge(detail.summary.effective_urgency)}</div>
+      <p class="subtle" style="margin-top:10px">${detail.ai_summary}</p>
+    </div>
+
+    <div class="card">
+      <h3>Condition Flags</h3>
+      <div class="flag-list">${(detail.summary.condition_flags || []).map(flag => `<span class="flag">${flag}</span>`).join('') || '<span class="subtle">No active flags</span>'}</div>
+    </div>
+
+    <div class="card">
+      <h3>Doctor Notes</h3>
+      <div>${detail.notes ? detail.notes.replaceAll('\n','<br>') : '<span class="subtle">No notes added yet.</span>'}</div>
+    </div>
+
+    <div class="card">
+      <h3>Quick Actions</h3>
+      <div class="quick-actions">
+        <button class="btn btn-primary" data-quick="family_call">Call Family</button>
+        <button class="btn btn-secondary" data-quick="phc_visit">Schedule PHC Visit</button>
+        <button class="btn btn-secondary" data-quick="transport">Arrange Transport</button>
+        <button class="btn btn-secondary" data-quick="follow_up">Book Follow-up</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>Create Custom Task</h3>
+      <div class="form-group">
+        <label for="task-title">Task Title</label>
+        <input id="task-title" type="text" placeholder="e.g. Call PHC nurse">
+      </div>
+      <div class="form-group">
+        <label for="task-type">Task Type</label>
+        <select id="task-type">
+          <option value="follow_up">Follow-up</option>
+          <option value="family_call">Family Call</option>
+          <option value="phc_visit">PHC Visit</option>
+          <option value="transport">Transport</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label for="task-priority">Priority</label>
+        <select id="task-priority">
+          <option value="routine">Routine</option>
+          <option value="high">High</option>
+          <option value="critical">Critical</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label for="task-details">Details</label>
+        <textarea id="task-details" placeholder="Add instructions or context..."></textarea>
+      </div>
+      <button class="btn btn-primary" id="create-task-btn" type="button">Create Task</button>
+    </div>
+
+    <div class="card">
+      <h3>Existing Tasks</h3>
+      <div class="task-list" id="drawer-task-list" style="padding:0"></div>
+    </div>
+  `;
+
+  document.querySelectorAll('[data-quick]').forEach(button => {
+    button.addEventListener('click', () => quickCreateTask(button.dataset.quick, detail.profile.name));
+  });
+  document.getElementById('create-task-btn').addEventListener('click', createCustomTask);
+  renderDrawerTasks(detail.tasks || []);
+  document.getElementById('drawer').classList.add('open');
+  document.getElementById('drawer').setAttribute('aria-hidden','false');
+}
+
+function renderDrawerTasks(tasks){
+  const container = document.getElementById('drawer-task-list');
+  if(!container) return;
+  if(!tasks.length){
+    container.innerHTML = `<div class="empty">No tasks on this patient yet.</div>`;
+    return;
+  }
+  container.innerHTML = tasks.map(task => `
+    <div class="task-item">
+      <div class="task-title">${task.title}</div>
+      <div class="task-meta">${task.task_type.replaceAll('_',' ')} · ${task.status} · ${task.due_at ? formatDate(task.due_at) : 'no due date'}</div>
+      <div class="task-actions">
+        <span class="task-badge ${task.priority || 'routine'}">${task.priority || 'routine'}</span>
+        ${task.status !== 'in_progress' ? `<button class="btn btn-secondary btn-inline" data-drawer-action="in_progress" data-task="${task.id}">Start</button>` : ''}
+        ${task.status !== 'completed' ? `<button class="btn btn-primary btn-inline" data-drawer-action="completed" data-task="${task.id}">Complete</button>` : ''}
+      </div>
+    </div>
+  `).join('');
+  container.querySelectorAll('button[data-task]').forEach(button => {
+    button.addEventListener('click', async () => {
+      await updateTask(button.dataset.task, {status: button.dataset.drawerAction});
+      await loadDashboard();
+      if(state.selectedPatientId) await openPatient(state.selectedPatientId);
+    });
+  });
+}
+
+async function quickCreateTask(taskType, patientName){
+  const presets = {
+    family_call: {title:`Call ${patientName}'s family`, details:'Confirm the family understands the updated risk and next steps.', priority:'high'},
+    phc_visit: {title:'Schedule PHC visit', details:'Book the earliest available PHC follow-up and confirm attendance.', priority:'high'},
+    transport: {title:'Arrange transport', details:'Coordinate same-day transport support for hospital escalation.', priority:'critical'},
+    follow_up: {title:'Book follow-up check', details:'Schedule follow-up call or visit within 24 hours.', priority:'routine'}
+  };
+  const preset = presets[taskType];
+  await createTask({
+    task_type: taskType,
+    title: preset.title,
+    details: preset.details,
+    priority: preset.priority
+  });
+}
+
+async function createCustomTask(){
+  const title = document.getElementById('task-title').value.trim();
+  if(!title){
+    alert('Enter a task title.');
+    return;
+  }
+  await createTask({
+    task_type: document.getElementById('task-type').value,
+    title,
+    details: document.getElementById('task-details').value.trim(),
+    priority: document.getElementById('task-priority').value
+  });
+}
+
+async function createTask(payload){
+  if(!state.selectedPatientId) return;
+  await safeFetch(`/coordinator/patients/${state.selectedPatientId}/tasks`, {
+    method:'POST',
+    headers: authHeaders(),
+    body: JSON.stringify(payload)
+  });
+  await loadDashboard();
+  await openPatient(state.selectedPatientId);
+}
+
+async function updateTask(taskId, payload){
+  await safeFetch(`/coordinator/tasks/${taskId}`, {
+    method:'PATCH',
+    headers: authHeaders(),
+    body: JSON.stringify(payload)
+  });
+}
+
+function closeDrawer(){
+  document.getElementById('drawer').classList.remove('open');
+  document.getElementById('drawer').setAttribute('aria-hidden','true');
+}
+
+function logout(){
+  localStorage.removeItem('niva_coordinator_token');
+  state.token = '';
+  closeDrawer();
+  showLogin();
+}
+
+document.getElementById('login-btn').addEventListener('click', login);
+document.getElementById('logout-btn').addEventListener('click', logout);
+document.getElementById('refresh-btn').addEventListener('click', loadDashboard);
+document.getElementById('filter-region').addEventListener('change', loadDashboard);
+document.getElementById('filter-status').addEventListener('change', loadDashboard);
+document.getElementById('close-drawer').addEventListener('click', closeDrawer);
+
+window.addEventListener('keydown', event => {
+  if(event.key === 'Escape') closeDrawer();
+});
+
+bootstrap();
+</script>
+</body>
+</html>

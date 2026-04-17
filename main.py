@@ -21,12 +21,15 @@ app = FastAPI(
     version='1.0.0'
 )
 
-from routers import users, checkin_daily, checkin_3day, diagnosis
+from routers import auth, checkin_3day, checkin_daily, coordinator, diagnosis, doctor, users
 
+app.include_router(auth.router)
 app.include_router(users.router)
 app.include_router(checkin_daily.router)
 app.include_router(checkin_3day.router)
 app.include_router(diagnosis.router)
+app.include_router(doctor.router)
+app.include_router(coordinator.router)
 
 app.add_middleware(
     CORSMiddleware,

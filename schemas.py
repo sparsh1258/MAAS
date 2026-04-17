@@ -88,3 +88,44 @@ class ResetRequest(BaseModel):
     user_id: Optional[int] = None
     task_id: Optional[str] = None
     difficulty: Optional[str] = None
+
+
+class AuthLoginRequest(BaseModel):
+    email: str
+    password: str
+    role: str
+
+
+class AuthAccountResponse(BaseModel):
+    id: int
+    email: str
+    role: str
+    display_name: str
+
+    class Config:
+        from_attributes = True
+
+
+class AuthLoginResponse(BaseModel):
+    access_token: str
+    token_type: str = "bearer"
+    user: AuthAccountResponse
+
+
+class DoctorNoteUpdate(BaseModel):
+    notes: str = ""
+
+
+class CoordinatorTaskCreate(BaseModel):
+    task_type: str
+    title: str
+    details: Optional[str] = None
+    priority: str = "routine"
+    due_at: Optional[datetime] = None
+
+
+class CoordinatorTaskUpdate(BaseModel):
+    status: Optional[str] = None
+    details: Optional[str] = None
+    priority: Optional[str] = None
+    due_at: Optional[datetime] = None

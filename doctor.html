@@ -1,0 +1,584 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Niva Doctor Portal</title>
+<style>
+  :root{
+    --bg:#f4f7fb;
+    --surface:#ffffff;
+    --surface-soft:#f8fbff;
+    --line:#d9e3ef;
+    --line-strong:#bfd1e4;
+    --text:#152235;
+    --muted:#5f7288;
+    --primary:#2f6fed;
+    --primary-soft:#e8f0ff;
+    --danger:#b42318;
+    --danger-bg:#fde7e5;
+    --warn:#b54708;
+    --warn-bg:#fff0d5;
+    --safe:#027a48;
+    --safe-bg:#e7f8ef;
+    --shadow:0 16px 40px rgba(21,34,53,.08);
+    --radius:18px;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:Inter,Segoe UI,Arial,sans-serif;background:var(--bg);color:var(--text)}
+  .hidden{display:none!important}
+  .auth-screen{min-height:100vh;display:grid;place-items:center;padding:32px}
+  .auth-card{width:min(100%,420px);background:var(--surface);border:1px solid var(--line);border-radius:24px;padding:28px;box-shadow:var(--shadow)}
+  .auth-kicker{font-size:12px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--primary)}
+  .auth-title{font-size:34px;font-weight:700;line-height:1.05;margin:10px 0 8px}
+  .auth-copy{margin:0 0 20px;color:var(--muted);line-height:1.65}
+  .demo-box{margin:0 0 18px;padding:12px 14px;border-radius:16px;background:var(--surface-soft);border:1px solid var(--line)}
+  .demo-box strong{display:block;font-size:12px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:6px}
+  .demo-box div{font-size:14px;line-height:1.6}
+  .form-group{margin-bottom:14px}
+  label{display:block;font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-bottom:7px}
+  input,select,textarea{width:100%;padding:13px 14px;border-radius:14px;border:1px solid var(--line-strong);background:#fff;font:inherit;color:var(--text);outline:none}
+  input:focus,select:focus,textarea:focus{border-color:var(--primary);box-shadow:0 0 0 4px rgba(47,111,237,.12)}
+  .btn{appearance:none;border:none;border-radius:14px;padding:13px 16px;font:inherit;font-weight:700;cursor:pointer;transition:transform .16s ease,box-shadow .16s ease,background .16s ease}
+  .btn:hover{transform:translateY(-1px)}
+  .btn-primary{background:var(--primary);color:#fff;box-shadow:0 10px 22px rgba(47,111,237,.24)}
+  .btn-secondary{background:#fff;color:var(--text);border:1px solid var(--line)}
+  .login-error{margin-top:12px;color:var(--danger);font-size:13px}
+  .app-shell{min-height:100vh;padding:22px 24px 30px}
+  .topbar{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;margin-bottom:18px}
+  .topbar h1{margin:0;font-size:30px;line-height:1.05}
+  .topbar p{margin:6px 0 0;color:var(--muted)}
+  .topbar-actions{display:flex;gap:10px;align-items:center}
+  .link-btn{display:inline-flex;align-items:center;justify-content:center;padding:12px 14px;border-radius:14px;border:1px solid var(--line);background:#fff;color:var(--text);text-decoration:none;font-weight:600}
+  .alert-banner{display:flex;align-items:center;gap:12px;margin-bottom:16px;padding:14px 16px;border-radius:16px;background:var(--danger-bg);border:1px solid #f2b8b5;color:#7a271a}
+  .alert-banner strong{font-size:13px;text-transform:uppercase;letter-spacing:.08em}
+  .filters{display:grid;grid-template-columns:1.1fr 1fr 1fr auto;gap:12px;padding:14px 16px;border-radius:18px;background:var(--surface);border:1px solid var(--line);box-shadow:var(--shadow);margin-bottom:18px}
+  .board{position:relative}
+  .table-card{background:var(--surface);border:1px solid var(--line);border-radius:22px;box-shadow:var(--shadow);overflow:hidden}
+  table{width:100%;border-collapse:collapse}
+  thead{background:#f8fbff}
+  th,td{padding:16px 18px;text-align:left;border-bottom:1px solid var(--line)}
+  th{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+  td{font-size:14px;vertical-align:middle}
+  tbody tr{cursor:pointer;transition:background .14s ease}
+  tbody tr:hover{background:#f8fbff}
+  tbody tr:last-child td{border-bottom:none}
+  .patient-name{font-weight:700;color:var(--text)}
+  .subtle{color:var(--muted);font-size:12px}
+  .risk-badge{display:inline-flex;align-items:center;padding:7px 10px;border-radius:999px;font-size:12px;font-weight:700}
+  .risk-badge.danger{background:var(--danger-bg);color:var(--danger)}
+  .risk-badge.warn{background:var(--warn-bg);color:var(--warn)}
+  .risk-badge.safe{background:var(--safe-bg);color:var(--safe)}
+  .trend{font-size:20px;font-weight:700}
+  .trend.up{color:var(--danger)}
+  .trend.down{color:var(--safe)}
+  .trend.steady{color:var(--muted)}
+  .action-pill{display:inline-flex;padding:8px 12px;border-radius:999px;background:var(--primary-soft);color:var(--primary);font-size:12px;font-weight:700}
+  .empty{padding:28px;color:var(--muted);text-align:center}
+  .detail-panel{position:fixed;top:0;right:0;width:min(520px,100vw);height:100vh;background:var(--surface);border-left:1px solid var(--line);box-shadow:-20px 0 42px rgba(21,34,53,.08);transform:translateX(104%);transition:transform .26s ease;z-index:40;display:flex;flex-direction:column}
+  .detail-panel.open{transform:translateX(0)}
+  .detail-head{padding:22px 22px 16px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;gap:10px}
+  .detail-head h2{margin:0;font-size:24px}
+  .detail-body{padding:18px 22px 26px;overflow:auto;display:grid;gap:16px}
+  .close-btn{border:none;background:#eef4ff;color:var(--primary);width:38px;height:38px;border-radius:12px;font-size:22px;cursor:pointer}
+  .panel-card{border:1px solid var(--line);border-radius:18px;padding:16px;background:#fff}
+  .panel-card h3{margin:0 0 12px;font-size:15px}
+  .meta-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+  .meta-cell{padding:12px;border-radius:14px;background:#f8fbff;border:1px solid #e8eef6}
+  .meta-label{font-size:11px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:6px}
+  .meta-value{font-size:15px;font-weight:700}
+  .flags{display:flex;flex-wrap:wrap;gap:8px}
+  .flag{padding:8px 10px;border-radius:999px;border:1px solid var(--line);background:#f8fbff;font-size:12px;font-weight:700;color:var(--text)}
+  .summary-box{line-height:1.65;color:var(--text)}
+  .chart-grid{display:grid;grid-template-columns:1fr;gap:12px}
+  .chart-box{border:1px solid var(--line);border-radius:16px;padding:14px;background:#fbfdff}
+  .chart-box h4{margin:0 0 10px;font-size:13px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
+  .chart-box svg{width:100%;height:150px;display:block}
+  .legend{display:flex;gap:12px;flex-wrap:wrap;font-size:12px;color:var(--muted);margin-top:8px}
+  .legend span{display:inline-flex;align-items:center;gap:6px}
+  .legend i{display:inline-block;width:10px;height:10px;border-radius:999px}
+  textarea{min-height:120px;resize:vertical}
+  .status-row{display:flex;justify-content:space-between;align-items:center;font-size:12px;color:var(--muted);margin-top:8px}
+  .panel-actions{display:flex;gap:10px;flex-wrap:wrap}
+  .panel-actions .btn{flex:1}
+  @media (max-width: 1100px){
+    .filters{grid-template-columns:1fr 1fr}
+  }
+  @media (max-width: 780px){
+    .app-shell{padding:18px 14px 28px}
+    .topbar{flex-direction:column}
+    .topbar-actions{width:100%;flex-wrap:wrap}
+    .filters{grid-template-columns:1fr}
+    th:nth-child(3),td:nth-child(3){display:none}
+  }
+</style>
+</head>
+<body>
+  <div id="login-view" class="auth-screen">
+    <div class="auth-card">
+      <div class="auth-kicker">Doctor role</div>
+      <div class="auth-title">Clinical Dashboard Login</div>
+      <p class="auth-copy">Sign in to review patient risk, chart trends, and act on escalations.</p>
+      <div class="demo-box">
+        <strong>Demo credentials</strong>
+        <div>Email: <code>doctor@niva.local</code></div>
+        <div>Password: <code>doctor123</code></div>
+      </div>
+      <div class="form-group">
+        <label for="login-email">Email</label>
+        <input id="login-email" type="email" value="doctor@niva.local" autocomplete="email">
+      </div>
+      <div class="form-group">
+        <label for="login-password">Password</label>
+        <input id="login-password" type="password" value="doctor123" autocomplete="current-password">
+      </div>
+      <button class="btn btn-primary" id="login-btn" type="button">Sign In</button>
+      <div class="login-error hidden" id="login-error"></div>
+    </div>
+  </div>
+
+  <div id="app-view" class="app-shell hidden">
+    <div class="topbar">
+      <div>
+        <h1>Doctor Portal</h1>
+        <p id="viewer-line">Clinical review dashboard</p>
+      </div>
+      <div class="topbar-actions">
+        <a class="link-btn" href="/">Open Patient Portal</a>
+        <button class="btn btn-secondary" type="button" id="logout-btn">Logout</button>
+      </div>
+    </div>
+
+    <div id="alert-banner" class="alert-banner hidden"></div>
+
+    <div class="filters">
+      <div class="form-group" style="margin:0">
+        <label for="filter-risk">Risk level</label>
+        <select id="filter-risk">
+          <option value="">All risk levels</option>
+          <option value="go_to_hospital_today">Go To Hospital Today</option>
+          <option value="visit_phc_this_week">Visit PHC This Week</option>
+          <option value="monitor_at_home">Monitor At Home</option>
+        </select>
+      </div>
+      <div class="form-group" style="margin:0">
+        <label for="filter-flag">Condition flag</label>
+        <select id="filter-flag">
+          <option value="">All flags</option>
+          <option value="Preeclampsia">Preeclampsia</option>
+          <option value="GDM">GDM</option>
+          <option value="Anaemia">Anaemia</option>
+          <option value="Fetal Distress">Fetal Distress</option>
+          <option value="Preterm">Preterm</option>
+        </select>
+      </div>
+      <div class="form-group" style="margin:0">
+        <label for="filter-date">Last check-in date</label>
+        <input id="filter-date" type="date">
+      </div>
+      <div style="display:flex;align-items:end">
+        <button class="btn btn-secondary" id="refresh-btn" type="button" style="width:100%">Refresh</button>
+      </div>
+    </div>
+
+    <div class="board">
+      <div class="table-card">
+        <table>
+          <thead>
+            <tr>
+              <th>Patient Name</th>
+              <th>Week of Pregnancy</th>
+              <th>Last Check-in</th>
+              <th>Risk Level</th>
+              <th>Trend</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody id="patient-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <aside id="detail-panel" class="detail-panel" aria-hidden="true">
+    <div class="detail-head">
+      <div>
+        <h2 id="detail-name">Patient detail</h2>
+        <div class="subtle" id="detail-subtitle">Select a patient</div>
+      </div>
+      <button class="close-btn" id="close-panel" type="button">&times;</button>
+    </div>
+    <div class="detail-body" id="detail-body">
+      <div class="empty">Choose a patient row to inspect trends and notes.</div>
+    </div>
+  </aside>
+
+<script>
+const API = window.location.origin;
+const state = {
+  token: localStorage.getItem('niva_doctor_token') || '',
+  patients: [],
+  selectedPatientId: null,
+  noteDraft: ''
+};
+
+const urgencyClass = {
+  go_to_hospital_today: 'danger',
+  visit_phc_this_week: 'warn',
+  monitor_at_home: 'safe'
+};
+
+function showLogin(message=''){
+  document.getElementById('login-view').classList.remove('hidden');
+  document.getElementById('app-view').classList.add('hidden');
+  renderLoginError(message);
+}
+
+function showApp(){
+  document.getElementById('login-view').classList.add('hidden');
+  document.getElementById('app-view').classList.remove('hidden');
+}
+
+function renderLoginError(message){
+  const box=document.getElementById('login-error');
+  box.textContent=message;
+  box.classList.toggle('hidden', !message);
+}
+
+function authHeaders(){
+  return {
+    'Content-Type': 'application/json',
+    'Authorization': `Bearer ${state.token}`
+  };
+}
+
+async function safeFetch(path, options={}){
+  const response = await fetch(API + path, options);
+  if(response.status === 401 || response.status === 403){
+    localStorage.removeItem('niva_doctor_token');
+    state.token = '';
+    showLogin('Session expired. Sign in again.');
+    throw new Error('Unauthorized');
+  }
+  if(!response.ok){
+    const payload = await response.json().catch(()=>({detail:'Request failed'}));
+    throw new Error(payload.detail || 'Request failed');
+  }
+  return response.json();
+}
+
+async function login(){
+  renderLoginError('');
+  const email = document.getElementById('login-email').value.trim();
+  const password = document.getElementById('login-password').value;
+  try{
+    const payload = await safeFetch('/auth/login', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({email, password, role:'doctor'})
+    });
+    state.token = payload.access_token;
+    localStorage.setItem('niva_doctor_token', state.token);
+    document.getElementById('viewer-line').textContent = `${payload.user.display_name} · Doctor`;
+    showApp();
+    await loadPatients();
+  }catch(error){
+    renderLoginError(error.message);
+  }
+}
+
+async function bootstrap(){
+  if(!state.token){
+    showLogin();
+    return;
+  }
+  try{
+    const me = await safeFetch('/auth/me', {headers: authHeaders()});
+    if(me.role !== 'doctor'){
+      throw new Error('This login is not a doctor account.');
+    }
+    document.getElementById('viewer-line').textContent = `${me.display_name} · Doctor`;
+    showApp();
+    await loadPatients();
+  }catch(error){
+    showLogin(error.message);
+  }
+}
+
+function paramsFromFilters(){
+  const params = new URLSearchParams();
+  const risk = document.getElementById('filter-risk').value;
+  const flag = document.getElementById('filter-flag').value;
+  const date = document.getElementById('filter-date').value;
+  if(risk) params.set('risk_level', risk);
+  if(flag) params.set('condition_flag', flag);
+  if(date) params.set('last_checkin_date', date);
+  const qs = params.toString();
+  return qs ? `?${qs}` : '';
+}
+
+function formatDate(value){
+  if(!value) return 'No check-in';
+  const date = new Date(value);
+  return date.toLocaleString([], {day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit'});
+}
+
+function riskBadge(level){
+  const labelMap = {
+    go_to_hospital_today: 'Go To Hospital Today',
+    visit_phc_this_week: 'Visit PHC This Week',
+    monitor_at_home: 'Monitor At Home'
+  };
+  return `<span class="risk-badge ${urgencyClass[level] || 'safe'}">${labelMap[level] || level}</span>`;
+}
+
+function trendArrow(value){
+  const cls = value === '↑' ? 'up' : value === '↓' ? 'down' : 'steady';
+  return `<span class="trend ${cls}">${value || '→'}</span>`;
+}
+
+function renderBanner(items){
+  const banner = document.getElementById('alert-banner');
+  if(!items.length){
+    banner.classList.add('hidden');
+    banner.innerHTML = '';
+    return;
+  }
+  banner.classList.remove('hidden');
+  const names = items.map(item => item.patient_name).join(', ');
+  banner.innerHTML = `<strong>Escalated in last 24h</strong><div>${names}</div>`;
+}
+
+function renderPatients(items){
+  const tbody = document.getElementById('patient-tbody');
+  if(!items.length){
+    tbody.innerHTML = `<tr><td colspan="6"><div class="empty">No patients match the current filters.</div></td></tr>`;
+    return;
+  }
+  tbody.innerHTML = items.map(item => `
+    <tr data-id="${item.patient_id}">
+      <td>
+        <div class="patient-name">${item.patient_name}</div>
+        <div class="subtle">${item.predicted_condition_label}</div>
+      </td>
+      <td>${item.weeks_pregnant} weeks</td>
+      <td>${formatDate(item.last_checkin_at)}</td>
+      <td>${riskBadge(item.effective_urgency)}</td>
+      <td>${trendArrow(item.trend)}</td>
+      <td><span class="action-pill">Open</span></td>
+    </tr>
+  `).join('');
+
+  tbody.querySelectorAll('tr[data-id]').forEach(row=>{
+    row.addEventListener('click', () => openPatient(Number(row.dataset.id)));
+  });
+}
+
+async function loadPatients(){
+  const payload = await safeFetch(`/doctor/patients${paramsFromFilters()}`, {headers: authHeaders()});
+  state.patients = payload.patients || [];
+  renderBanner(payload.banner_patients || []);
+  renderPatients(state.patients);
+}
+
+function createChart(seriesList, formatter){
+  const allValues = seriesList.flatMap(series => series.data.map(point => point.value)).filter(value => value !== null && value !== undefined);
+  if(!allValues.length){
+    return `<div class="empty">Not enough data to draw a chart.</div>`;
+  }
+  const width = 440;
+  const height = 150;
+  const min = Math.min(...allValues);
+  const max = Math.max(...allValues);
+  const range = Math.max(max - min, 1);
+  const pointsCount = Math.max(...seriesList.map(series => series.data.length));
+
+  const polyline = (data) => data.map((point, index) => {
+    const x = pointsCount === 1 ? width / 2 : (index / (pointsCount - 1)) * width;
+    const y = height - (((point.value - min) / range) * (height - 18)) - 9;
+    return `${x.toFixed(1)},${y.toFixed(1)}`;
+  }).join(' ');
+
+  const xLabels = seriesList[0].data.map((point, index) => {
+    const x = pointsCount === 1 ? width / 2 : (index / (pointsCount - 1)) * width;
+    return `<text x="${x.toFixed(1)}" y="${height}" font-size="11" text-anchor="middle" fill="#7b8ca3">${formatter(point.label)}</text>`;
+  }).join('');
+
+  const paths = seriesList.map(series => `
+    <polyline fill="none" stroke="${series.color}" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round" points="${polyline(series.data)}"></polyline>
+  `).join('');
+
+  const guides = Array.from({length:4}).map((_, index)=>{
+    const y = 14 + ((height - 30) / 3) * index;
+    return `<line x1="0" y1="${y}" x2="${width}" y2="${y}" stroke="#e6edf6" stroke-width="1"></line>`;
+  }).join('');
+
+  return `<svg viewBox="0 0 ${width} ${height + 16}" preserveAspectRatio="none">${guides}${paths}${xLabels}</svg>`;
+}
+
+function renderDetail(detail){
+  const panel = document.getElementById('detail-panel');
+  const body = document.getElementById('detail-body');
+  document.getElementById('detail-name').textContent = detail.profile.name;
+  document.getElementById('detail-subtitle').textContent = `${detail.profile.region} · ${detail.profile.weeks_pregnant} weeks pregnant`;
+
+  const bpSvg = createChart([
+    {color:'#2f6fed', data: detail.bp_history.map(point => ({label: point.label, value: point.systolic}))},
+    {color:'#7aa8ff', data: detail.bp_history.map(point => ({label: point.label, value: point.diastolic}))}
+  ], label => label);
+
+  const weightSvg = createChart([
+    {color:'#1d4ed8', data: detail.weight_history.map(point => ({label: point.label, value: point.value}))}
+  ], label => label);
+
+  const kickSvg = createChart([
+    {color:'#2563eb', data: detail.kick_history.map(point => ({label: point.label, value: point.value}))}
+  ], label => label);
+
+  body.innerHTML = `
+    <div class="panel-card">
+      <div class="meta-grid">
+        <div class="meta-cell">
+          <div class="meta-label">Current Risk</div>
+          <div class="meta-value">${riskBadge(detail.summary.effective_urgency)}</div>
+        </div>
+        <div class="meta-cell">
+          <div class="meta-label">Trend</div>
+          <div class="meta-value">${trendArrow(detail.summary.trend)}</div>
+        </div>
+        <div class="meta-cell">
+          <div class="meta-label">Reviewed</div>
+          <div class="meta-value">${detail.reviewed ? 'Yes' : 'Pending'}</div>
+        </div>
+        <div class="meta-cell">
+          <div class="meta-label">Escalated</div>
+          <div class="meta-value">${detail.escalated_at ? 'Yes' : 'No'}</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel-card">
+      <h3>Condition Flags Detected</h3>
+      <div class="flags">${(detail.summary.condition_flags || []).map(flag => `<span class="flag">${flag}</span>`).join('') || '<span class="subtle">No active flags</span>'}</div>
+    </div>
+
+    <div class="panel-card">
+      <h3>AI Diagnosis Summary</h3>
+      <div class="summary-box">${detail.ai_summary}</div>
+    </div>
+
+    <div class="panel-card">
+      <h3>Vitals History</h3>
+      <div class="chart-grid">
+        <div class="chart-box">
+          <h4>Blood Pressure</h4>
+          ${bpSvg}
+          <div class="legend"><span><i style="background:#2f6fed"></i>Systolic</span><span><i style="background:#7aa8ff"></i>Diastolic</span></div>
+        </div>
+        <div class="chart-box">
+          <h4>Weight</h4>
+          ${weightSvg}
+        </div>
+        <div class="chart-box">
+          <h4>Kick Count</h4>
+          ${kickSvg}
+        </div>
+      </div>
+    </div>
+
+    <div class="panel-card">
+      <h3>Doctor's Notes</h3>
+      <textarea id="notes-box" placeholder="Add clinical notes, context, or follow-up advice...">${detail.notes || ''}</textarea>
+      <div class="status-row">
+        <span>Autosaves on blur</span>
+        <span id="notes-status">${detail.reviewed_at ? `Reviewed ${formatDate(detail.reviewed_at)}` : 'Not reviewed yet'}</span>
+      </div>
+    </div>
+
+    <div class="panel-card">
+      <h3>Actions</h3>
+      <div class="panel-actions">
+        <button class="btn btn-secondary" id="mark-reviewed-btn" type="button">Mark Reviewed</button>
+        <button class="btn btn-primary" id="escalate-btn" type="button">Escalate To Hospital</button>
+      </div>
+    </div>
+  `;
+
+  document.getElementById('notes-box').addEventListener('blur', saveNotes);
+  document.getElementById('mark-reviewed-btn').addEventListener('click', markReviewed);
+  document.getElementById('escalate-btn').addEventListener('click', escalatePatient);
+  panel.classList.add('open');
+  panel.setAttribute('aria-hidden', 'false');
+}
+
+async function openPatient(patientId){
+  state.selectedPatientId = patientId;
+  const detail = await safeFetch(`/doctor/patients/${patientId}`, {headers: authHeaders()});
+  renderDetail(detail);
+}
+
+async function saveNotes(){
+  if(!state.selectedPatientId) return;
+  const notes = document.getElementById('notes-box').value;
+  const status = document.getElementById('notes-status');
+  status.textContent = 'Saving...';
+  try{
+    const payload = await safeFetch(`/doctor/patients/${state.selectedPatientId}/notes`, {
+      method:'PATCH',
+      headers: authHeaders(),
+      body: JSON.stringify({notes})
+    });
+    status.textContent = `Saved ${formatDate(payload.updated_at)}`;
+  }catch(error){
+    status.textContent = error.message;
+  }
+}
+
+async function markReviewed(){
+  if(!state.selectedPatientId) return;
+  const detail = await safeFetch(`/doctor/patients/${state.selectedPatientId}/review`, {
+    method:'POST',
+    headers: authHeaders()
+  });
+  renderDetail(detail);
+  await loadPatients();
+}
+
+async function escalatePatient(){
+  if(!state.selectedPatientId) return;
+  const detail = await safeFetch(`/doctor/patients/${state.selectedPatientId}/escalate`, {
+    method:'POST',
+    headers: authHeaders()
+  });
+  renderDetail(detail);
+  await loadPatients();
+}
+
+function closePanel(){
+  document.getElementById('detail-panel').classList.remove('open');
+  document.getElementById('detail-panel').setAttribute('aria-hidden', 'true');
+}
+
+function logout(){
+  localStorage.removeItem('niva_doctor_token');
+  state.token = '';
+  closePanel();
+  showLogin();
+}
+
+document.getElementById('login-btn').addEventListener('click', login);
+document.getElementById('logout-btn').addEventListener('click', logout);
+document.getElementById('refresh-btn').addEventListener('click', loadPatients);
+document.getElementById('filter-risk').addEventListener('change', loadPatients);
+document.getElementById('filter-flag').addEventListener('change', loadPatients);
+document.getElementById('filter-date').addEventListener('change', loadPatients);
+document.getElementById('close-panel').addEventListener('click', closePanel);
+
+window.addEventListener('keydown', event => {
+  if(event.key === 'Escape') closePanel();
+});
+
+bootstrap();
+</script>
+</body>
+</html>

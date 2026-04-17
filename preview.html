@@ -311,6 +311,78 @@ textarea.form-input{min-height:80px;resize:vertical}
 .card,.hero,.diag-strip{animation:softRise .55s ease both}
 @keyframes softRise{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:translateY(0)}}
 
+.login-page{min-height:100vh;padding:32px 18px 44px;position:relative;overflow:hidden;display:flex;flex-direction:column;justify-content:center}
+.login-page::before,
+.login-page::after{content:'';position:absolute;border-radius:999px;filter:blur(16px);pointer-events:none}
+.login-page::before{width:260px;height:260px;top:80px;left:-110px;background:radial-gradient(circle,rgba(242,167,184,.28),rgba(242,167,184,0) 72%)}
+.login-page::after{width:260px;height:260px;right:-110px;bottom:100px;background:radial-gradient(circle,rgba(177,221,214,.24),rgba(177,221,214,0) 72%)}
+.login-topbar{display:flex;justify-content:space-between;align-items:center;gap:12px;max-width:460px;width:100%;margin:0 auto 20px;position:relative;z-index:1}
+.login-brand{display:flex;flex-direction:column;gap:4px}
+.login-eyebrow{font-size:11px;font-weight:800;letter-spacing:.16em;text-transform:uppercase;color:#8e7481}
+.login-titlemark{font-family:'Playfair Display',serif;font-size:40px;color:var(--text);line-height:.92}
+.login-badge{display:flex;align-items:center;gap:8px;padding:10px 14px;border-radius:999px;background:rgba(255,255,255,.78);border:1px solid rgba(255,255,255,.92);box-shadow:0 14px 30px rgba(75,42,53,.08);font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--rose-deep)}
+.login-badge::before{content:'';width:8px;height:8px;border-radius:50%;background:linear-gradient(135deg,#ef8fa8,#f7c3d0);box-shadow:0 0 0 6px rgba(239,143,168,.12);animation:loginPulse 2.6s ease-in-out infinite}
+.login-stage{position:relative;z-index:1;max-width:460px;width:100%;margin:0 auto}
+.login-stage::before{content:'';position:absolute;inset:24px 26px auto;height:180px;border-radius:36px;background:linear-gradient(180deg,rgba(255,255,255,.64),rgba(255,255,255,0));filter:blur(8px);pointer-events:none}
+.login-orbit{display:none}
+.login-hero-card{position:relative;padding:34px 28px 28px;border-radius:34px;background:linear-gradient(155deg,rgba(255,255,255,.985),rgba(255,247,250,.955) 52%,rgba(246,243,251,.94));border:1px solid rgba(255,255,255,.98);box-shadow:0 26px 78px rgba(87,52,68,.15);backdrop-filter:blur(14px);overflow:hidden}
+.login-hero-card::before{content:'';position:absolute;inset:0 auto auto 0;width:100%;height:100%;background:linear-gradient(140deg,rgba(255,255,255,.34),rgba(255,255,255,0) 38%);pointer-events:none}
+.login-hero-card::after{content:'';position:absolute;inset:12px;border-radius:26px;border:1px solid rgba(255,255,255,.5);pointer-events:none;opacity:.75}
+.login-kicker{position:relative;z-index:1;font-size:11px;font-weight:900;letter-spacing:.14em;text-transform:uppercase;color:var(--rose-deep)}
+.login-hero-card h1{position:relative;z-index:1;margin-top:12px;font-family:'Playfair Display',serif;font-size:44px;line-height:.92;color:var(--text)}
+.login-hero-card p{position:relative;z-index:1;margin-top:14px;font-size:14px;line-height:1.72;color:var(--text-soft);max-width:320px}
+.login-chip-row{position:relative;z-index:1;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-top:24px}
+.login-chip{padding:12px 10px;border-radius:18px;background:linear-gradient(180deg,rgba(255,255,255,.84),rgba(255,255,255,.66));border:1px solid rgba(255,255,255,.9);font-size:11px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:#7b5162;text-align:center;line-height:1.4;box-shadow:inset 0 1px 0 rgba(255,255,255,.7)}
+.login-panel-shell{position:relative;z-index:1;margin-top:24px;padding:14px;border-radius:28px;background:linear-gradient(180deg,rgba(255,255,255,.42),rgba(255,255,255,.22));border:1px solid rgba(255,255,255,.74);box-shadow:inset 0 1px 0 rgba(255,255,255,.52)}
+.login-auth-switch{position:relative;z-index:1;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.login-switch-btn{appearance:none;border:1px solid rgba(255,255,255,.72);background:rgba(255,255,255,.38);border-radius:20px;padding:14px 15px;text-align:left;cursor:pointer;color:#947785;transition:all .22s ease;box-shadow:none}
+.login-switch-btn strong{display:block;font-size:13px;line-height:1.35;color:inherit}
+.login-switch-btn span{display:block;margin-top:3px;font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:inherit;opacity:.82}
+.login-switch-btn.active{transform:translateY(-1px);background:linear-gradient(180deg,rgba(255,255,255,.96),rgba(255,255,255,.88));border-color:rgba(255,255,255,.98);box-shadow:0 16px 34px rgba(87,52,68,.10);color:var(--text)}
+.login-switch-btn:not(.active):hover{background:rgba(255,255,255,.56);color:#866a77}
+.login-section-divider{height:1px;border:none;margin:18px 0;background:linear-gradient(90deg,rgba(224,117,144,0),rgba(224,117,144,.18),rgba(126,203,176,.18),rgba(224,117,144,0))}
+.login-panels{position:relative;z-index:1}
+.login-card{display:none;position:relative;z-index:1;padding:20px;border-radius:24px;background:linear-gradient(180deg,rgba(255,255,255,.9),rgba(255,252,253,.82));border:1px solid rgba(255,255,255,.9);box-shadow:0 16px 34px rgba(75,42,53,.08)}
+.login-card.active{display:block;animation:soft-reveal .28s ease both}
+.login-card::before{content:'';position:absolute;left:20px;right:20px;top:0;height:1px;background:linear-gradient(90deg,rgba(255,255,255,0),rgba(255,255,255,.82),rgba(255,255,255,0))}
+.login-auth-title{font-family:'Playfair Display',serif;font-size:29px;line-height:1.05;color:var(--text);margin:6px 0 8px}
+.login-helper{font-size:13px;line-height:1.7;color:var(--text-soft);margin-bottom:16px}
+.login-card .form-group{margin-bottom:12px}
+.login-card .form-row{gap:12px}
+.login-card .form-input{background:rgba(255,255,255,.96);border-color:#eadce6;box-shadow:inset 0 1px 0 rgba(255,255,255,.8),0 6px 18px rgba(87,52,68,.04)}
+.login-card .form-input:focus{border-color:var(--rose-deep);box-shadow:0 0 0 4px rgba(224,117,144,.10),inset 0 1px 0 rgba(255,255,255,.9)}
+.login-forgot-row{display:flex;justify-content:flex-end;margin:-4px 0 14px}
+.login-inline-link{border:none;background:transparent;padding:0;font-size:12px;font-weight:700;color:var(--rose-deep);cursor:pointer}
+.login-inline-link:hover{text-decoration:underline}
+.login-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.login-actions .btn-mini{flex:1;min-width:150px}
+.login-card .btn-p{margin-top:4px}
+.login-link-line{display:block;width:100%;border:none;background:transparent;padding:0;margin-top:14px;font-size:12px;line-height:1.6;color:var(--text-soft);text-align:left;cursor:pointer}
+.login-link-line strong{color:var(--rose-deep)}
+.login-link-line:hover strong{text-decoration:underline}
+.navbar{transition:transform .34s cubic-bezier(.19,1,.22,1),opacity .22s ease,box-shadow .22s ease}
+.navbar.nav-hidden{transform:translate(-50%,130%);opacity:0;pointer-events:none}
+@keyframes loginPulse{0%,100%{transform:scale(1);opacity:.9}50%{transform:scale(1.12);opacity:1}}
+.page.active.login-page .login-topbar{animation:soft-reveal .52s cubic-bezier(.19,1,.22,1) both}
+.page.active.login-page .login-stage{animation:soft-reveal .72s cubic-bezier(.19,1,.22,1) .06s both}
+.page.active.login-page .login-card{animation:soft-reveal .72s cubic-bezier(.19,1,.22,1) .12s both}
+@media(max-width:520px){
+  .login-chip-row{grid-template-columns:1fr}
+  .login-chip{text-align:left;padding:11px 12px}
+  .login-auth-switch{grid-template-columns:1fr}
+}
+@media(max-width:420px){
+  .login-page{padding:22px 14px 38px}
+  .login-topbar{align-items:flex-start;flex-direction:column}
+  .login-badge{align-self:flex-start}
+  .login-hero-card{padding:24px 20px;border-radius:28px}
+  .login-hero-card h1{font-size:34px}
+  .login-panel-shell{padding:12px}
+  .login-card{padding:16px}
+  .login-auth-title{font-size:24px}
+  .login-actions .btn-mini{min-width:0}
+}
+
 /* ═══ TOAST ═══════════════════════════════════════════════════════ */
 .toast{position:fixed;top:20px;left:50%;transform:translateX(-50%) translateY(-80px);background:var(--text);color:#fff;padding:12px 24px;border-radius:30px;font-size:13px;font-weight:500;z-index:999;transition:transform .35s cubic-bezier(.34,1.56,.64,1);white-space:nowrap;max-width:340px;text-align:center}
 .toast.show{transform:translateX(-50%) translateY(0)}
@@ -616,7 +688,100 @@ body::after{
 <div class="shell">
 
 <!-- ══════════ HOME ══════════════════════════════════════════════ -->
-<div class="page active" id="page-home">
+<div class="page active login-page" id="page-login">
+  <div class="login-topbar">
+    <div class="login-brand">
+      <div class="login-eyebrow">Prenatal care companion</div>
+      <div class="login-titlemark">Niva</div>
+    </div>
+    <div class="login-badge">Daily support</div>
+  </div>
+
+  <div class="login-stage">
+    <div class="login-orbit a"></div>
+    <div class="login-orbit b"></div>
+
+    <div class="login-hero-card">
+      <div class="login-kicker">Calm, daily pregnancy care</div>
+      <h1>Welcome to<br/>Niva</h1>
+      <p>Track daily health changes, keep reminders in one place, and step into your care dashboard with less friction.</p>
+      <div class="login-chip-row">
+        <span class="login-chip">Daily check-ins</span>
+        <span class="login-chip">Risk insights</span>
+        <span class="login-chip">Smart reminders</span>
+      </div>
+
+      <div class="login-panel-shell">
+        <div class="login-auth-switch" role="tablist" aria-label="Account access">
+          <button class="login-switch-btn active" id="login-switch-signin" type="button" onclick="setLaunchMode('signin')">
+            <strong>Already have an account? Sign In</strong>
+            <span>Existing users</span>
+          </button>
+          <button class="login-switch-btn" id="login-switch-create" type="button" onclick="setLaunchMode('create')">
+            <strong>New user? Create Profile</strong>
+            <span>First-time setup</span>
+          </button>
+        </div>
+
+        <hr class="login-section-divider"/>
+
+        <div class="login-panels">
+          <section class="login-card active" id="login-signin-card">
+            <div class="card-t"><span class="icon-badge sm"><svg class="icon-inline"><use href="#i-user"/></svg></span> Sign In</div>
+            <div class="login-auth-title">Welcome Back</div>
+            <div class="login-helper">Use your email and password to continue where you left off.</div>
+
+            <div class="form-group">
+              <label class="form-lbl">Email</label>
+              <input class="form-input" id="signin-email" type="email" placeholder="asha@example.com" autocomplete="email">
+            </div>
+            <div class="form-group">
+              <label class="form-lbl">Password</label>
+              <input class="form-input" id="signin-password" type="password" placeholder="Enter your password" autocomplete="current-password">
+            </div>
+
+            <div class="login-forgot-row">
+              <button class="login-inline-link" type="button" onclick="forgotLaunchPassword()">Forgot Password?</button>
+            </div>
+
+            <button class="btn-p" id="signin-primary" type="button" onclick="signInFromLaunch()">Sign In</button>
+            <button class="login-link-line" type="button" onclick="setLaunchMode('create')">Don't have an account? <strong>&rarr; Create Profile</strong></button>
+          </section>
+
+          <section class="login-card" id="login-create-card">
+            <div class="card-t"><span class="icon-badge sm"><svg class="icon-inline"><use href="#i-heart"/></svg></span> Create Profile</div>
+            <div class="login-auth-title">Create Your Profile</div>
+            <div class="login-helper">Set up your account first, then complete the health profile inside the app.</div>
+
+            <div class="form-group">
+              <label class="form-lbl">Full Name</label>
+              <input class="form-input" id="create-name" placeholder="Asha Sharma" autocomplete="name">
+            </div>
+            <div class="form-group">
+              <label class="form-lbl">Email</label>
+              <input class="form-input" id="create-email" type="email" placeholder="asha@example.com" autocomplete="email">
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label class="form-lbl">Password</label>
+                <input class="form-input" id="create-password" type="password" placeholder="Create password" autocomplete="new-password">
+              </div>
+              <div class="form-group">
+                <label class="form-lbl">Confirm Password</label>
+                <input class="form-input" id="create-confirm-password" type="password" placeholder="Confirm password" autocomplete="new-password">
+              </div>
+            </div>
+
+            <button class="btn-p" id="create-primary" type="button" onclick="createProfileFromLaunch()">Create Profile</button>
+            <button class="login-link-line" type="button" onclick="setLaunchMode('signin')">Already have an account? <strong>&rarr; Sign In</strong></button>
+          </section>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="page" id="page-home">
   <div class="header">
     <div>
       <div class="hg">Namaste</div>
@@ -1013,32 +1178,32 @@ body::after{
 </div><!-- /shell -->
 
 <!-- NAV -->
-<nav class="navbar">
-  <div class="nav-item active" onclick="goPage('home',this);navTap(this)">
+<nav class="navbar nav-hidden">
+  <div class="nav-item" data-page="home" onclick="goPage('home',this);navTap(this)">
     <div class="nav-ico" aria-hidden="true">
       <svg viewBox="0 0 24 24"><path d="M3 10.5 12 3l9 7.5"></path><path d="M5.5 9.5V20h13V9.5"></path><path d="M9.5 20v-5h5v5"></path></svg>
     </div>
     <div class="nav-lbl">Home</div>
   </div>
-  <div class="nav-item" onclick="goPage('checkin',this);navTap(this)">
+  <div class="nav-item" data-page="checkin" onclick="goPage('checkin',this);navTap(this)">
     <div class="nav-ico" aria-hidden="true">
       <svg viewBox="0 0 24 24"><path d="M5 19V9"></path><path d="M10 19V5"></path><path d="M15 19v-8"></path><path d="M20 19v-4"></path></svg>
     </div>
     <div class="nav-lbl">Chart</div>
   </div>
-  <div class="nav-item" onclick="goPage('ai',this);navTap(this)">
+  <div class="nav-item" data-page="ai" onclick="goPage('ai',this);navTap(this)">
     <div class="nav-ico" aria-hidden="true">
       <svg viewBox="0 0 24 24"><path d="M12 3l1.8 4.7L18.5 9l-4.7 1.3L12 15l-1.8-4.7L5.5 9l4.7-1.3z"></path><path d="M18.5 15.5l.9 2.1 2.1.9-2.1.9-.9 2.1-.9-2.1-2.1-.9 2.1-.9z"></path></svg>
     </div>
     <div class="nav-lbl">Niva AI</div>
   </div>
-  <div class="nav-item" onclick="goPage('alerts',this);navTap(this)">
+  <div class="nav-item" data-page="alerts" onclick="goPage('alerts',this);navTap(this)">
     <div class="nav-ico" aria-hidden="true">
       <svg viewBox="0 0 24 24"><path d="M15 18H9"></path><path d="M18 16v-5a6 6 0 1 0-12 0v5l-2 2h16z"></path></svg>
     </div>
     <div class="nav-lbl">Alerts</div>
   </div>
-  <div class="nav-item" onclick="goPage('profile',this);navTap(this)">
+  <div class="nav-item" data-page="profile" onclick="goPage('profile',this);navTap(this)">
     <div class="nav-ico" aria-hidden="true">
       <svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"></circle><path d="M5 20c1.8-3.3 4.2-5 7-5s5.2 1.7 7 5"></path></svg>
     </div>
@@ -1085,6 +1250,7 @@ body::after{
 // ══════════════════════════════════════════════
 const API = window.location.protocol === 'file:' ? 'http://localhost:7860' : window.location.origin;
 let uid=null, user=null;
+let launchMode='signin', localAccounts=[], activeAccountEmail='';
 let kickCount=0, mealsCount=3, symptoms={};
 let customAlertType='urgent';
 let readIds=new Set();
@@ -1713,6 +1879,7 @@ function duePopupItems(){
   return [...meds,...events].filter(item=>item.mins<=15&&item.mins>=-30&&!dismissedPopupIds.has(item.id)&&!snoozed(item.id));
 }
 function checkReminderPopups(force=false){
+  if(document.getElementById('page-login')?.classList.contains('active') && !force) return;
   if(activeReminderPopup) return;
   let item=duePopupItems()[0];
   if(!item&&force){
@@ -1761,18 +1928,125 @@ function closeDrawer(){document.getElementById('drawer').classList.remove('open'
 // ══════════════════════════════════════════════
 // NAVIGATION
 // ══════════════════════════════════════════════
+function setNavVisibility(show){
+  const nav=document.querySelector('.navbar');
+  if(!nav) return;
+  nav.classList.toggle('nav-hidden',!show);
+}
+
+function normalizeEmail(v=''){return v.trim().toLowerCase();}
+function loadLocalAccounts(){
+  try{
+    const raw=JSON.parse(localStorage.getItem('niva_local_accounts')||'[]');
+    localAccounts=Array.isArray(raw)?raw:[];
+  }catch(e){localAccounts=[];}
+  try{activeAccountEmail=normalizeEmail(localStorage.getItem('niva_active_account')||'');}
+  catch(e){activeAccountEmail='';}
+}
+function saveLocalAccounts(){
+  try{localStorage.setItem('niva_local_accounts',JSON.stringify(localAccounts));}catch(e){}
+  try{
+    if(activeAccountEmail) localStorage.setItem('niva_active_account',activeAccountEmail);
+    else localStorage.removeItem('niva_active_account');
+  }catch(e){}
+}
+function findLocalAccount(email){return localAccounts.find(acc=>normalizeEmail(acc.email)===normalizeEmail(email));}
+function setLaunchMode(mode){
+  launchMode=mode==='create'?'create':'signin';
+  const isCreate=launchMode==='create';
+  document.getElementById('login-switch-signin')?.classList.toggle('active',!isCreate);
+  document.getElementById('login-switch-create')?.classList.toggle('active',isCreate);
+  document.getElementById('login-signin-card')?.classList.toggle('active',!isCreate);
+  document.getElementById('login-create-card')?.classList.toggle('active',isCreate);
+}
+function updateLaunchScreen(){
+  const signinEmail=document.getElementById('signin-email');
+  const signinPassword=document.getElementById('signin-password');
+  const createName=document.getElementById('create-name');
+  const createEmail=document.getElementById('create-email');
+  const remembered=findLocalAccount(activeAccountEmail);
+  if(signinEmail && !signinEmail.value && remembered) signinEmail.value=remembered.email;
+  if(createName && !createName.value && user?.name) createName.value=user.name;
+  if(createEmail && !createEmail.value && remembered) createEmail.value=remembered.email;
+  if(signinPassword && launchMode==='signin') signinPassword.value='';
+  if(!localAccounts.length) setLaunchMode('create');
+  else setLaunchMode(launchMode);
+}
+
+function prefillProfileFromLaunch(nameOverride=''){
+  const launchName=nameOverride||document.getElementById('create-name')?.value.trim();
+  const profileName=document.getElementById('f-name');
+  if(profileName && launchName) profileName.value=launchName;
+}
+
+function openProfileSetupFromLaunch(nameOverride=''){
+  prefillProfileFromLaunch(nameOverride);
+  goPage('profile');
+  showForm();
+  setTimeout(()=>document.getElementById('f-name')?.focus(),120);
+}
+
+function continueSavedUser(){
+  if(!user){toast('Create a profile first');openProfileSetupFromLaunch();return;}
+  goPage('home');
+}
+
+function forgotLaunchPassword(){
+  const email=normalizeEmail(document.getElementById('signin-email')?.value||'');
+  if(!email){toast('Enter your email first');return;}
+  if(!findLocalAccount(email)){toast('No local account found for that email');return;}
+  toast('Password reset is not connected in this demo yet');
+}
+
+function signInFromLaunch(){
+  const email=normalizeEmail(document.getElementById('signin-email')?.value||'');
+  const password=document.getElementById('signin-password')?.value||'';
+  if(!email||!password){toast('Enter email and password');return;}
+  const account=findLocalAccount(email);
+  if(!account || account.password!==password){toast('Incorrect email or password');return;}
+  activeAccountEmail=account.email;
+  saveLocalAccounts();
+  if(user){continueSavedUser();return;}
+  openProfileSetupFromLaunch(account.fullName||'');
+  toast('Finish your health profile to enter Niva');
+}
+
+function createProfileFromLaunch(){
+  const fullName=document.getElementById('create-name')?.value.trim()||'';
+  const email=normalizeEmail(document.getElementById('create-email')?.value||'');
+  const password=document.getElementById('create-password')?.value||'';
+  const confirm=document.getElementById('create-confirm-password')?.value||'';
+  if(!fullName||!email||!password||!confirm){toast('Please fill all fields');return;}
+  if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){toast('Enter a valid email');return;}
+  if(password.length<6){toast('Password must be at least 6 characters');return;}
+  if(password!==confirm){toast('Passwords do not match');return;}
+  if(findLocalAccount(email)){
+    toast('Account already exists. Sign in instead');
+    document.getElementById('signin-email').value=email;
+    setLaunchMode('signin');
+    return;
+  }
+  localAccounts.unshift({fullName,email,password});
+  activeAccountEmail=email;
+  saveLocalAccounts();
+  document.getElementById('signin-email').value=email;
+  document.getElementById('signin-password').value=password;
+  openProfileSetupFromLaunch(fullName);
+  toast('Account created. Complete your health profile');
+}
+
 function goPage(name,el){
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
   document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
   document.getElementById('page-'+name).classList.add('active');
-  if(el) el.classList.add('active');
+  const navTarget=el||document.querySelector(`.nav-item[data-page="${name}"]`);
+  if(navTarget) navTarget.classList.add('active');
+  setNavVisibility(name!=='login');
+  closeDrawer();
   window.scrollTo({top:0,behavior:'smooth'});
+  if(name!=='login') setTimeout(()=>checkReminderPopups(),180);
 }
-function openAIPage(){
-  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
-  document.getElementById('page-ai').classList.add('active');
-  window.scrollTo({top:0,behavior:'smooth'});
-}
+function openAIPage(){ goPage('ai'); }
 function navTap(el){
   if(!el) return;
   el.classList.remove('tap');
@@ -1917,7 +2191,14 @@ async function saveProfile(){
     });
     uid=u.id;user=u;
     try{localStorage.setItem('niva_user',JSON.stringify(u));}catch(e){}
+    const linked=findLocalAccount(activeAccountEmail);
+    if(linked){
+      linked.fullName=u.name;
+      saveLocalAccounts();
+    }
     renderProfile(u);refreshHome(u);
+    updateLaunchScreen();
+    goPage('home');
     toast('Profile saved! Namaste '+u.name+'!');
   }catch(e){toast(e.message);}
 }
@@ -2381,6 +2662,8 @@ window.addEventListener('load',()=>{
     const s=localStorage.getItem('niva_user');
     if(s){const u=JSON.parse(s);uid=u.id;user=u;refreshHome(u);renderProfile(u);}
   }catch(e){}
+  loadLocalAccounts();
+  updateLaunchScreen();
   loadMedicineReminders();
   renderMedicineReminders();
   loadFamilyState();
@@ -2392,6 +2675,8 @@ window.addEventListener('load',()=>{
   disableGestureCardOverlays();
   installJudgePolish();
   installRangeTouchFeedback();
+  goPage('login');
+  setTimeout(()=>document.getElementById(launchMode==='create'?'create-name':'signin-email')?.focus(),180);
   checkReminderPopups();
   setInterval(()=>{renderMedicineReminders();renderCalendar();renderAlerts();checkReminderPopups();},30000);
 });
