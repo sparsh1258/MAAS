@@ -19,12 +19,24 @@
     --danger-bg:#fde7e5;
     --warn:#b54708;
     --warn-bg:#fff0d5;
+    --caution:#b7791f;
+    --caution-bg:#fff7cc;
     --safe:#027a48;
     --safe-bg:#e7f8ef;
+    --neutral:#6b7280;
+    --neutral-bg:#eef2f7;
     --shadow:0 16px 40px rgba(16,24,40,.08);
   }
   *{box-sizing:border-box}
-  body{margin:0;font-family:Inter,Segoe UI,Arial,sans-serif;background:var(--bg);color:var(--text)}
+  body{
+    margin:0;
+    font-family:Inter,Segoe UI,Arial,sans-serif;
+    background:
+      radial-gradient(circle at top left, rgba(37,99,235,.08), transparent 26%),
+      radial-gradient(circle at top right, rgba(15,118,110,.07), transparent 22%),
+      linear-gradient(180deg, #f8fbff 0%, var(--bg) 26%, #edf4fb 100%);
+    color:var(--text)
+  }
   .hidden{display:none!important}
   .auth-screen{min-height:100vh;display:grid;place-items:center;padding:32px}
   .auth-card{width:min(100%,420px);background:var(--surface);border:1px solid var(--line);border-radius:24px;padding:28px;box-shadow:var(--shadow)}
@@ -46,44 +58,93 @@
   .btn-inline{padding:10px 12px;border-radius:12px;font-size:13px}
   .login-error{margin-top:12px;color:var(--danger);font-size:13px}
   .app-shell{min-height:100vh;padding:22px 24px 28px}
-  .topbar{display:flex;justify-content:space-between;gap:16px;align-items:flex-start;margin-bottom:18px}
+  .topbar{
+    display:flex;justify-content:space-between;gap:16px;align-items:flex-start;margin-bottom:18px;
+    padding:18px 20px;border:1px solid rgba(191,208,221,.7);border-radius:24px;
+    background:linear-gradient(135deg, rgba(255,255,255,.96), rgba(243,248,253,.92));
+    box-shadow:var(--shadow)
+  }
   .topbar h1{margin:0;font-size:30px}
   .topbar p{margin:6px 0 0;color:var(--muted)}
   .topbar-actions{display:flex;gap:10px;flex-wrap:wrap}
   .link-btn{display:inline-flex;align-items:center;justify-content:center;padding:12px 14px;border-radius:14px;border:1px solid var(--line);background:#fff;color:var(--text);text-decoration:none;font-weight:600}
   .stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;margin-bottom:18px}
-  .stat-card{padding:18px;border-radius:20px;background:var(--surface);border:1px solid var(--line);box-shadow:var(--shadow)}
+  .stat-card{padding:18px;border-radius:20px;background:var(--surface);border:1px solid var(--line);box-shadow:var(--shadow);position:relative;overflow:hidden}
+  .stat-card::after{content:'';position:absolute;inset:0 auto auto 0;width:100%;height:4px;background:#dbe7f5}
+  .stat-card.red::after{background:linear-gradient(90deg, #d83a2e, #f2998f)}
+  .stat-card.orange::after{background:linear-gradient(90deg, #ed8b1d, #f6c17d)}
+  .stat-card.blue::after{background:linear-gradient(90deg, #2563eb, #82a7ff)}
+  .stat-card.green::after{background:linear-gradient(90deg, #22a867, #82ddb1)}
   .stat-label{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);font-weight:700}
   .stat-value{font-size:30px;font-weight:800;margin-top:8px}
-  .filters{display:grid;grid-template-columns:1fr 1fr auto;gap:12px;padding:14px 16px;border-radius:18px;background:var(--surface);border:1px solid var(--line);box-shadow:var(--shadow);margin-bottom:18px}
+  .filters{display:grid;grid-template-columns:1fr 1fr auto;gap:12px;padding:14px 16px;border-radius:18px;background:linear-gradient(135deg, rgba(255,255,255,.98), rgba(244,249,255,.94));border:1px solid var(--line);box-shadow:var(--shadow);margin-bottom:18px}
+  .briefing-panel{margin-bottom:18px}
+  .briefing-grid{display:grid;grid-template-columns:1.1fr .9fr;gap:14px;padding:18px}
+  .brief-card{border:1px solid var(--line);border-radius:18px;padding:16px;background:linear-gradient(180deg, rgba(249,252,255,.96), rgba(242,248,252,.98))}
+  .brief-card h3{margin:0 0 8px;font-size:16px}
+  .brief-copy{font-size:14px;line-height:1.7;color:var(--muted)}
+  .action-list{margin:0;padding-left:18px}
+  .action-list li{margin:0 0 8px;font-size:13px;line-height:1.5}
+  .intervention-rail{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-bottom:18px}
+  .rail-card{border:1px solid var(--line);border-radius:20px;padding:16px;background:rgba(255,255,255,.94);box-shadow:var(--shadow);position:relative;overflow:hidden}
+  .rail-card::before{content:'';position:absolute;inset:0 auto 0 0;width:6px;background:#cbd5e1}
+  .rail-card.red::before{background:linear-gradient(180deg, #d83a2e, #f2a7a0)}
+  .rail-card.orange::before{background:linear-gradient(180deg, #ed8b1d, #ffd29a)}
+  .rail-card.yellow::before{background:linear-gradient(180deg, #d4a017, #ffe696)}
+  .rail-card.blue::before{background:linear-gradient(180deg, #2563eb, #8fb3ff)}
+  .rail-card.green::before{background:linear-gradient(180deg, #22a867, #9fe4c1)}
+  .rail-kicker{font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:8px}
+  .rail-title{font-size:17px;font-weight:800;margin-bottom:8px}
+  .rail-copy{font-size:13px;line-height:1.6;color:var(--muted)}
   .analytics-grid{display:grid;grid-template-columns:1.3fr .9fr;gap:18px;margin-bottom:18px}
-  .map-panel{overflow:hidden}
-  .map-shell{padding:18px 20px 20px}
+  .map-panel{overflow:hidden;position:relative}
+  .map-panel::before{
+    content:'';
+    position:absolute;
+    inset:-80px auto auto -40px;
+    width:260px;
+    height:260px;
+    border-radius:999px;
+    background:radial-gradient(circle, rgba(37,99,235,.12), rgba(37,99,235,0));
+    pointer-events:none;
+  }
+  .map-shell{padding:18px 20px 20px;background:linear-gradient(180deg, rgba(248,251,255,.92), rgba(255,255,255,.96))}
   .map-layout{display:grid;grid-template-columns:1.1fr .9fr;gap:18px;align-items:start}
-  .map-frame{border:1px solid var(--line);border-radius:20px;background:#fbfdff;padding:16px}
+  .map-frame{border:1px solid var(--line);border-radius:24px;background:linear-gradient(180deg, #fbfdff 0%, #f4f8fc 100%);padding:18px;box-shadow:inset 0 1px 0 rgba(255,255,255,.9);position:relative}
   .map-legend{display:flex;gap:10px;flex-wrap:wrap}
   .legend-item{display:inline-flex;align-items:center;gap:8px;font-size:12px;color:var(--muted);font-weight:600}
   .legend-dot{width:10px;height:10px;border-radius:999px}
-  .legend-dot.critical{background:var(--danger)}
-  .legend-dot.watch{background:var(--warn)}
-  .legend-dot.stable{background:var(--safe)}
-  .legend-dot.inactive{background:#c6d4df}
+  .legend-dot.red{background:var(--danger)}
+  .legend-dot.orange{background:var(--warn)}
+  .legend-dot.yellow{background:var(--caution)}
+  .legend-dot.green{background:var(--safe)}
+  .legend-dot.gray{background:#c6d4df}
   .attention-strip{display:grid;gap:10px}
   .attention-card{border:1px solid var(--line);border-left:4px solid var(--accent);border-radius:16px;padding:14px;background:var(--surface-soft)}
-  .attention-card.critical{border-left-color:var(--danger);background:#fff6f5}
-  .attention-card.watch{border-left-color:var(--warn);background:#fffaf0}
+  .attention-card.red{border-left-color:var(--danger);background:#fff6f5}
+  .attention-card.orange{border-left-color:var(--warn);background:#fffaf0}
+  .attention-card.yellow{border-left-color:var(--caution);background:#fffdee}
+  .attention-card.green{border-left-color:var(--safe);background:#f4fbf7}
+  .attention-card.gray{border-left-color:var(--neutral);background:#f6f8fb}
   .attention-card h3{margin:0 0 6px;font-size:15px}
   .attention-copy{font-size:13px;line-height:1.6;color:var(--muted)}
   .state-analysis{padding:14px;display:grid;gap:12px;max-height:760px;overflow:auto}
   .state-card{border:1px solid var(--line);border-radius:18px;padding:14px;background:var(--surface-soft)}
   .state-card.selected{border-color:var(--accent);box-shadow:inset 0 0 0 1px rgba(37,99,235,.18)}
+  .state-card.red{border-left:5px solid var(--danger)}
+  .state-card.orange{border-left:5px solid var(--warn)}
+  .state-card.yellow{border-left:5px solid var(--caution)}
+  .state-card.green{border-left:5px solid var(--safe)}
+  .state-card.gray{border-left:5px solid var(--neutral)}
   .state-card-top{display:flex;justify-content:space-between;gap:12px;align-items:flex-start;margin-bottom:12px}
   .state-card h3{margin:0;font-size:17px}
   .state-card-copy{font-size:13px;color:var(--muted);line-height:1.6}
   .severity-badge{display:inline-flex;align-items:center;padding:7px 10px;border-radius:999px;font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase}
-  .severity-badge.critical{background:var(--danger-bg);color:var(--danger)}
-  .severity-badge.watch{background:var(--warn-bg);color:var(--warn)}
-  .severity-badge.stable{background:var(--safe-bg);color:var(--safe)}
+  .severity-badge.red{background:var(--danger-bg);color:var(--danger)}
+  .severity-badge.orange{background:var(--warn-bg);color:var(--warn)}
+  .severity-badge.yellow{background:var(--caution-bg);color:var(--caution)}
+  .severity-badge.green{background:var(--safe-bg);color:var(--safe)}
+  .severity-badge.gray{background:var(--neutral-bg);color:var(--neutral)}
   .state-metrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin-bottom:12px}
   .metric{padding:10px;border-radius:14px;background:#fff;border:1px solid var(--line)}
   .metric-label{font-size:11px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);font-weight:700}
@@ -93,19 +154,98 @@
   .state-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px}
   .state-actions button{padding:10px 12px}
   .india-map{width:100%;height:auto;display:block}
-  .india-base{fill:#eef4f9;stroke:#bfd0dd;stroke-width:2}
-  .india-marker{cursor:pointer;transition:transform .14s ease}
-  .india-marker:hover{transform:translateY(-2px)}
-  .india-marker circle{stroke:#fff;stroke-width:2}
-  .india-marker text{font-size:10px;font-weight:800;text-anchor:middle;fill:#0f172a;pointer-events:none}
-  .india-marker.critical circle{fill:var(--danger)}
-  .india-marker.watch circle{fill:var(--warn)}
-  .india-marker.stable circle{fill:var(--safe)}
-  .india-marker.inactive circle{fill:#c6d4df}
-  .india-marker.selected circle{stroke:var(--accent);stroke-width:4}
+  .india-base{fill:url(#india-surface);stroke:#c6d7e6;stroke-width:1.2}
+  .state-tile{cursor:pointer;transition:transform .14s ease}
+  .state-tile:hover{transform:translateY(-2px)}
+  .state-tile rect{rx:8;ry:8;stroke:#fff;stroke-width:2}
+  .state-tile text{font-size:9px;font-weight:800;text-anchor:middle;fill:#0f172a;pointer-events:none}
+  .state-tile .tile-count{font-size:8px;font-weight:700}
+  .state-tile.red rect{fill:var(--danger)}
+  .state-tile.orange rect{fill:var(--warn)}
+  .state-tile.yellow rect{fill:var(--caution)}
+  .state-tile.green rect{fill:var(--safe)}
+  .state-tile.gray rect{fill:#c6d4df}
+  .state-tile.red text,
+  .state-tile.orange text,
+  .state-tile.green text{fill:#ffffff}
+  .state-tile.selected rect{stroke:var(--accent);stroke-width:4}
+  .map-state{cursor:pointer}
+  .map-state path{
+    stroke:#ffffff;
+    stroke-width:1.1;
+    transition:fill .25s ease, stroke .25s ease, filter .25s ease, opacity .25s ease, transform .25s ease;
+  }
+  .map-state:hover path{stroke:#0f172a;stroke-width:1.5}
+  .map-state.selected path{stroke:var(--accent);stroke-width:2.2}
+  .map-state.red path{fill:#d83a2e;filter:url(#danger-glow)}
+  .map-state.orange path{fill:#ed8b1d;filter:url(#warn-glow)}
+  .map-state.yellow path{fill:#f4c24f}
+  .map-state.green path{fill:#22a867}
+  .map-state.gray path{fill:#dde8f1}
+  .state-halo{pointer-events:none;opacity:.78;transform-origin:center;animation:haloPulse 2.8s ease-out infinite}
+  .state-halo.red{fill:rgba(216,58,46,.2)}
+  .state-halo.orange{fill:rgba(237,139,29,.18)}
+  .state-chip{pointer-events:none}
+  .state-chip rect{
+    rx:10;
+    ry:10;
+    fill:rgba(255,255,255,.95);
+    stroke:rgba(17,24,39,.08);
+    stroke-width:1;
+    filter:url(#chip-shadow);
+  }
+  .state-chip text{
+    text-anchor:middle;
+    font-size:9px;
+    font-weight:800;
+    fill:#102132;
+    paint-order:stroke;
+    stroke:rgba(255,255,255,.95);
+    stroke-width:3px;
+    stroke-linejoin:round;
+  }
+  .state-chip .chip-count{
+    font-size:8px;
+    font-weight:700;
+    fill:#486273;
+  }
+  .state-chip.red rect{fill:#fff0ee}
+  .state-chip.orange rect{fill:#fff5e9}
+  .state-chip.yellow rect{fill:#fffbe8}
+  .state-chip.green rect{fill:#eefaf4}
+  .map-tooltip{
+    position:absolute;
+    left:16px;
+    top:16px;
+    width:min(240px, calc(100% - 32px));
+    padding:14px 14px 12px;
+    border-radius:18px;
+    background:rgba(10,20,32,.9);
+    color:#f8fbff;
+    box-shadow:0 18px 40px rgba(15,23,42,.22);
+    backdrop-filter:blur(10px);
+    pointer-events:none;
+    opacity:0;
+    transform:translateY(6px);
+    transition:opacity .16s ease, transform .16s ease;
+    z-index:4
+  }
+  .map-tooltip.show{opacity:1;transform:translateY(0)}
+  .map-tooltip-title{font-size:15px;font-weight:800;margin-bottom:6px}
+  .map-tooltip-band{font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:#bcd2ff;margin-bottom:8px}
+  .map-tooltip-copy{font-size:12px;line-height:1.55;color:#d7e4f3}
+  .map-tooltip-metrics{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:10px 0}
+  .tooltip-metric{padding:8px 9px;border-radius:12px;background:rgba(255,255,255,.08)}
+  .tooltip-metric strong{display:block;font-size:14px;color:#fff}
+  .tooltip-metric span{display:block;font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:#c2d1e6;margin-top:4px}
+  @keyframes haloPulse{
+    0%{transform:scale(.82);opacity:.18}
+    55%{transform:scale(1.18);opacity:.44}
+    100%{transform:scale(1.42);opacity:0}
+  }
   .grid{display:grid;grid-template-columns:1.2fr .8fr;gap:18px}
   .panel{background:var(--surface);border:1px solid var(--line);border-radius:22px;box-shadow:var(--shadow);overflow:hidden}
-  .panel-head{display:flex;justify-content:space-between;align-items:center;padding:18px 20px 14px;border-bottom:1px solid var(--line)}
+  .panel-head{display:flex;justify-content:space-between;align-items:center;padding:18px 20px 14px;border-bottom:1px solid var(--line);background:linear-gradient(180deg, rgba(248,251,255,.96), rgba(255,255,255,.9))}
   .panel-head h2{margin:0;font-size:18px}
   table{width:100%;border-collapse:collapse}
   th,td{padding:14px 18px;text-align:left;border-bottom:1px solid var(--line)}
@@ -141,6 +281,8 @@
   @media (max-width: 1100px){
     .stats{grid-template-columns:repeat(2,minmax(0,1fr))}
     .filters{grid-template-columns:1fr 1fr}
+    .briefing-grid{grid-template-columns:1fr}
+    .intervention-rail{grid-template-columns:1fr}
     .analytics-grid{grid-template-columns:1fr}
     .map-layout{grid-template-columns:1fr}
     .grid{grid-template-columns:1fr}
@@ -218,23 +360,50 @@
       </div>
     </div>
 
+    <div class="panel briefing-panel">
+      <div class="panel-head">
+        <h2>Union Health Briefing</h2>
+        <div class="subtle">National maternal risk picture and low-cost action plan</div>
+      </div>
+      <div class="briefing-grid">
+        <div class="brief-card">
+          <h3>Minister's Situation Note</h3>
+          <div class="brief-copy" id="minister-briefing">State-wise maternal risk briefing will appear here.</div>
+        </div>
+        <div class="brief-card">
+          <h3>Priority Actions</h3>
+          <ul class="action-list" id="minister-actions"></ul>
+        </div>
+      </div>
+    </div>
+
+    <div id="intervention-rail" class="intervention-rail">
+      <div class="rail-card blue">
+        <div class="rail-kicker">National intervention</div>
+        <div class="rail-title">Loading actions</div>
+        <div class="rail-copy">Priority central actions will appear here once the dashboard data is loaded.</div>
+      </div>
+    </div>
+
     <div class="analytics-grid">
       <div class="panel map-panel">
         <div class="panel-head">
           <div>
             <h2>India State Risk Map</h2>
-            <div class="subtle" id="map-summary">State-by-state maternal risk overview</div>
+            <div class="subtle" id="map-summary">Clear state-level maternal risk map</div>
           </div>
           <div class="map-legend">
-            <span class="legend-item"><span class="legend-dot critical"></span>Immediate attention</span>
-            <span class="legend-item"><span class="legend-dot watch"></span>Needs active follow-up</span>
-            <span class="legend-item"><span class="legend-dot stable"></span>Routine monitoring</span>
-            <span class="legend-item"><span class="legend-dot inactive"></span>No live data</span>
+            <span class="legend-item"><span class="legend-dot red"></span>Red alert</span>
+            <span class="legend-item"><span class="legend-dot orange"></span>Orange watch</span>
+            <span class="legend-item"><span class="legend-dot yellow"></span>Yellow monitor</span>
+            <span class="legend-item"><span class="legend-dot green"></span>Green stable</span>
+            <span class="legend-item"><span class="legend-dot gray"></span>No live data</span>
           </div>
         </div>
         <div class="map-shell">
           <div class="map-layout">
             <div class="map-frame">
+              <div id="map-tooltip" class="map-tooltip"></div>
               <svg id="india-map" class="india-map" viewBox="0 0 420 520" role="img" aria-label="India maternal risk map"></svg>
             </div>
             <div id="attention-strip" class="attention-strip"></div>
@@ -293,14 +462,22 @@
     </div>
   </aside>
 
+<script src="https://cdn.jsdelivr.net/npm/d3@7/dist/d3.min.js"></script>
 <script>
 const API = window.location.origin;
+const INDIA_MAP_DATA_URL = `${API}/india-map`;
 const state = {
   token: localStorage.getItem('niva_coordinator_token') || '',
   queue: [],
   tasks: [],
   analytics: {},
-  selectedPatientId: null
+  selectedPatientId: null,
+  indiaGeoJson: null
+};
+
+const INDIA_MAP_ALIASES = {
+  'Dadra and Nagar Haveli': 'Dadra and Nagar Haveli and Daman and Diu',
+  'Daman and Diu': 'Dadra and Nagar Haveli and Daman and Diu'
 };
 
 const urgencyClass = {
@@ -323,6 +500,41 @@ function escapeHtml(value){
     .replaceAll('>', '&gt;')
     .replaceAll('"', '&quot;')
     .replaceAll("'", '&#39;');
+}
+
+function mapStateName(value){
+  return INDIA_MAP_ALIASES[value] || value;
+}
+
+function mapSummaryText(national = {}){
+  const statesWithData = national?.states_with_data ?? 0;
+  const redStates = national?.red_states ?? 0;
+  const orangeStates = national?.orange_states ?? 0;
+  const yellowStates = national?.yellow_states ?? 0;
+  const greenStates = national?.green_states ?? 0;
+  return `${statesWithData} states reporting. ${redStates} red alert, ${orangeStates} orange watch, ${yellowStates} yellow monitor, ${greenStates} green stable.`;
+}
+
+function buildMapLookup(mapData = {}){
+  const lookup = new Map((mapData.states || []).map(item => [item.state, item]));
+  if(lookup.has('Dadra and Nagar Haveli and Daman and Diu')){
+    const merged = lookup.get('Dadra and Nagar Haveli and Daman and Diu');
+    lookup.set('Dadra and Nagar Haveli', merged);
+    lookup.set('Daman and Diu', merged);
+  }
+  return lookup;
+}
+
+async function loadIndiaGeoJson(){
+  if(state.indiaGeoJson){
+    return state.indiaGeoJson;
+  }
+  const response = await fetch(INDIA_MAP_DATA_URL, {cache: 'force-cache'});
+  if(!response.ok){
+    throw new Error('Unable to load India map boundaries');
+  }
+  state.indiaGeoJson = await response.json();
+  return state.indiaGeoJson;
 }
 
 function formatDate(value){
@@ -416,13 +628,13 @@ function buildParams(){
   return qs ? `?${qs}` : '';
 }
 
-function renderStats(summary){
+function renderStats(summary, national = {}){
   const grid = document.getElementById('stats-grid');
   grid.innerHTML = `
-    <div class="stat-card"><div class="stat-label">Critical Today</div><div class="stat-value">${summary.critical_today ?? 0}</div></div>
-    <div class="stat-card"><div class="stat-label">Pending Tasks</div><div class="stat-value">${summary.pending_tasks ?? 0}</div></div>
-    <div class="stat-card"><div class="stat-label">PHC Visits Due</div><div class="stat-value">${summary.phc_visits_due ?? 0}</div></div>
-    <div class="stat-card"><div class="stat-label">Completed Today</div><div class="stat-value">${summary.completed_today ?? 0}</div></div>
+    <div class="stat-card red"><div class="stat-label">Red Alert States</div><div class="stat-value">${national.red_states ?? 0}</div></div>
+    <div class="stat-card orange"><div class="stat-label">Orange Watch States</div><div class="stat-value">${national.orange_states ?? 0}</div></div>
+    <div class="stat-card blue"><div class="stat-label">Same-Day Escalations</div><div class="stat-value">${national.same_day_cases ?? summary.critical_today ?? 0}</div></div>
+    <div class="stat-card green"><div class="stat-label">States Reporting Data</div><div class="stat-value">${national.states_with_data ?? 0}</div></div>
   `;
 }
 
@@ -435,10 +647,11 @@ function renderRegions(regions){
 
 function severityBadge(level){
   const labelMap = {
-    critical: 'Immediate attention',
-    watch: 'Needs follow-up',
-    stable: 'Routine',
-    inactive: 'No data'
+    red: 'Red alert',
+    orange: 'Orange watch',
+    yellow: 'Yellow monitor',
+    green: 'Green stable',
+    gray: 'No data'
   };
   return `<span class="severity-badge ${level}">${labelMap[level] || level}</span>`;
 }
@@ -448,21 +661,103 @@ function setRegionFilter(region){
   loadDashboard();
 }
 
-function renderMap(mapData, national){
+function renderMinisterBriefing(national){
+  document.getElementById('minister-briefing').textContent =
+    national?.minister_briefing || 'National maternal risk briefing will appear here once state data is available.';
+
+  const actions = national?.ministry_actions || [];
+  const list = document.getElementById('minister-actions');
+  if(!actions.length){
+    list.innerHTML = '<li>Maintain routine ANC surveillance until fresh state data is reported.</li>';
+    return;
+  }
+  list.innerHTML = actions.map(action => `<li>${escapeHtml(action)}</li>`).join('');
+}
+
+function interventionTone(text = '', index = 0){
+  const value = text.toLowerCase();
+  if(value.includes('blood-pressure') || value.includes('same-day referral') || value.includes('transport')){
+    return 'red';
+  }
+  if(value.includes('glucose') || value.includes('diet') || value.includes('phc')){
+    return 'orange';
+  }
+  if(value.includes('iron') || value.includes('nutrition') || value.includes('counselling')){
+    return 'yellow';
+  }
+  if(index === 0) return 'red';
+  if(index === 1) return 'orange';
+  if(index === 2) return 'yellow';
+  return 'green';
+}
+
+function renderInterventionRail(national = {}){
+  const rail = document.getElementById('intervention-rail');
+  const actions = national?.ministry_actions || [];
+  const drivers = national?.top_risk_drivers || [];
+
+  if(!actions.length){
+    rail.innerHTML = `
+      <div class="rail-card green">
+        <div class="rail-kicker">National intervention</div>
+        <div class="rail-title">Routine surveillance</div>
+        <div class="rail-copy">No urgent intervention cluster is active right now. Continue ANC surveillance, PHC follow-up, and danger-sign counselling.</div>
+      </div>
+    `;
+    return;
+  }
+
+  rail.innerHTML = actions.map((action, index) => `
+    <div class="rail-card ${interventionTone(action, index)}">
+      <div class="rail-kicker">National intervention ${index + 1}</div>
+      <div class="rail-title">${escapeHtml(drivers[index] || `Priority action ${index + 1}`)}</div>
+      <div class="rail-copy">${escapeHtml(action)}</div>
+    </div>
+  `).join('');
+}
+
+function showMapTooltip(item, event){
+  const tooltip = document.getElementById('map-tooltip');
+  if(!tooltip || !item) return;
+  tooltip.innerHTML = `
+    <div class="map-tooltip-title">${escapeHtml(item.state || 'Unknown state')}</div>
+    <div class="map-tooltip-band">${escapeHtml(item.risk_band_label || 'No live data')}</div>
+    <div class="map-tooltip-copy">${escapeHtml(item.recommended_action || 'Use this state view to assess maternal risk and deploy prevention support.')}</div>
+    <div class="map-tooltip-metrics">
+      <div class="tooltip-metric"><strong>${item.patient_count ?? 0}</strong><span>Patients</span></div>
+      <div class="tooltip-metric"><strong>${item.critical_count ?? 0}</strong><span>Hospital</span></div>
+      <div class="tooltip-metric"><strong>${item.watch_count ?? 0}</strong><span>PHC Watch</span></div>
+    </div>
+  `;
+  const frame = tooltip.parentElement;
+  const rect = frame.getBoundingClientRect();
+  const width = Math.min(240, Math.max(180, rect.width - 24));
+  const x = Math.min(rect.width - width - 12, Math.max(12, event.clientX - rect.left + 14));
+  const y = Math.min(rect.height - 128, Math.max(12, event.clientY - rect.top - 8));
+  tooltip.style.width = `${width}px`;
+  tooltip.style.left = `${x}px`;
+  tooltip.style.top = `${y}px`;
+  tooltip.classList.add('show');
+}
+
+function hideMapTooltip(){
+  document.getElementById('map-tooltip')?.classList.remove('show');
+}
+
+function renderFallbackTileMap(mapData, national){
   const svg = document.getElementById('india-map');
   const summary = document.getElementById('map-summary');
-  const statesWithData = national?.states_with_data ?? 0;
-  const criticalStates = national?.critical_states ?? 0;
-  const watchStates = national?.watch_states ?? 0;
-  summary.textContent = `${statesWithData} active state clusters, ${criticalStates} needing immediate attention, ${watchStates} in active follow-up`;
+  summary.textContent = mapSummaryText(national);
+  const lookup = buildMapLookup(mapData);
 
   const markers = (mapData?.states || [])
     .filter(item => Number.isFinite(item.x) && Number.isFinite(item.y))
     .map(item => `
-      <g class="india-marker ${item.severity} ${item.selected ? 'selected' : ''}" data-state="${escapeHtml(item.state)}" transform="translate(${item.x} ${item.y})">
-        <title>${escapeHtml(item.state)} | ${item.patient_count} patients | ${item.critical_count} critical | ${item.watch_count} watch</title>
-        <circle r="${item.patient_count ? 11 : 8}"></circle>
-        <text y="4">${escapeHtml(item.short)}</text>
+      <g class="state-tile ${item.risk_band || 'gray'} ${item.selected ? 'selected' : ''}" data-state="${escapeHtml(item.state)}" transform="translate(${item.x - 18} ${item.y - 14})">
+        <title>${escapeHtml(item.state)} | ${item.risk_band_label || 'No live data'} | ${item.patient_count} patients | ${item.critical_count} hospital urgency | ${item.watch_count} PHC follow-up</title>
+        <rect width="36" height="28"></rect>
+        <text x="18" y="11">${escapeHtml(item.short)}</text>
+        <text class="tile-count" x="18" y="22">${item.patient_count || ''}</text>
       </g>
     `)
     .join('');
@@ -474,7 +769,101 @@ function renderMap(mapData, national){
 
   svg.querySelectorAll('[data-state]').forEach(marker => {
     marker.addEventListener('click', () => setRegionFilter(marker.dataset.state));
+    marker.addEventListener('mouseenter', event => showMapTooltip(lookup.get(marker.dataset.state), event));
+    marker.addEventListener('mousemove', event => showMapTooltip(lookup.get(marker.dataset.state), event));
+    marker.addEventListener('mouseleave', hideMapTooltip);
   });
+}
+
+async function renderMap(mapData, national){
+  const svg = document.getElementById('india-map');
+  const summary = document.getElementById('map-summary');
+  summary.textContent = mapSummaryText(national);
+
+  if(!window.d3){
+    renderFallbackTileMap(mapData, national);
+    return;
+  }
+
+  try{
+    const geojson = await loadIndiaGeoJson();
+    const d3 = window.d3;
+    const width = 420;
+    const height = 520;
+    const projection = d3.geoMercator().fitSize([width, height], geojson);
+    const path = d3.geoPath(projection);
+    const lookup = buildMapLookup(mapData);
+
+    const defs = `
+      <defs>
+        <linearGradient id="india-surface" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stop-color="#f4f9fe"></stop>
+          <stop offset="100%" stop-color="#e5eef6"></stop>
+        </linearGradient>
+        <filter id="danger-glow" x="-40%" y="-40%" width="180%" height="180%">
+          <feDropShadow dx="0" dy="0" stdDeviation="4" flood-color="rgba(216,58,46,.38)"></feDropShadow>
+        </filter>
+        <filter id="warn-glow" x="-40%" y="-40%" width="180%" height="180%">
+          <feDropShadow dx="0" dy="0" stdDeviation="4" flood-color="rgba(237,139,29,.34)"></feDropShadow>
+        </filter>
+        <filter id="chip-shadow" x="-40%" y="-40%" width="180%" height="180%">
+          <feDropShadow dx="0" dy="8" stdDeviation="8" flood-color="rgba(15,23,42,.12)"></feDropShadow>
+        </filter>
+      </defs>
+    `;
+
+    const statesMarkup = (geojson.features || []).map(feature => {
+      const rawName = feature.properties?.name || '';
+      const normalizedName = mapStateName(rawName);
+      const item = lookup.get(normalizedName) || {
+        state: normalizedName,
+        short: normalizedName.split(' ').map(part => part[0]).join('').slice(0, 2).toUpperCase(),
+        patient_count: 0,
+        critical_count: 0,
+        watch_count: 0,
+        risk_band: 'gray',
+        risk_band_label: 'No live data',
+        selected: false
+      };
+      const centroid = path.centroid(feature);
+      const hasCentroid = Number.isFinite(centroid[0]) && Number.isFinite(centroid[1]);
+      const chipX = hasCentroid ? centroid[0] - 18 : 0;
+      const chipY = hasCentroid ? centroid[1] - 12 : 0;
+      const haloRadius = item.risk_band === 'red' ? 20 : 15;
+      const halo = hasCentroid && (item.risk_band === 'red' || item.risk_band === 'orange')
+        ? `<circle class="state-halo ${item.risk_band}" cx="${centroid[0].toFixed(1)}" cy="${centroid[1].toFixed(1)}" r="${haloRadius}"></circle>`
+        : '';
+      const chip = hasCentroid && item.patient_count
+        ? `
+          <g class="state-chip ${item.risk_band}" transform="translate(${chipX.toFixed(1)} ${chipY.toFixed(1)})">
+            <rect width="36" height="24"></rect>
+            <text x="18" y="10.5">${escapeHtml(item.short)}</text>
+            <text class="chip-count" x="18" y="19">${item.patient_count}</text>
+          </g>
+        `
+        : '';
+
+      return `
+        <g class="map-state ${item.risk_band || 'gray'} ${item.selected ? 'selected' : ''}" data-state="${escapeHtml(normalizedName)}">
+          <title>${escapeHtml(normalizedName)} | ${item.risk_band_label || 'No live data'} | ${item.patient_count} patients | ${item.critical_count} hospital urgency | ${item.watch_count} PHC follow-up</title>
+          ${halo}
+          <path d="${path(feature)}"></path>
+          ${chip}
+        </g>
+      `;
+    }).join('');
+
+    svg.innerHTML = `${defs}${statesMarkup}`;
+    svg.querySelectorAll('[data-state]').forEach(region => {
+      region.addEventListener('click', () => setRegionFilter(region.dataset.state));
+      region.addEventListener('mouseenter', event => showMapTooltip(lookup.get(region.dataset.state), event));
+      region.addEventListener('mousemove', event => showMapTooltip(lookup.get(region.dataset.state), event));
+      region.addEventListener('mouseleave', hideMapTooltip);
+    });
+  }catch(error){
+    console.warn('Falling back to simplified India map renderer.', error);
+    renderFallbackTileMap(mapData, national);
+  }
 }
 
 function renderAttentionStrip(national, stateGroups){
@@ -489,13 +878,13 @@ function renderAttentionStrip(national, stateGroups){
   container.innerHTML = `
     <div class="attention-card">
       <h3>National Focus</h3>
-      <div class="attention-copy">${escapeHtml(national?.recommended_focus || 'Use this view to prioritize outreach and prevention by state.')}</div>
+      <div class="attention-copy">${escapeHtml(national?.recommended_focus || 'Use this panel to direct district outreach, referral readiness, and PHC prevention support.')}</div>
     </div>
     ${topStates.map(item => `
-      <div class="attention-card ${item.severity}">
+      <div class="attention-card ${item.risk_band || 'gray'}">
         <h3>${escapeHtml(item.state)}</h3>
         <div class="attention-copy">
-          ${item.critical_count} critical, ${item.watch_count} watch, ${item.patient_count} total patients.<br>
+          ${item.critical_count} hospital-level, ${item.watch_count} PHC-watch, ${item.patient_count} total active patients.<br>
           ${escapeHtml(item.recommended_action)}
         </div>
       </div>
@@ -511,18 +900,18 @@ function renderStateAnalysis(stateGroups){
   }
 
   container.innerHTML = stateGroups.map(item => `
-    <div class="state-card ${item.selected ? 'selected' : ''}">
+    <div class="state-card ${item.risk_band || 'gray'} ${item.selected ? 'selected' : ''}">
       <div class="state-card-top">
         <div>
           <h3>${escapeHtml(item.state)}</h3>
-          <div class="state-card-copy">${escapeHtml(item.top_condition)} pattern is driving the current risk mix.</div>
+          <div class="state-card-copy">${escapeHtml(item.top_condition)} is the strongest maternal risk driver in this state cluster.</div>
         </div>
-        <div>${severityBadge(item.severity)}</div>
+        <div>${severityBadge(item.risk_band || 'gray')}</div>
       </div>
       <div class="state-metrics">
         <div class="metric"><div class="metric-label">Patients</div><div class="metric-value">${item.patient_count}</div></div>
-        <div class="metric"><div class="metric-label">Critical</div><div class="metric-value">${item.critical_count}</div></div>
-        <div class="metric"><div class="metric-label">Watch</div><div class="metric-value">${item.watch_count}</div></div>
+        <div class="metric"><div class="metric-label">Hospital</div><div class="metric-value">${item.critical_count}</div></div>
+        <div class="metric"><div class="metric-label">PHC Watch</div><div class="metric-value">${item.watch_count}</div></div>
         <div class="metric"><div class="metric-label">Escalations</div><div class="metric-value">${item.recent_escalations}</div></div>
       </div>
       <div class="flag-list">${(item.dominant_flags || []).map(flag => `<span class="flag">${escapeHtml(flag)}</span>`).join('') || '<span class="subtle">No dominant flags yet.</span>'}</div>
@@ -542,8 +931,10 @@ function renderStateAnalysis(stateGroups){
   });
 }
 
-function renderAnalytics(analytics){
-  renderMap(analytics?.india_map || {}, analytics?.national || {});
+async function renderAnalytics(analytics){
+  renderMinisterBriefing(analytics?.national || {});
+  renderInterventionRail(analytics?.national || {});
+  await renderMap(analytics?.india_map || {}, analytics?.national || {});
   renderAttentionStrip(analytics?.national || {}, analytics?.state_groups || []);
   renderStateAnalysis(analytics?.state_groups || []);
 }
@@ -607,9 +998,9 @@ async function loadDashboard(){
   state.queue = payload.queue || [];
   state.tasks = payload.tasks || [];
   state.analytics = payload.analytics || {};
-  renderStats(payload.summary || {});
+  renderStats(payload.summary || {}, state.analytics?.national || {});
   renderRegions(payload.regions || []);
-  renderAnalytics(state.analytics);
+  await renderAnalytics(state.analytics);
   renderQueue(state.queue);
   renderTasks(state.tasks);
 }

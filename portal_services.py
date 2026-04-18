@@ -158,6 +158,39 @@ def _severity_from_counts(critical: int, amber: int, total: int, escalated_recen
     return "inactive"
 
 
+def _risk_band_from_counts(critical: int, amber: int, safe: int, total: int, escalated_recent: int) -> str:
+    if total == 0:
+        return "gray"
+    if critical > 0 or escalated_recent > 0:
+        return "red"
+    if amber >= 2 or (total and amber / total >= 0.6):
+        return "orange"
+    if amber > 0 or safe < total:
+        return "yellow"
+    return "green"
+
+
+def _risk_band_label(risk_band: str) -> str:
+    return {
+        "red": "Red alert",
+        "orange": "Orange watch",
+        "yellow": "Yellow monitoring",
+        "green": "Green stable",
+        "gray": "No live data",
+    }.get(risk_band, risk_band.title())
+
+
+def _national_action_for_flag(flag: str) -> str:
+    actions = {
+        "Preeclampsia": "Deploy PHC and ANM blood-pressure screening plus same-day referral tracking.",
+        "GDM": "Run low-cost diet counselling and fast-track PHC glucose review in high-burden blocks.",
+        "Anaemia": "Scale iron-folic adherence drives, nutrition counselling, and community follow-up calls.",
+        "Fetal Distress": "Push kick-count education, hydration reminders, and emergency transport readiness.",
+        "Preterm": "Strengthen warning-sign counselling and early PHC review for bleeding or pain.",
+    }
+    return actions.get(flag, "Maintain antenatal outreach and district-level risk surveillance.")
+
+
 def _prevention_methods(dominant_flags: list[str], severity: str) -> list[str]:
     methods: list[str] = []
     if "Preeclampsia" in dominant_flags:
@@ -463,17 +496,20 @@ def _build_state_analysis(patients: list[dict[str, Any]], selected_region: str |
 
     state_rows: list[dict[str, Any]] = []
     map_states: list[dict[str, Any]] = []
+    national_flag_counter: Counter[str] = Counter()
 
     all_states = sorted(set(INDIA_STATE_META) | set(grouped))
     for state_name in all_states:
         items = grouped.get(state_name, [])
         flag_counter = Counter(flag for item in items for flag in item["condition_flags"])
+        national_flag_counter.update(flag_counter)
         total = len(items)
         critical = sum(1 for item in items if item["effective_urgency"] == "go_to_hospital_today")
         amber = sum(1 for item in items if item["effective_urgency"] == "visit_phc_this_week")
         safe = sum(1 for item in items if item["effective_urgency"] == "monitor_at_home")
         escalated_recent = sum(1 for item in items if item["escalated_recent"])
         severity = _severity_from_counts(critical, amber, total, escalated_recent)
+        risk_band = _risk_band_from_counts(critical, amber, safe, total, escalated_recent)
         attention_score = critical * 5 + amber * 2 + escalated_recent * 3 + total
         dominant_flags = [flag for flag, _ in flag_counter.most_common(3)]
         last_checkin = max(
@@ -493,6 +529,8 @@ def _build_state_analysis(patients: list[dict[str, Any]], selected_region: str |
             "top_condition": top_conditions.most_common(1)[0][0] if top_conditions else "No active pattern",
             "needs_immediate_attention": severity == "critical",
             "severity": severity,
+            "risk_band": risk_band,
+            "risk_band_label": _risk_band_label(risk_band),
             "attention_score": attention_score,
             "selected": state_name == selected_region,
             "last_checkin_at": _iso(last_checkin),
@@ -523,6 +561,8 @@ def _build_state_analysis(patients: list[dict[str, Any]], selected_region: str |
                 "watch_count": amber,
                 "safe_count": safe,
                 "severity": severity,
+                "risk_band": risk_band,
+                "risk_band_label": _risk_band_label(risk_band),
                 "selected": state_name == selected_region,
                 "dominant_flags": dominant_flags,
                 "recommended_action": row["recommended_action"],
@@ -537,15 +577,33 @@ def _build_state_analysis(patients: list[dict[str, Any]], selected_region: str |
         )
     )
 
+    top_national_flags = [flag for flag, _ in national_flag_counter.most_common(3)]
+    top_attention_states = state_rows[:5]
+    ministry_actions = [_national_action_for_flag(flag) for flag in top_national_flags] or [
+        "Keep district surveillance active and maintain routine ANC outreach."
+    ]
+
     return {
         "national": {
             "states_with_data": len(state_rows),
             "critical_states": sum(1 for row in state_rows if row["severity"] == "critical"),
             "watch_states": sum(1 for row in state_rows if row["severity"] == "watch"),
-            "top_attention_states": [row["state"] for row in state_rows[:3]],
+            "red_states": sum(1 for row in state_rows if row["risk_band"] == "red"),
+            "orange_states": sum(1 for row in state_rows if row["risk_band"] == "orange"),
+            "yellow_states": sum(1 for row in state_rows if row["risk_band"] == "yellow"),
+            "green_states": sum(1 for row in state_rows if row["risk_band"] == "green"),
+            "same_day_cases": sum(row["critical_count"] for row in state_rows),
+            "top_attention_states": [row["state"] for row in top_attention_states[:3]],
+            "top_risk_drivers": top_national_flags,
             "recommended_focus": (
                 "Prioritize rapid outreach in states with hospital-level urgency, then reinforce PHC and home prevention in watch states."
             ),
+            "minister_briefing": (
+                f"Immediate attention is required in {sum(1 for row in state_rows if row['risk_band'] == 'red')} "
+                f"state clusters. The strongest national drivers are "
+                f"{', '.join(top_national_flags) if top_national_flags else 'routine ANC follow-up'}."
+            ),
+            "ministry_actions": ministry_actions,
         },
         "india_map": {
             "path": INDIA_SILHOUETTE_PATH,

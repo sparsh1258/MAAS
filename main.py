@@ -13,6 +13,7 @@ from schemas import ResetRequest
 Base.metadata.create_all(bind=engine)
 BASE_DIR = Path(__file__).resolve().parent
 PREVIEW_FILE = BASE_DIR / "preview.html"
+MAP_DATA_FILE = BASE_DIR / "india.json"
 openenv_env = PrenatalEnvironment()
 
 app = FastAPI(
@@ -48,6 +49,13 @@ def root():
 @app.get("/health", tags=["System"])
 def healthcheck():
     return {"status": "ok"}
+
+
+@app.get("/india-map", include_in_schema=False)
+def india_map():
+    if not MAP_DATA_FILE.exists():
+        raise HTTPException(status_code=404, detail="India map data not found")
+    return FileResponse(MAP_DATA_FILE, media_type="application/geo+json")
 
 
 def _ensure_demo_user(db: Session) -> int:
