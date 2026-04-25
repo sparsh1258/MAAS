@@ -2,33 +2,34 @@ from fastapi import APIRouter, HTTPException
 from sqlalchemy.orm import Session
 
 from database import SessionLocal
-from environment import (
-    ActionModel,
-    CONDITION_URGENCY,
-    DIET_ADVICE,
-    PrenatalEnvironment,
-    _classify_condition,
-)
+from environment import ActionModel, PrenatalEnvironment
 from models import DailyCheckin
+from xai_reward_model import calculate_reward, choose_urgency, featurize, infer_reference_condition
 from schemas import DiagnosisResponse
 
-router = APIRouter(prefix='/diagnosis', tags=['Diagnosis'])
+router = APIRouter(prefix="/diagnosis", tags=["Diagnosis"])
 env = PrenatalEnvironment()
 
-@router.get('/{user_id}', response_model=DiagnosisResponse)
+
+@router.get("/{user_id}", response_model=DiagnosisResponse)
 def diagnose_user(user_id: int):
     try:
-        observation = env.reset(user_id)
+        prompt = env.reset(user_id)
     except ValueError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
 
-    predicted_condition, rationale = _classify_condition(observation)
-    urgency = CONDITION_URGENCY[predicted_condition]
+    observation = prompt.observation
+    features = featurize(observation)
+    reference_condition = infer_reference_condition(observation)
+    urgency = choose_urgency(reference_condition, features)
+    breakdown = calculate_reward(reference_condition, urgency, observation)
+
     result = env.step(
         ActionModel(
-            action_type='diagnose',
-            target=predicted_condition,
+            action_type="diagnose",
+            target=reference_condition,
             urgency=urgency,
+            rationale=breakdown.rationale,
         )
     )
 
@@ -47,9 +48,9 @@ def diagnose_user(user_id: int):
 
     return DiagnosisResponse(
         user_id=user_id,
-        predicted_condition=predicted_condition,
+        predicted_condition=reference_condition,
         urgency=urgency,
-        rationale=rationale,
+        rationale=result.rationale,
         reward=result.reward,
         risk_flags=observation.risk_flags,
         history_flags=observation.history_flags,

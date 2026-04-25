@@ -32,6 +32,19 @@
   .auth-kicker{font-size:12px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--primary)}
   .auth-title{font-size:34px;font-weight:700;line-height:1.05;margin:10px 0 8px}
   .auth-copy{margin:0 0 20px;color:var(--muted);line-height:1.65}
+  .mode-switch{display:flex;gap:8px;margin:18px 0 20px;padding:6px;border-radius:18px;background:var(--surface-soft);border:1px solid var(--line)}
+  .mode-chip{flex:1;border:none;border-radius:14px;padding:11px 12px;background:transparent;color:var(--muted);font:inherit;font-weight:700;cursor:pointer;transition:all .18s ease}
+  .mode-chip.active{background:#fff;color:var(--primary);box-shadow:0 8px 18px rgba(47,111,237,.14)}
+  .auth-stack{display:grid;gap:16px}
+  .helper-card{padding:14px 16px;border-radius:16px;background:var(--primary-soft);border:1px solid #cbdcff}
+  .helper-card strong{display:block;font-size:12px;text-transform:uppercase;letter-spacing:.08em;color:var(--primary);margin-bottom:6px}
+  .helper-card div{font-size:14px;line-height:1.6}
+  .inline-row{display:flex;gap:10px;align-items:center}
+  .inline-row .btn{flex-shrink:0}
+  .fetched-card{padding:14px 16px;border-radius:16px;background:#f8fbff;border:1px solid var(--line)}
+  .fetched-title{font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:8px}
+  .fetched-grid{display:grid;grid-template-columns:1fr;gap:8px}
+  .fetched-grid div{font-size:14px}
   .demo-box{margin:0 0 18px;padding:12px 14px;border-radius:16px;background:var(--surface-soft);border:1px solid var(--line)}
   .demo-box strong{display:block;font-size:12px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:6px}
   .demo-box div{font-size:14px;line-height:1.6}
@@ -116,23 +129,70 @@
 <body>
   <div id="login-view" class="auth-screen">
     <div class="auth-card">
-      <div class="auth-kicker">Doctor role</div>
-      <div class="auth-title">Clinical Dashboard Login</div>
-      <p class="auth-copy">Sign in to review patient risk, chart trends, and act on escalations.</p>
-      <div class="demo-box">
-        <strong>Demo credentials</strong>
-        <div>Email: <code>doctor@niva.local</code></div>
-        <div>Password: <code>doctor123</code></div>
+      <div id="role-chooser-view">
+        <div class="auth-kicker">Choose Interface</div>
+        <div class="auth-title">Welcome To Niva</div>
+        <div class="mode-switch">
+          <button class="mode-chip active" id="private-role-btn" type="button">Private Doctor</button>
+          <button class="mode-chip" id="asha-role-btn" type="button">ASHA Worker</button>
+        </div>
       </div>
-      <div class="form-group">
-        <label for="login-email">Email</label>
-        <input id="login-email" type="email" value="doctor@niva.local" autocomplete="email">
+
+      <div id="private-login-view" class="auth-stack">
+        <div class="auth-title" style="margin-top:0">Welcome To Niva</div>
+        <div class="helper-card">
+          <strong>Private Doctor</strong>
+          <div>Use your clinic login to continue to the patient dashboard.</div>
+        </div>
+        <div class="form-group">
+          <label for="login-email">Email</label>
+          <input id="login-email" type="email" value="doctor@niva.local" autocomplete="email">
+        </div>
+        <div class="form-group">
+          <label for="login-password">Password</label>
+          <input id="login-password" type="password" value="doctor123" autocomplete="current-password">
+        </div>
+        <div class="inline-row">
+          <button class="btn btn-primary" id="login-btn" type="button">Sign In</button>
+          <button class="btn btn-secondary" id="back-role-btn" type="button">Back</button>
+        </div>
       </div>
-      <div class="form-group">
-        <label for="login-password">Password</label>
-        <input id="login-password" type="password" value="doctor123" autocomplete="current-password">
+
+      <div id="asha-login-view" class="auth-stack hidden">
+        <div class="auth-title" style="margin-top:0">Welcome To Niva</div>
+        <div class="mode-switch">
+          <button class="mode-chip active" id="asha-existing-btn" type="button">Existing User</button>
+          <button class="mode-chip" id="asha-new-btn" type="button">New User</button>
+        </div>
+        <div class="helper-card">
+          <strong>ASHA Verification</strong>
+          <div>Enter the ASHA ID to verify and fetch worker details automatically.</div>
+        </div>
+        <div class="form-group">
+          <label for="asha-id">ASHA ID</label>
+          <input id="asha-id" type="text" placeholder="ASHA-1024" autocomplete="off">
+        </div>
+        <div id="asha-existing-fields">
+          <div class="form-group">
+            <label for="asha-passcode">Passcode</label>
+            <input id="asha-passcode" type="password" placeholder="Enter passcode">
+          </div>
+        </div>
+        <div id="asha-new-fields" class="hidden">
+          <div class="form-group">
+            <label for="asha-phone">Phone Number</label>
+            <input id="asha-phone" type="tel" placeholder="+91 98xxx xxxxx" readonly>
+          </div>
+        </div>
+        <div class="fetched-card hidden" id="asha-fetched-card">
+          <div class="fetched-title">Verified Worker</div>
+          <div class="fetched-grid" id="asha-fetched-grid"></div>
+        </div>
+        <div class="inline-row">
+          <button class="btn btn-primary" id="asha-verify-btn" type="button">Verify ASHA ID</button>
+          <button class="btn btn-secondary" id="asha-back-btn" type="button">Back</button>
+        </div>
       </div>
-      <button class="btn btn-primary" id="login-btn" type="button">Sign In</button>
       <div class="login-error hidden" id="login-error"></div>
     </div>
   </div>
@@ -215,8 +275,16 @@
 
 <script>
 const API = window.location.origin;
+const ASHA_REGISTRY = {
+  'ASHA-1024': {id:'ASHA-1024', name:'Sunita Devi', area:'Ward 1, Ludhiana', phone:'+91 98765 12001', passcode:'asha1024'},
+  'ASHA-2048': {id:'ASHA-2048', name:'Kamla Rani', area:'Ward 3, Ludhiana', phone:'+91 98765 12002', passcode:'asha2048'},
+  'ASHA-3072': {id:'ASHA-3072', name:'Pooja Sharma', area:'Ward 5, Jalandhar', phone:'+91 98765 12003', passcode:'asha3072'}
+};
 const state = {
   token: localStorage.getItem('niva_doctor_token') || '',
+  viewerMode: localStorage.getItem('niva_clinical_mode') || '',
+  viewerName: localStorage.getItem('niva_clinical_name') || '',
+  ashaAuthMode: 'existing',
   patients: [],
   selectedPatientId: null,
   noteDraft: ''
@@ -231,6 +299,7 @@ const urgencyClass = {
 function showLogin(message=''){
   document.getElementById('login-view').classList.remove('hidden');
   document.getElementById('app-view').classList.add('hidden');
+  showRoleChooser();
   renderLoginError(message);
 }
 
@@ -243,6 +312,93 @@ function renderLoginError(message){
   const box=document.getElementById('login-error');
   box.textContent=message;
   box.classList.toggle('hidden', !message);
+}
+
+function setViewerLine(label){
+  document.getElementById('viewer-line').textContent = label;
+}
+
+function showRoleChooser(){
+  renderLoginError('');
+  setAshaAuthMode('existing');
+  renderAshaCard(null);
+  document.getElementById('role-chooser-view').classList.remove('hidden');
+  document.getElementById('private-login-view').classList.add('hidden');
+  document.getElementById('asha-login-view').classList.add('hidden');
+  document.getElementById('private-role-btn').classList.add('active');
+  document.getElementById('asha-role-btn').classList.remove('active');
+}
+
+function openPrivateLogin(){
+  renderLoginError('');
+  document.getElementById('role-chooser-view').classList.add('hidden');
+  document.getElementById('private-login-view').classList.remove('hidden');
+  document.getElementById('asha-login-view').classList.add('hidden');
+  document.getElementById('private-role-btn').classList.add('active');
+  document.getElementById('asha-role-btn').classList.remove('active');
+}
+
+function openAshaLogin(){
+  renderLoginError('');
+  setAshaAuthMode('existing');
+  document.getElementById('role-chooser-view').classList.add('hidden');
+  document.getElementById('private-login-view').classList.add('hidden');
+  document.getElementById('asha-login-view').classList.remove('hidden');
+  document.getElementById('private-role-btn').classList.remove('active');
+  document.getElementById('asha-role-btn').classList.add('active');
+}
+
+function setAshaAuthMode(mode){
+  state.ashaAuthMode = mode === 'new' ? 'new' : 'existing';
+  document.getElementById('asha-existing-btn').classList.toggle('active', state.ashaAuthMode === 'existing');
+  document.getElementById('asha-new-btn').classList.toggle('active', state.ashaAuthMode === 'new');
+  document.getElementById('asha-existing-fields').classList.toggle('hidden', state.ashaAuthMode !== 'existing');
+  document.getElementById('asha-new-fields').classList.toggle('hidden', state.ashaAuthMode !== 'new');
+}
+
+function renderAshaCard(worker){
+  const card = document.getElementById('asha-fetched-card');
+  const grid = document.getElementById('asha-fetched-grid');
+  if(!worker){
+    card.classList.add('hidden');
+    grid.innerHTML = '';
+    return;
+  }
+  document.getElementById('asha-phone').value = worker.phone;
+  grid.innerHTML = `
+    <div><strong>Name:</strong> ${worker.name}</div>
+    <div><strong>ASHA ID:</strong> ${worker.id}</div>
+    <div><strong>Area:</strong> ${worker.area}</div>
+    <div><strong>Phone:</strong> ${worker.phone}</div>
+  `;
+  card.classList.remove('hidden');
+}
+
+function verifyAshaId(){
+  renderLoginError('');
+  const ashaId = document.getElementById('asha-id').value.trim().toUpperCase();
+  const worker = ASHA_REGISTRY[ashaId];
+  if(!worker){
+    renderAshaCard(null);
+    renderLoginError('ASHA ID not found. Please check the number.');
+    return;
+  }
+  if(state.ashaAuthMode === 'existing'){
+    const passcode = document.getElementById('asha-passcode').value;
+    if(passcode !== worker.passcode){
+      renderAshaCard(worker);
+      renderLoginError('Invalid passcode for this ASHA ID.');
+      return;
+    }
+  }
+  renderAshaCard(worker);
+  state.viewerMode = 'asha';
+  state.viewerName = worker.name;
+  localStorage.setItem('niva_clinical_mode', state.viewerMode);
+  localStorage.setItem('niva_clinical_name', state.viewerName);
+  setViewerLine(`${worker.name} · ASHA Worker`);
+  showApp();
+  loadPatients().catch(error => renderLoginError(error.message));
 }
 
 function authHeaders(){
@@ -279,7 +435,11 @@ async function login(){
     });
     state.token = payload.access_token;
     localStorage.setItem('niva_doctor_token', state.token);
-    document.getElementById('viewer-line').textContent = `${payload.user.display_name} · Doctor`;
+    state.viewerMode = 'doctor';
+    state.viewerName = payload.user.display_name;
+    localStorage.setItem('niva_clinical_mode', state.viewerMode);
+    localStorage.setItem('niva_clinical_name', state.viewerName);
+    setViewerLine(`${payload.user.display_name} · Private Doctor`);
     showApp();
     await loadPatients();
   }catch(error){
@@ -288,6 +448,16 @@ async function login(){
 }
 
 async function bootstrap(){
+  if(state.viewerMode === 'asha' && state.viewerName){
+    setViewerLine(`${state.viewerName} · ASHA Worker`);
+    showApp();
+    try{
+      await loadPatients();
+    }catch(error){
+      showLogin(error.message);
+    }
+    return;
+  }
   if(!state.token){
     showLogin();
     return;
@@ -297,7 +467,11 @@ async function bootstrap(){
     if(me.role !== 'doctor'){
       throw new Error('This login is not a doctor account.');
     }
-    document.getElementById('viewer-line').textContent = `${me.display_name} · Doctor`;
+    state.viewerMode = 'doctor';
+    state.viewerName = me.display_name;
+    localStorage.setItem('niva_clinical_mode', state.viewerMode);
+    localStorage.setItem('niva_clinical_name', state.viewerName);
+    setViewerLine(`${me.display_name} · Private Doctor`);
     showApp();
     await loadPatients();
   }catch(error){
@@ -561,12 +735,23 @@ function closePanel(){
 
 function logout(){
   localStorage.removeItem('niva_doctor_token');
+  localStorage.removeItem('niva_clinical_mode');
+  localStorage.removeItem('niva_clinical_name');
   state.token = '';
+  state.viewerMode = '';
+  state.viewerName = '';
   closePanel();
   showLogin();
 }
 
 document.getElementById('login-btn').addEventListener('click', login);
+document.getElementById('private-role-btn').addEventListener('click', openPrivateLogin);
+document.getElementById('asha-role-btn').addEventListener('click', openAshaLogin);
+document.getElementById('back-role-btn').addEventListener('click', showRoleChooser);
+document.getElementById('asha-back-btn').addEventListener('click', showRoleChooser);
+document.getElementById('asha-existing-btn').addEventListener('click', () => setAshaAuthMode('existing'));
+document.getElementById('asha-new-btn').addEventListener('click', () => setAshaAuthMode('new'));
+document.getElementById('asha-verify-btn').addEventListener('click', verifyAshaId);
 document.getElementById('logout-btn').addEventListener('click', logout);
 document.getElementById('refresh-btn').addEventListener('click', loadPatients);
 document.getElementById('filter-risk').addEventListener('change', loadPatients);

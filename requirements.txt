@@ -3,3 +3,11 @@ uvicorn[standard]>=0.29.0
 sqlalchemy>=2.0.0
 pydantic>=2.0.0
 openai>=1.0.0
+openenv-core>=0.2.3
+transformers>=4.44.0
+trl>=0.10.1
+torch>=2.2.0
+accelerate>=0.33.0
+datasets>=2.20.0
+peft>=0.12.0
+bitsandbytes>=0.43.0; platform_system != "Windows"

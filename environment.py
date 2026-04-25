@@ -1,123 +1,151 @@
+from __future__ import annotations
+
+import json
+from typing import List, Optional
+
 from pydantic import BaseModel
-from typing import Optional, List
-from datetime import datetime
 
 from database import SessionLocal
-from models import UserProfile, DailyCheckin, Checkin3Day
-from rl_risk_model import RL_RISK_MODEL
+from models import Checkin3Day, DailyCheckin, UserProfile
+from xai_reward_model import (
+    SAFE_CONDITIONS,
+    URGENCY_ORDER,
+    calculate_reward,
+    choose_urgency,
+    featurize,
+    infer_reference_condition,
+    latent_risk_scores,
+    supporting_features,
+)
 
-# PYDANTIC MODELS — what the environment returns
+OPENENV_IMPORT_ERROR: Optional[Exception] = None
+try:
+    from openenv_core import Environment as OpenEnvEnvironment
+    OPENENV_AVAILABLE = True
+except ImportError as primary_error:
+    try:
+        from openenv_core import OpenEnv as OpenEnvEnvironment  # type: ignore[attr-defined]
+        OPENENV_AVAILABLE = True
+    except ImportError as secondary_error:
+        OPENENV_IMPORT_ERROR = secondary_error
+        OPENENV_AVAILABLE = False
+
+        class OpenEnvEnvironment:  # type: ignore[override]
+            """Fallback shim when openenv-core is unavailable locally."""
+
+            pass
+
+CONDITION_URGENCY = {
+    "preeclampsia": "go_to_hospital_today",
+    "fetal_distress": "go_to_hospital_today",
+    "gestational_diabetes": "visit_phc_this_week",
+    "preterm_risk": "visit_phc_this_week",
+    "anemia": "visit_phc_this_week",
+    "low_risk": "monitor_at_home",
+}
+
 
 class Observation(BaseModel):
     user_id: int
     weeks_pregnant: int
     trimester: int
     region: str
-    risk_flags: List[str]           
-    bp_trend: str                   
+    risk_flags: List[str]
+    bp_trend: str
     avg_kick_count: Optional[float]
     avg_meals: float
     avg_sleep: float
     latest_weight_kg: Optional[float]
     latest_energy: Optional[int]
     latest_breathlessness: Optional[int]
-    history_flags: List[str]        
-    days_of_data: int               
+    history_flags: List[str]
+    days_of_data: int
+
+
+class PromptObservation(BaseModel):
+    observation: Observation
+    text_observation: str
+    system_prompt: str
+    user_prompt: str
+    response_format: str
+    valid_conditions: List[str]
+    valid_urgencies: List[str]
 
 
 class StepResult(BaseModel):
     observation: Observation
+    text_observation: str
+    prompt: PromptObservation
     reward: float
     done: bool
     predicted_condition: Optional[str]
     urgency: Optional[str]
     diet_advice: List[str]
     rationale: str
+    reference_condition: Optional[str]
+    reference_urgency: Optional[str]
+    latent_risks: dict
+    under_escalated: bool = False
 
 
 class ActionModel(BaseModel):
-    action_type: str                # "assess" or "diagnose"
-    target: Optional[str] = None   # condition name if diagnosing
-    urgency: Optional[str] = None  # urgency level if diagnosing
+    action_type: str
+    target: Optional[str] = None
+    urgency: Optional[str] = None
+    rationale: Optional[str] = None
 
-# CONSTANTS
 
-CONDITIONS = [
-    "preeclampsia",
-    "gestational_diabetes",
-    "anemia",
-    "preterm_risk",
-    "fetal_distress",
-    "low_risk",
-]
-
-URGENCY_LEVELS = [
-    "monitor_at_home",
-    "visit_phc_this_week",
-    "go_to_hospital_today",
-]
-
-CONDITION_URGENCY = {
-    "preeclampsia":         "go_to_hospital_today",
-    "fetal_distress":       "go_to_hospital_today",
-    "gestational_diabetes": "visit_phc_this_week",
-    "preterm_risk":         "visit_phc_this_week",
-    "anemia":               "visit_phc_this_week",
-    "low_risk":             "monitor_at_home",
-}
-
-CONDITION_SEVERITY = {
-    "preeclampsia":         10,
-    "fetal_distress":       10,
-    "preterm_risk":         7,
-    "gestational_diabetes": 6,
-    "anemia":               5,
-    "low_risk":             0,
+LATENT_CONDITION_ADVICE = {
+    "postpartum_hemorrhage": "Monitor bleeding volume closely and escalate immediately if it worsens.",
+    "maternal_infection": "Review fever, discharge, and pain symptoms with urgent follow-up if they increase.",
+    "dehydration": "Increase oral fluids and reassess dizziness and urine output.",
+    "intrahepatic_cholestasis": "Review itching and late-pregnancy symptoms at the next clinical visit.",
+    "placental_abruption": "Bleeding plus abdominal pain requires urgent clinical escalation.",
+    "maternal_exhaustion": "Encourage rest, hydration, and close symptom monitoring.",
+    "nutrition_deficit": "Improve meal regularity and iron-rich food intake.",
 }
 
 DIET_ADVICE = {
     "preeclampsia": [
-        "Reduce salt completely — avoid pickles and papad",
-        "Eat banana and amla daily — helps control blood pressure",
-        "Drink plenty of water — at least 8–10 glasses",
-        "Avoid fried and oily food",
+        "Reduce salt completely and avoid pickles and papad.",
+        "Eat banana and amla daily to support blood pressure management.",
+        "Drink at least 8-10 glasses of water.",
+        "Avoid fried and oily food.",
     ],
     "gestational_diabetes": [
-        "Avoid rice and refined flour (maida)",
-        "Eat dal, vegetables, and roti in small portions",
-        "Eat small meals 5–6 times a day",
-        "For fruits, prefer guava and jamun — avoid banana",
+        "Avoid rice and refined flour.",
+        "Eat dal, vegetables, and roti in small portions.",
+        "Take small meals 5-6 times a day.",
+        "Prefer guava and jamun over sweeter fruits.",
     ],
     "anemia": [
-        "Eat spinach, amaranth, or fenugreek daily",
-        "Consume jaggery (gud) with chickpeas — increases iron",
-        "Eat iron-rich foods with lemon (vitamin C helps absorption)",
-        "Avoid tea and coffee immediately after meals",
+        "Eat spinach, amaranth, or fenugreek daily.",
+        "Consume jaggery with chickpeas for iron.",
+        "Pair iron-rich foods with lemon for vitamin C.",
+        "Avoid tea and coffee immediately after meals.",
     ],
     "preterm_risk": [
-        "Increase protein intake — dal, eggs, milk daily",
-        "Avoid lifting heavy weights",
-        "Take more rest — lie down with legs slightly elevated",
-        "Reduce stress — talk to someone",
+        "Increase protein intake with dal, eggs, or milk.",
+        "Avoid lifting heavy weights.",
+        "Take more rest with legs slightly elevated.",
+        "Reduce stress and seek support.",
     ],
     "fetal_distress": [
-        "Eat something sweet — juice or jaggery — and count baby kicks for 1 hour",
-        "Lie on your left side",
-        "Drink water and stay calm",
-        "If kicks don’t increase, go to the hospital immediately",
+        "Take something sweet and count baby kicks for one hour.",
+        "Lie on your left side.",
+        "Drink water and stay calm.",
+        "If kicks do not increase, go to the hospital immediately.",
     ],
     "low_risk": [
-        "Take a balanced diet — dal, vegetables, roti, milk",
-        "Take iron and folic acid tablets daily",
-        "Drink 8–10 glasses of water daily",
-        "Do light walking — 20–30 minutes",
+        "Take a balanced diet with dal, vegetables, roti, and milk.",
+        "Continue iron and folic acid tablets daily.",
+        "Drink 8-10 glasses of water daily.",
+        "Do light walking for 20-30 minutes.",
     ],
 }
 
-# HELPER: load recent data from DB
 
 def _load_recent_data(user_id: int, days: int = 3):
-    """Pull last N daily checkins and latest 3-day checkin from DB."""
     db = SessionLocal()
     try:
         user = db.query(UserProfile).filter(UserProfile.id == user_id).first()
@@ -131,28 +159,21 @@ def _load_recent_data(user_id: int, days: int = 3):
             .limit(days)
             .all()
         )
-
         checkin3 = (
             db.query(Checkin3Day)
             .filter(Checkin3Day.user_id == user_id)
             .order_by(Checkin3Day.created_at.desc())
             .first()
         )
-
         return user, daily, checkin3
     finally:
         db.close()
 
-# HELPER: build observation from real DB data
 
-def _build_observation(user: UserProfile,
-                        daily: list,
-                        checkin3: Optional[Checkin3Day]) -> Observation:
+def _build_observation(user: UserProfile, daily: list, checkin3: Optional[Checkin3Day]) -> Observation:
+    risk_flags: List[str] = []
+    history_flags: List[str] = []
 
-    risk_flags = []
-    history_flags = []
-
-    # ── History flags from profile ────────────────────────
     if user.history_diabetes:
         history_flags.append("family_diabetes")
     if user.history_hypertension:
@@ -162,15 +183,12 @@ def _build_observation(user: UserProfile,
     if user.history_prev_comp:
         history_flags.append("prev_complication")
 
-    # ── Immediate danger flags from latest checkin ────────
     if daily:
         latest = daily[0]
-
         if latest.bp_systolic >= 160 or latest.bp_diastolic >= 110:
             risk_flags.append("DANGER_BP_CRITICAL")
         elif latest.bp_systolic >= 140 or latest.bp_diastolic >= 90:
             risk_flags.append("HIGH_BP")
-
         if latest.symptom_bleeding:
             risk_flags.append("DANGER_BLEEDING")
         if latest.symptom_blurred_vision and latest.symptom_headache:
@@ -179,8 +197,11 @@ def _build_observation(user: UserProfile,
             risk_flags.append("DANGER_LOW_KICKS")
         if latest.symptom_swelling and latest.symptom_headache:
             risk_flags.append("HIGH_PREECLAMPSIA_SIGNAL")
+        if latest.symptom_dizziness:
+            risk_flags.append("DIZZINESS_SIGNAL")
+        if latest.symptom_abdominal_pain:
+            risk_flags.append("ABDOMINAL_PAIN_SIGNAL")
 
-    # ── BP trend across last 3 days ───────────────────────
     bp_trend = "stable"
     if len(daily) >= 2:
         systolics = [d.bp_systolic for d in daily]
@@ -190,14 +211,8 @@ def _build_observation(user: UserProfile,
         elif systolics[0] < systolics[-1] - 10:
             bp_trend = "falling"
 
-    # ── Averages ──────────────────────────────────────────
-    avg_meals = (
-        sum(d.meals_count for d in daily) / len(daily) if daily else 0
-    )
-    avg_sleep = (
-        sum(d.sleep_hours for d in daily) / len(daily) if daily else 0
-    )
-
+    avg_meals = sum(d.meals_count for d in daily) / len(daily) if daily else 0.0
+    avg_sleep = sum(d.sleep_hours for d in daily) / len(daily) if daily else 0.0
     kicks = [d.kick_count for d in daily if d.kick_count is not None]
     avg_kicks = sum(kicks) / len(kicks) if kicks else None
 
@@ -211,7 +226,7 @@ def _build_observation(user: UserProfile,
         weeks_pregnant=user.weeks_pregnant,
         trimester=user.trimester,
         region=user.region,
-        risk_flags=risk_flags,
+        risk_flags=sorted(set(risk_flags)),
         bp_trend=bp_trend,
         avg_kick_count=avg_kicks,
         avg_meals=avg_meals,
@@ -223,178 +238,203 @@ def _build_observation(user: UserProfile,
         days_of_data=len(daily),
     )
 
-# HELPER: rule-based condition classifier
+
+def observation_to_prompt(obs: Observation, text_observation: str) -> PromptObservation:
+    system_prompt = (
+        "You are an obstetric triage agent operating inside OpenEnv. "
+        "Return a JSON object with keys: condition, urgency, rationale. "
+        f"Valid conditions: {', '.join(SAFE_CONDITIONS)}. "
+        f"Valid urgencies: {', '.join(URGENCY_ORDER)}. "
+        "Always prioritize patient safety and do not under-escalate danger flags."
+    )
+    user_prompt = text_observation + "\n\nPredict the best condition label and urgency for this patient."
+    response_format = json.dumps(
+        {
+            "condition": "one of the valid condition labels",
+            "urgency": "one of the valid urgency labels",
+            "rationale": "short clinical explanation",
+        },
+        indent=2,
+    )
+    return PromptObservation(
+        observation=obs,
+        text_observation=text_observation,
+        system_prompt=system_prompt,
+        user_prompt=user_prompt,
+        response_format=response_format,
+        valid_conditions=SAFE_CONDITIONS,
+        valid_urgencies=URGENCY_ORDER,
+    )
+
+
+def parse_llm_output(raw_output: str) -> ActionModel:
+    try:
+        parsed = json.loads(raw_output)
+    except json.JSONDecodeError as exc:
+        raise ValueError("LLM output must be valid JSON.") from exc
+
+    return ActionModel(
+        action_type="diagnose",
+        target=parsed.get("condition"),
+        urgency=parsed.get("urgency"),
+        rationale=parsed.get("rationale"),
+    )
+
 
 def _classify_condition(obs: Observation) -> tuple[str, str]:
-    """
-    Returns (predicted_condition, rationale) using an RL-style value policy.
+    features = featurize(obs)
+    condition = infer_reference_condition(obs)
+    supporting = supporting_features(condition, features)
+    rationale = f"Reward policy reference condition={condition}. Supporting features: {', '.join(supporting)}."
+    return condition, rationale
 
-    The policy estimates Q-values for the competition-safe condition labels and
-    also tracks wider latent maternal risks. This keeps the OpenEnv contract
-    intact while moving the diagnosis layer beyond a simple rule cascade.
-    """
-    policy_result = RL_RISK_MODEL.predict(obs)
-    return policy_result.condition, policy_result.rationale
 
-# REWARD FUNCTION
+class PrenatalEnvironment(OpenEnvEnvironment):
+    """OpenEnv-friendly maternal-health environment with prompt translation."""
 
-def _calculate_reward(predicted: str,
-                       predicted_urgency: str,
-                       true_condition: str,
-                       days_of_data: int) -> float:
-
-    reward = 0.0
-    true_urgency = CONDITION_URGENCY[true_condition]
-    severity = CONDITION_SEVERITY[true_condition]
-
-    # Correct condition
-    if predicted == true_condition:
-        reward += 10.0
-    else:
-        reward -= 5.0
-
-    # Correct urgency
-    urgency_idx = URGENCY_LEVELS.index
-    if predicted_urgency == true_urgency:
-        reward += 5.0
-    elif urgency_idx(predicted_urgency) > urgency_idx(true_urgency):
-        reward -= 2.0          # over-escalated — cautious, acceptable
-    else:
-        reward -= severity      # under-escalated — dangerous
-
-    # More data = better prediction, reward accordingly
-    if days_of_data >= 3:
-        reward += 2.0
-    elif days_of_data == 2:
-        reward += 1.0
-
-    return reward
-
-# MAIN ENVIRONMENT CLASS
-
-class PrenatalEnvironment:
-    """
-    OpenEnv-compatible RL environment for Niva — maternal health AI.
-
-    Connects directly to the live prenatal.db database.
-    Each episode = one user's recent health data.
-    The agent assesses real readings and makes a risk prediction.
-
-    step() / reset() / state() follow the OpenEnv spec.
-    """
+    env_name = "prenatal_health_openenv"
+    env_version = "2.0.1"
+    openenv_available = OPENENV_AVAILABLE
 
     def __init__(self):
         self.current_user_id: Optional[int] = None
         self.current_obs: Optional[Observation] = None
+        self.current_prompt: Optional[PromptObservation] = None
+        self.current_text_observation: Optional[str] = None
+        self.current_user: Optional[UserProfile] = None
+        self.current_daily: list = []
+        self.current_checkin3: Optional[Checkin3Day] = None
         self.episode_done: bool = False
-        self.true_condition: Optional[str] = None   # set by reset(), used for reward
+        self.reference_condition: Optional[str] = None
 
-    # ── RESET ─────────────────────────────────────────────
-    def reset(self, user_id: int) -> Observation:
-        """
-        Start a new episode for a given user.
-        Loads their profile + last 3 days of checkins from DB.
-        """
+    def get_text_observation(self, observation: Observation) -> str:
+        latest_daily = self.current_daily[0] if self.current_daily else None
+        latest_bp = (
+            f"{latest_daily.bp_systolic}/{latest_daily.bp_diastolic} mmHg"
+            if latest_daily
+            else "unknown"
+        )
+        latest_kicks = latest_daily.kick_count if latest_daily and latest_daily.kick_count is not None else "unknown"
+        latest_bleeding = "yes" if latest_daily and latest_daily.symptom_bleeding else "no"
+        latest_headache = "yes" if latest_daily and latest_daily.symptom_headache else "no"
+        latest_swelling = "yes" if latest_daily and latest_daily.symptom_swelling else "no"
+        latest_vision = "yes" if latest_daily and latest_daily.symptom_blurred_vision else "no"
+        latest_abdominal_pain = "yes" if latest_daily and latest_daily.symptom_abdominal_pain else "no"
+        latest_dizziness = "yes" if latest_daily and latest_daily.symptom_dizziness else "no"
+
+        profile_name = self.current_user.name if self.current_user else f"Patient {observation.user_id}"
+        return (
+            "Patient profile:\n"
+            f"- Name: {profile_name}\n"
+            f"- User ID: {observation.user_id}\n"
+            f"- Region: {observation.region}\n"
+            f"- Weeks pregnant: {observation.weeks_pregnant}\n"
+            f"- Trimester: {observation.trimester}\n"
+            f"- History flags: {', '.join(observation.history_flags) if observation.history_flags else 'none'}\n\n"
+            "Latest vitals and symptoms:\n"
+            f"- Latest blood pressure: {latest_bp}\n"
+            f"- Latest kick count: {latest_kicks}\n"
+            f"- Bleeding: {latest_bleeding}\n"
+            f"- Headache: {latest_headache}\n"
+            f"- Swelling: {latest_swelling}\n"
+            f"- Blurred vision: {latest_vision}\n"
+            f"- Abdominal pain: {latest_abdominal_pain}\n"
+            f"- Dizziness: {latest_dizziness}\n"
+            f"- Latest weight (kg): {observation.latest_weight_kg if observation.latest_weight_kg is not None else 'unknown'}\n"
+            f"- Latest energy (1-10): {observation.latest_energy if observation.latest_energy is not None else 'unknown'}\n"
+            f"- Latest breathlessness (1-10): {observation.latest_breathlessness if observation.latest_breathlessness is not None else 'unknown'}\n\n"
+            "3-day summary:\n"
+            f"- Blood-pressure trend: {observation.bp_trend}\n"
+            f"- Average kick count: {observation.avg_kick_count if observation.avg_kick_count is not None else 'unknown'}\n"
+            f"- Average meals per day: {observation.avg_meals:.2f}\n"
+            f"- Average sleep hours: {observation.avg_sleep:.2f}\n"
+            f"- Risk flags: {', '.join(observation.risk_flags) if observation.risk_flags else 'none'}\n"
+            f"- Days of data: {observation.days_of_data}"
+        )
+
+    def reset(self, user_id: int) -> PromptObservation:
         user, daily, checkin3 = _load_recent_data(user_id, days=3)
-
         self.current_user_id = user_id
+        self.current_user = user
+        self.current_daily = daily
+        self.current_checkin3 = checkin3
         self.current_obs = _build_observation(user, daily, checkin3)
+        self.current_text_observation = self.get_text_observation(self.current_obs)
+        self.current_prompt = observation_to_prompt(self.current_obs, self.current_text_observation)
         self.episode_done = False
+        self.reference_condition = infer_reference_condition(self.current_obs)
+        return self.current_prompt
 
-        # For reward calculation — classify true condition from data
-        self.true_condition, _ = _classify_condition(self.current_obs)
-
-        return self.current_obs
-
-    # ── STEP ──────────────────────────────────────────────
     def step(self, action: ActionModel) -> StepResult:
-        """
-        Agent takes one action.
-
-        action_type = "assess"   → just returns observation, no reward yet
-        action_type = "diagnose" → agent commits to a condition + urgency,
-                                   gets reward, episode ends
-        """
         if self.episode_done:
             raise RuntimeError("Episode done. Call reset() first.")
-
-        if self.current_obs is None:
+        if self.current_obs is None or self.current_prompt is None:
             raise RuntimeError("No active episode. Call reset() first.")
 
-        obs = self.current_obs
-
-        # ── ASSESS: agent wants more info ─────────────────
         if action.action_type == "assess":
             return StepResult(
-                observation=obs,
+                observation=self.current_obs,
+                text_observation=self.current_text_observation or "",
+                prompt=self.current_prompt,
                 reward=0.0,
                 done=False,
                 predicted_condition=None,
                 urgency=None,
                 diet_advice=[],
-                rationale="Assessing — more data reviewed",
+                rationale="Assessment step requested; observation and prompt returned for further reasoning.",
+                reference_condition=self.reference_condition,
+                reference_urgency=None,
+                latent_risks={},
             )
 
-        # ── DIAGNOSE: agent makes final call ──────────────
-        elif action.action_type == "diagnose":
-
-            if action.target not in CONDITIONS:
-                raise ValueError(f"Unknown condition: {action.target}. Valid: {CONDITIONS}")
-            if action.urgency not in URGENCY_LEVELS:
-                raise ValueError(f"Unknown urgency: {action.urgency}. Valid: {URGENCY_LEVELS}")
-
-            # Safety override — if DANGER flags exist, urgency must be hospital
-            danger_flags = [f for f in obs.risk_flags if f.startswith("DANGER")]
-            if danger_flags and action.urgency != "go_to_hospital_today":
-                # Force correct urgency and penalize
-                action.urgency = "go_to_hospital_today"
-                reward = -5.0
-                rationale = f"Safety override: {danger_flags[0]} detected. Urgency corrected to hospital."
-            else:
-                reward = _calculate_reward(
-                    predicted=action.target,
-                    predicted_urgency=action.urgency,
-                    true_condition=self.true_condition,
-                    days_of_data=obs.days_of_data,
-                )
-                RL_RISK_MODEL.update_from_reward(obs, action.target, reward)
-                _, rationale = _classify_condition(obs)
-
-            policy_snapshot = RL_RISK_MODEL.predict(obs)
-            latent_advice = [LATENT_CONDITION_ADVICE[k] for k in policy_snapshot.latent_risks if k in LATENT_CONDITION_ADVICE]
-            diet = DIET_ADVICE.get(action.target, DIET_ADVICE["low_risk"]) + latent_advice[:2]
-            self.episode_done = True
-
-            return StepResult(
-                observation=obs,
-                reward=reward,
-                done=True,
-                predicted_condition=action.target,
-                urgency=action.urgency,
-                diet_advice=diet,
-                rationale=rationale,
-            )
-
-        else:
+        if action.action_type != "diagnose":
             raise ValueError(f"Unknown action_type: {action.action_type}. Use 'assess' or 'diagnose'.")
+        if action.target not in SAFE_CONDITIONS:
+            raise ValueError(f"Unknown condition: {action.target}. Valid: {SAFE_CONDITIONS}")
+        if action.urgency not in URGENCY_ORDER:
+            raise ValueError(f"Unknown urgency: {action.urgency}. Valid: {URGENCY_ORDER}")
 
-    # ── STATE ─────────────────────────────────────────────
+        breakdown = calculate_reward(action.target, action.urgency, self.current_obs)
+        self.episode_done = True
+        latent_advice = [
+            LATENT_CONDITION_ADVICE[name]
+            for name in breakdown.latent_risks
+            if name in LATENT_CONDITION_ADVICE
+        ]
+        diet = DIET_ADVICE.get(action.target, DIET_ADVICE["low_risk"]) + latent_advice[:2]
+
+        return StepResult(
+            observation=self.current_obs,
+            text_observation=self.current_text_observation or "",
+            prompt=self.current_prompt,
+            reward=breakdown.reward,
+            done=True,
+            predicted_condition=action.target,
+            urgency=action.urgency,
+            diet_advice=diet,
+            rationale=action.rationale or breakdown.rationale,
+            reference_condition=breakdown.reference_condition,
+            reference_urgency=breakdown.reference_urgency,
+            latent_risks=breakdown.latent_risks,
+            under_escalated=breakdown.under_escalated,
+        )
+
     def state(self) -> dict:
-        """Returns current environment state — OpenEnv spec."""
-        if self.current_obs is None:
+        if self.current_obs is None or self.current_prompt is None:
             return {"status": "no_active_episode"}
-
         return {
             "user_id": self.current_user_id,
             "episode_done": self.episode_done,
             "observation": self.current_obs.model_dump(),
-            "true_condition": self.true_condition,
+            "text_observation": self.current_text_observation,
+            "prompt": self.current_prompt.model_dump(),
+            "reference_condition": self.reference_condition,
             "valid_actions": [
                 {"action_type": "assess"},
                 *[
-                    {"action_type": "diagnose", "target": c, "urgency": u}
-                    for c in CONDITIONS
-                    for u in URGENCY_LEVELS
+                    {"action_type": "diagnose", "target": condition, "urgency": urgency}
+                    for condition in SAFE_CONDITIONS
+                    for urgency in URGENCY_ORDER
                 ],
             ],
         }

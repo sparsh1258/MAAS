@@ -6,7 +6,7 @@ from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 
 from database import Base, SessionLocal, engine
-from environment import ActionModel, Observation, PrenatalEnvironment, StepResult
+from environment import ActionModel, PrenatalEnvironment, PromptObservation, StepResult
 from models import Checkin3Day, DailyCheckin, UserProfile
 from schemas import ResetRequest
 
@@ -122,7 +122,7 @@ def _resolve_user_id(request: ResetRequest) -> int:
         db.close()
 
 
-@app.post("/reset", response_model=Observation, tags=["OpenEnv"])
+@app.post("/reset", response_model=PromptObservation, tags=["OpenEnv"])
 def reset_environment(request: ResetRequest | None = None):
     payload = request or ResetRequest()
     user_id = _resolve_user_id(payload)
