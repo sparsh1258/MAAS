@@ -1,0 +1,17 @@
+.git
+.gitignore
+.venv
+.env
+.codex-tmp
+__pycache__
+*/__pycache__
+artifacts
+local_backups
+wheelhouse
+uv.lock
+*.pyc
+*.pyo
+*.pyd
+*.log
+*.tmp
+prenatal.local.db

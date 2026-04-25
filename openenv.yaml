@@ -1,20 +1,31 @@
 name: prenatal_health_openenv
-version: "2.0.0"
+version: "2.1.0"
 description: >
-  Niva maternal triage environment refactored for an LLM agent. The environment
-  emits a structured observation plus an LLM-ready prompt, expects a JSON
-  diagnosis/urgency action, and scores that action with deterministic safety and
-  reward logic built from maternal-health features and latent risk estimation.
+  MAAS is a multi-step maternal-health triage environment for OpenEnv Theme 3.1.
+  The agent receives a partially observed patient state, can request hidden
+  signals, reasons over multiple visible check-in days, and is scored with
+  deterministic safety-first reward logic grounded in maternal-health features
+  and latent complication risks.
 
 action_space:
   type: text_json
   required_keys:
-    - condition
-    - urgency
+    - action_type
     - rationale
   fields:
+    action_type:
+      type: string
+      enum:
+        - assess
+        - request_signal
+        - diagnose
+    signal_name:
+      type: string
+      nullable: true
+      description: Hidden signal name to reveal when action_type=request_signal.
     condition:
       type: string
+      nullable: true
       enum:
         - preeclampsia
         - gestational_diabetes
@@ -22,12 +33,15 @@ action_space:
         - preterm_risk
         - fetal_distress
         - low_risk
+      description: Final diagnosis when action_type=diagnose, otherwise null.
     urgency:
       type: string
+      nullable: true
       enum:
         - monitor_at_home
         - visit_phc_this_week
         - go_to_hospital_today
+      description: Final urgency when action_type=diagnose, otherwise null.
     rationale:
       type: string
 
@@ -36,10 +50,15 @@ observation_space:
   fields:
     observation:
       type: object
-      description: Structured maternal-health observation from SQLite-backed user/check-in data.
+      description: >
+        Structured maternal-health observation with belief_state,
+        available_signals, withheld_signals, signal_mask, and temporal episode
+        metadata.
     text_observation:
       type: string
-      description: Clean LLM-readable summary of patient profile, latest vitals, and 3-day trends.
+      description: >
+        LLM-readable summary of patient profile, visible day slice, temporal
+        belief state, visible vitals, and currently hidden signals.
     system_prompt:
       type: string
     user_prompt:
@@ -57,24 +76,30 @@ reward:
   description: >
     Reward is calculated by xai_reward_model.py. The reward model uses
     featurize(), latent_risk_scores(), infer_reference_condition(), and
-    choose_urgency() to derive a reference condition/urgency and strongly
-    penalizes dangerous under-escalation.
-  range: [-41.0, 20.0]
+    choose_urgency() to derive a reference condition/urgency, applies
+    class-weighted safety scoring, charges a small cost for request_signal, and
+    strongly penalizes dangerous under-escalation.
+  range: [-45.0, 25.0]
   notes:
-    - Correct condition: +12
-    - Wrong condition: -6
-    - Correct urgency: +6
+    - Correct condition: +12 scaled by class weight
+    - Wrong condition: -6 scaled by class weight
+    - Correct urgency: +6 scaled by class weight
     - Over-escalation: -2
     - Under-escalation: at least -12 and up to -25 based on severity
     - Danger-flag under-escalation override: additional -10
+    - request_signal action: -0.25
+    - assess action: neutral reward while the episode continues
     - More recent data: +1 to +2
 
 training:
-  baseline_script: train_trl.py
-  trainer: HuggingFace TRL PPO
+  baseline_script: train_openenv_ppo.py
+  notebook: niva_training.ipynb
+  optional_script: train_grpo.py
+  trainer: Hugging Face TRL PPO / GRPO with optional Unsloth acceleration
   loop: >
-    OpenEnv reset -> prompt observation -> LLM JSON action -> environment step
-    -> deterministic reward -> PPO update.
+    OpenEnv reset -> prompt observation -> multi-step LLM JSON actions
+    (assess/request_signal/diagnose) -> environment step -> deterministic reward
+    -> PPO or GRPO update.
 
 endpoints:
   reset:

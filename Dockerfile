@@ -11,8 +11,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 WORKDIR /app
 
 # ── Python dependencies ───────────────────────────────────────────────────────
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+COPY requirements-space.txt .
+RUN pip install --no-cache-dir -r requirements-space.txt
 
 # ── Copy source code ──────────────────────────────────────────────────────────
 COPY . .
