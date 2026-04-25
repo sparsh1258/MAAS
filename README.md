@@ -14,18 +14,29 @@ An agent must reason over incomplete prenatal data, request missing signals, car
 
 ## Quick Links
 
-- Hugging Face Space: [https://huggingface.co/spaces/sparsh122/MAAS](https://huggingface.co/spaces/sparsh122/MAAS)
+- Hugging Face repo mirror: [https://huggingface.co/sparsh122/MAAS](https://huggingface.co/sparsh122/MAAS)
+- Latest HF GRPO artifacts: [https://huggingface.co/sparsh122/maas-grpo-qwen05b-fix2](https://huggingface.co/sparsh122/maas-grpo-qwen05b-fix2)
 - OpenEnv manifest: [`openenv.yaml`](openenv.yaml)
 - Primary training script: [`train_openenv_ppo.py`](train_openenv_ppo.py)
 - Colab-friendly PPO entrypoint: [`train_trl.py`](train_trl.py)
 - Optional GRPO / Unsloth path: [`train_grpo.py`](train_grpo.py)
-- Notebook: [`niva_training.ipynb`](niva_training.ipynb)
+- PPO notebook: [`niva_training.ipynb`](niva_training.ipynb)
+- GRPO notebook: [`niva_grpo_training.ipynb`](niva_grpo_training.ipynb)
+- Space deployment files: [`Dockerfile`](Dockerfile), [`requirements-space.txt`](requirements-space.txt), [`.dockerignore`](.dockerignore)
 - Submission slides: [OpenEnv Hackathon Deck](https://docs.google.com/presentation/d/1KzV0MxZYYA6PXXJ-nAcSRUn5staJkfQvEgHF1QVl5as/preview?pru=AAABnedodns*3ITAIB6zwg6GBoSPLOY7LQ&slide=id.g3e610e50443_9_233)
 - Training curve: [`results/maas_deep_policy_demo/training_curve.png`](results/maas_deep_policy_demo/training_curve.png)
 - Training summary: [`results/maas_deep_policy_demo/demo_summary.json`](results/maas_deep_policy_demo/demo_summary.json)
 - Submission evidence summary: [`results/submission_evidence.md`](results/submission_evidence.md)
 - Baseline report: [`results/baseline_report.md`](results/baseline_report.md)
 - Baseline vs trained summary: [`results/baseline_vs_trained.json`](results/baseline_vs_trained.json)
+
+## Current Submission Status
+
+- The environment itself is ready for review: partial observability, multi-step actions, temporal belief state, and deterministic safety-first reward logic are all implemented in-repo.
+- The latest post-fix Hugging Face GRPO job (`69ed2261d70108f37acdef0e`, created on April 26, 2026 at 01:51 IST) completed successfully and uploaded checkpoints, completion logs, and `training_summary.json` to [`sparsh122/maas-grpo-qwen05b-fix2`](https://huggingface.co/sparsh122/maas-grpo-qwen05b-fix2).
+- The earlier post-fix run [`sparsh122/maas-grpo-qwen05b-fix1`](https://huggingface.co/sparsh122/maas-grpo-qwen05b-fix1) proved the `-20` reward collapse was fixed and logged a non-zero-gradient step.
+- The current limitation is that the newest 3-epoch run still has a mean benchmark score of about `0.01`, with most steps returning `grad_norm = 0` and `reward_std = 0`, so the GRPO path is operational but not yet a strong proof of policy improvement.
+- Space deployment files are included in this repo, but the public Space should only be linked as the primary demo once the live app sync is finalized.
 
 ## Problem
 
@@ -175,6 +186,11 @@ If your local `trl` build does not expose PPO classes anymore, use the GRPO path
 
 [`train_trl.py`](train_trl.py) re-exports the same PPO loop for notebook usage.
 
+### Notebooks
+
+- PPO workflow notebook: [`niva_training.ipynb`](niva_training.ipynb)
+- GRPO workflow notebook: [`niva_grpo_training.ipynb`](niva_grpo_training.ipynb)
+
 ### Optional GRPO / Unsloth Path
 
 [`train_grpo.py`](train_grpo.py) provides an optional TRL GRPO path with `--use-unsloth` support for hackathon GPU runs and Hugging Face Jobs.
@@ -209,6 +225,7 @@ The repo includes checked-in evidence that MAAS was actually trained and evaluat
 - Demo run summary: [`results/maas_deep_policy_demo/demo_summary.json`](results/maas_deep_policy_demo/demo_summary.json)
 - Baseline report: [`results/baseline_report.md`](results/baseline_report.md)
 - Baseline vs trained summary: [`results/baseline_vs_trained.json`](results/baseline_vs_trained.json)
+- Latest HF GRPO artifacts: [sparsh122/maas-grpo-qwen05b-fix2](https://huggingface.co/sparsh122/maas-grpo-qwen05b-fix2)
 
 Current checked-in demo metrics from `demo_summary.json`:
 
