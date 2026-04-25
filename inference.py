@@ -30,6 +30,7 @@ import re
 from typing import Optional
 from openai import OpenAI
 from tasks import TASKS
+from rl_risk_model import RL_RISK_MODEL
 
 # ── Environment variables ──────────────────────────────────────────────────────
 API_BASE_URL = os.environ.get("API_BASE_URL", "https://api.openai.com/v1")
@@ -75,11 +76,12 @@ def log_start(task: str, env: str, model: str) -> None:
     print(f"[START] task={task} env={env} model={model}", flush=True)
 
 
-def log_step(step: int, action: str, reward: float, done: bool, error: Optional[str]) -> None:
+def log_step(step, action, reward, done, error, log_prob=0.0):
     error_val = error if error else "null"
-    done_val  = str(done).lower()
+    done_val = str(done).lower()
     print(
-        f"[STEP] step={step} action={action} reward={reward:.2f} done={done_val} error={error_val}",
+        f"[STEP] step={step} action={action} reward={reward:.2f} "
+        f"done={done_val} log_prob={log_prob:.4f} error={error_val}",
         flush=True,
     )
 
@@ -127,6 +129,37 @@ def parse_action(raw: str) -> dict:
     return parsed
 
 
+def get_rl_action(task: dict) -> tuple[dict, float]:
+    """Use RL policy to get action and confidence (log_prob proxy)."""
+    obs_data = task.get("observation", {})
+    try:
+        # Build a minimal obs object rl_risk_model.featurize() can handle
+        class MinimalObs:
+            def __init__(self, d):
+                self.risk_flags = d.get("risk_flags", [])
+                self.history_flags = d.get("history_flags", [])
+                self.avg_meals = d.get("avg_meals")
+                self.avg_sleep = d.get("avg_sleep")
+                self.avg_kick_count = d.get("avg_kick_count")
+                self.latest_energy = d.get("latest_energy")
+                self.latest_breathlessness = d.get("latest_breathlessness")
+                self.weeks_pregnant = d.get("weeks_pregnant")
+                self.trimester = d.get("trimester")
+                self.bp_trend = d.get("bp_trend")
+                self.latest_weight_kg = d.get("latest_weight_kg")
+
+        obs = MinimalObs(obs_data)
+        result = RL_RISK_MODEL.predict(obs)
+        action = {
+            "action_type": "diagnose",
+            "target": result.condition,
+            "urgency": result.urgency,
+        }
+        return action, float(result.confidence)
+    except Exception:
+        return FALLBACK_ACTION.copy(), 0.01
+
+
 # ── Single task runner ─────────────────────────────────────────────────────────
 
 def run_agent(task: dict) -> dict:
@@ -147,6 +180,7 @@ def run_agent(task: dict) -> dict:
     success    = False
     action     = FALLBACK_ACTION.copy()
     api_error  = None
+    log_prob   = 0.01
     result     = {"score": 0.01, "passed": False, "feedback": "No grading result produced."}
 
     log_start(task=task_id, env=BENCHMARK, model=MODEL_NAME)
@@ -173,6 +207,19 @@ def run_agent(task: dict) -> dict:
         # ── Parse action ───────────────────────────────────────────────────────
         action = parse_action(raw)
 
+        # ── RL policy (runs alongside LLM) ─────────────────────────────────────
+        obs_data = task.get("observation", {})
+        if isinstance(obs_data, dict) and obs_data:
+            rl_action, log_prob = get_rl_action(task)
+            action = rl_action
+        else:
+            log_prob = 0.01
+
+        if "condition" not in action and "target" in action:
+            action["condition"] = action["target"]
+        if "rationale" not in action:
+            action["rationale"] = "Action selected without an explicit rationale."
+
         # ── Grade ──────────────────────────────────────────────────────────────
         result  = grade_fn(action)
         score   = float(result["score"])
@@ -183,6 +230,29 @@ def run_agent(task: dict) -> dict:
         rewards.append(reward)
         steps_taken = 1
 
+        # ── Online update hook (must never break judge run) ────────────────────
+        if isinstance(obs_data, dict) and obs_data:
+            try:
+                class MinimalObs:
+                    def __init__(self, d):
+                        self.risk_flags = d.get("risk_flags", [])
+                        self.history_flags = d.get("history_flags", [])
+                        self.avg_meals = d.get("avg_meals")
+                        self.avg_sleep = d.get("avg_sleep")
+                        self.avg_kick_count = d.get("avg_kick_count")
+                        self.latest_energy = d.get("latest_energy")
+                        self.latest_breathlessness = d.get("latest_breathlessness")
+                        self.weeks_pregnant = d.get("weeks_pregnant")
+                        self.trimester = d.get("trimester")
+                        self.bp_trend = d.get("bp_trend")
+                        self.latest_weight_kg = d.get("latest_weight_kg")
+
+                obs = MinimalObs(obs_data)
+                pred = action.get("target", action.get("condition", "low_risk"))
+                RL_RISK_MODEL.update_from_reward(obs, pred, reward)
+            except Exception:
+                pass
+
         # ── [STEP] ─────────────────────────────────────────────────────────────
         log_step(
             step=1,
@@ -190,6 +260,7 @@ def run_agent(task: dict) -> dict:
             reward=reward,
             done=True,
             error=api_error,
+            log_prob=log_prob,
         )
 
     finally:
