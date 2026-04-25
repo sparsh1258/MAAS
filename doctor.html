@@ -1,769 +1,1139 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Niva Doctor Portal</title>
+<title>ASHA Worker Portal</title>
 <style>
-  :root{
-    --bg:#f4f7fb;
-    --surface:#ffffff;
-    --surface-soft:#f8fbff;
-    --line:#d9e3ef;
-    --line-strong:#bfd1e4;
-    --text:#152235;
-    --muted:#5f7288;
-    --primary:#2f6fed;
-    --primary-soft:#e8f0ff;
-    --danger:#b42318;
-    --danger-bg:#fde7e5;
-    --warn:#b54708;
-    --warn-bg:#fff0d5;
-    --safe:#027a48;
-    --safe-bg:#e7f8ef;
-    --shadow:0 16px 40px rgba(21,34,53,.08);
-    --radius:18px;
-  }
-  *{box-sizing:border-box}
-  body{margin:0;font-family:Inter,Segoe UI,Arial,sans-serif;background:var(--bg);color:var(--text)}
-  .hidden{display:none!important}
-  .auth-screen{min-height:100vh;display:grid;place-items:center;padding:32px}
-  .auth-card{width:min(100%,420px);background:var(--surface);border:1px solid var(--line);border-radius:24px;padding:28px;box-shadow:var(--shadow)}
-  .auth-kicker{font-size:12px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--primary)}
-  .auth-title{font-size:34px;font-weight:700;line-height:1.05;margin:10px 0 8px}
-  .auth-copy{margin:0 0 20px;color:var(--muted);line-height:1.65}
-  .mode-switch{display:flex;gap:8px;margin:18px 0 20px;padding:6px;border-radius:18px;background:var(--surface-soft);border:1px solid var(--line)}
-  .mode-chip{flex:1;border:none;border-radius:14px;padding:11px 12px;background:transparent;color:var(--muted);font:inherit;font-weight:700;cursor:pointer;transition:all .18s ease}
-  .mode-chip.active{background:#fff;color:var(--primary);box-shadow:0 8px 18px rgba(47,111,237,.14)}
-  .auth-stack{display:grid;gap:16px}
-  .helper-card{padding:14px 16px;border-radius:16px;background:var(--primary-soft);border:1px solid #cbdcff}
-  .helper-card strong{display:block;font-size:12px;text-transform:uppercase;letter-spacing:.08em;color:var(--primary);margin-bottom:6px}
-  .helper-card div{font-size:14px;line-height:1.6}
-  .inline-row{display:flex;gap:10px;align-items:center}
-  .inline-row .btn{flex-shrink:0}
-  .fetched-card{padding:14px 16px;border-radius:16px;background:#f8fbff;border:1px solid var(--line)}
-  .fetched-title{font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:8px}
-  .fetched-grid{display:grid;grid-template-columns:1fr;gap:8px}
-  .fetched-grid div{font-size:14px}
-  .demo-box{margin:0 0 18px;padding:12px 14px;border-radius:16px;background:var(--surface-soft);border:1px solid var(--line)}
-  .demo-box strong{display:block;font-size:12px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:6px}
-  .demo-box div{font-size:14px;line-height:1.6}
-  .form-group{margin-bottom:14px}
-  label{display:block;font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-bottom:7px}
-  input,select,textarea{width:100%;padding:13px 14px;border-radius:14px;border:1px solid var(--line-strong);background:#fff;font:inherit;color:var(--text);outline:none}
-  input:focus,select:focus,textarea:focus{border-color:var(--primary);box-shadow:0 0 0 4px rgba(47,111,237,.12)}
-  .btn{appearance:none;border:none;border-radius:14px;padding:13px 16px;font:inherit;font-weight:700;cursor:pointer;transition:transform .16s ease,box-shadow .16s ease,background .16s ease}
-  .btn:hover{transform:translateY(-1px)}
-  .btn-primary{background:var(--primary);color:#fff;box-shadow:0 10px 22px rgba(47,111,237,.24)}
-  .btn-secondary{background:#fff;color:var(--text);border:1px solid var(--line)}
-  .login-error{margin-top:12px;color:var(--danger);font-size:13px}
-  .app-shell{min-height:100vh;padding:22px 24px 30px}
-  .topbar{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;margin-bottom:18px}
-  .topbar h1{margin:0;font-size:30px;line-height:1.05}
-  .topbar p{margin:6px 0 0;color:var(--muted)}
-  .topbar-actions{display:flex;gap:10px;align-items:center}
-  .link-btn{display:inline-flex;align-items:center;justify-content:center;padding:12px 14px;border-radius:14px;border:1px solid var(--line);background:#fff;color:var(--text);text-decoration:none;font-weight:600}
-  .alert-banner{display:flex;align-items:center;gap:12px;margin-bottom:16px;padding:14px 16px;border-radius:16px;background:var(--danger-bg);border:1px solid #f2b8b5;color:#7a271a}
-  .alert-banner strong{font-size:13px;text-transform:uppercase;letter-spacing:.08em}
-  .filters{display:grid;grid-template-columns:1.1fr 1fr 1fr auto;gap:12px;padding:14px 16px;border-radius:18px;background:var(--surface);border:1px solid var(--line);box-shadow:var(--shadow);margin-bottom:18px}
-  .board{position:relative}
-  .table-card{background:var(--surface);border:1px solid var(--line);border-radius:22px;box-shadow:var(--shadow);overflow:hidden}
-  table{width:100%;border-collapse:collapse}
-  thead{background:#f8fbff}
-  th,td{padding:16px 18px;text-align:left;border-bottom:1px solid var(--line)}
-  th{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
-  td{font-size:14px;vertical-align:middle}
-  tbody tr{cursor:pointer;transition:background .14s ease}
-  tbody tr:hover{background:#f8fbff}
-  tbody tr:last-child td{border-bottom:none}
-  .patient-name{font-weight:700;color:var(--text)}
-  .subtle{color:var(--muted);font-size:12px}
-  .risk-badge{display:inline-flex;align-items:center;padding:7px 10px;border-radius:999px;font-size:12px;font-weight:700}
-  .risk-badge.danger{background:var(--danger-bg);color:var(--danger)}
-  .risk-badge.warn{background:var(--warn-bg);color:var(--warn)}
-  .risk-badge.safe{background:var(--safe-bg);color:var(--safe)}
-  .trend{font-size:20px;font-weight:700}
-  .trend.up{color:var(--danger)}
-  .trend.down{color:var(--safe)}
-  .trend.steady{color:var(--muted)}
-  .action-pill{display:inline-flex;padding:8px 12px;border-radius:999px;background:var(--primary-soft);color:var(--primary);font-size:12px;font-weight:700}
-  .empty{padding:28px;color:var(--muted);text-align:center}
-  .detail-panel{position:fixed;top:0;right:0;width:min(520px,100vw);height:100vh;background:var(--surface);border-left:1px solid var(--line);box-shadow:-20px 0 42px rgba(21,34,53,.08);transform:translateX(104%);transition:transform .26s ease;z-index:40;display:flex;flex-direction:column}
-  .detail-panel.open{transform:translateX(0)}
-  .detail-head{padding:22px 22px 16px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;gap:10px}
-  .detail-head h2{margin:0;font-size:24px}
-  .detail-body{padding:18px 22px 26px;overflow:auto;display:grid;gap:16px}
-  .close-btn{border:none;background:#eef4ff;color:var(--primary);width:38px;height:38px;border-radius:12px;font-size:22px;cursor:pointer}
-  .panel-card{border:1px solid var(--line);border-radius:18px;padding:16px;background:#fff}
-  .panel-card h3{margin:0 0 12px;font-size:15px}
-  .meta-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
-  .meta-cell{padding:12px;border-radius:14px;background:#f8fbff;border:1px solid #e8eef6}
-  .meta-label{font-size:11px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:6px}
-  .meta-value{font-size:15px;font-weight:700}
-  .flags{display:flex;flex-wrap:wrap;gap:8px}
-  .flag{padding:8px 10px;border-radius:999px;border:1px solid var(--line);background:#f8fbff;font-size:12px;font-weight:700;color:var(--text)}
-  .summary-box{line-height:1.65;color:var(--text)}
-  .chart-grid{display:grid;grid-template-columns:1fr;gap:12px}
-  .chart-box{border:1px solid var(--line);border-radius:16px;padding:14px;background:#fbfdff}
-  .chart-box h4{margin:0 0 10px;font-size:13px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
-  .chart-box svg{width:100%;height:150px;display:block}
-  .legend{display:flex;gap:12px;flex-wrap:wrap;font-size:12px;color:var(--muted);margin-top:8px}
-  .legend span{display:inline-flex;align-items:center;gap:6px}
-  .legend i{display:inline-block;width:10px;height:10px;border-radius:999px}
-  textarea{min-height:120px;resize:vertical}
-  .status-row{display:flex;justify-content:space-between;align-items:center;font-size:12px;color:var(--muted);margin-top:8px}
-  .panel-actions{display:flex;gap:10px;flex-wrap:wrap}
-  .panel-actions .btn{flex:1}
-  @media (max-width: 1100px){
-    .filters{grid-template-columns:1fr 1fr}
-  }
-  @media (max-width: 780px){
-    .app-shell{padding:18px 14px 28px}
-    .topbar{flex-direction:column}
-    .topbar-actions{width:100%;flex-wrap:wrap}
-    .filters{grid-template-columns:1fr}
-    th:nth-child(3),td:nth-child(3){display:none}
-  }
+:root{
+  --bg:#f9fbe7;
+  --card:#f1f8e9;
+  --card-border:#d7e7c9;
+  --card-soft:#cfe1c8;
+  --accent:#2e7d32;
+  --accent-dark:#1b5e20;
+  --accent-soft:#a5d6a7;
+  --text:#244126;
+  --text-soft:#56755b;
+  --white:#ffffff;
+  --danger:#8f2f2b;
+  --danger-bg:#fff3f3;
+  --shadow:0 16px 30px rgba(46, 125, 50, 0.12);
+}
+
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{
+  margin:0;
+  min-height:100vh;
+  font-family:"Segoe UI",system-ui,-apple-system,BlinkMacSystemFont,sans-serif;
+  color:var(--text);
+  background:
+    radial-gradient(circle at top left, rgba(165,214,167,0.35), transparent 28%),
+    radial-gradient(circle at bottom right, rgba(46,125,50,0.10), transparent 32%),
+    var(--bg);
+}
+
+.portal-back{
+  display:inline-flex;
+  align-items:center;
+  gap:8px;
+  border:none;
+  border-radius:999px;
+  padding:10px 16px;
+  font:inherit;
+  font-weight:700;
+  cursor:pointer;
+  background:rgba(255,255,255,0.92);
+  box-shadow:0 12px 26px rgba(36,65,38,0.08);
+}
+
+.asha-screen{
+  min-height:100vh;
+  padding:16px 16px 96px;
+  animation:softReveal .35s ease both;
+}
+
+.asha-shell{max-width:480px;margin:0 auto}
+.asha-top-row{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px}
+.asha-back{background:var(--white);color:var(--accent)}
+.asha-lang-toggle{display:inline-flex;align-items:center;gap:8px;color:var(--accent);font-weight:700}
+.asha-lang-toggle button{border:none;background:none;color:#6a7c69;font:inherit;font-weight:700;cursor:pointer}
+.asha-lang-toggle button.active{color:var(--accent)}
+.asha-banner{
+  position:relative;
+  min-height:160px;
+  border-radius:28px;
+  overflow:hidden;
+  box-shadow:var(--shadow);
+  background:linear-gradient(135deg,#edf5d7 0%,#d8e6b7 52%,#f4f7e8 100%);
+}
+.asha-banner::before{
+  content:"";
+  position:absolute;
+  inset:-10% 35% auto -8%;
+  height:180px;
+  border-radius:999px;
+  background:radial-gradient(circle,rgba(255,255,255,0.9) 0%,rgba(255,255,255,0) 70%);
+  pointer-events:none;
+}
+.asha-banner::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,0.06),rgba(0,0,0,0.38))}
+.asha-banner-art{
+  position:absolute;
+  inset:0;
+  z-index:0;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding:16px 18px;
+}
+.asha-banner-art svg{
+  width:min(220px,58%);
+  height:auto;
+  opacity:.94;
+  transform:translateY(4px);
+}
+.asha-banner-text{
+  position:absolute;
+  inset:0;
+  z-index:1;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding:20px;
+  text-align:center;
+  color:var(--white);
+  font-size:20px;
+  font-weight:800;
+  line-height:1.3;
+}
+
+.asha-logo-wrap{display:flex;justify-content:center;margin:-34px 0 20px;position:relative;z-index:2}
+.asha-logo-circle{
+  width:120px;
+  height:120px;
+  border-radius:50%;
+  background:var(--white);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  box-shadow:0 2px 8px rgba(0,0,0,0.1);
+}
+
+.asha-card{background:var(--card);border:1px solid var(--card-border);border-radius:24px;padding:18px}
+.asha-hidden{display:none!important}
+.asha-auth-toggle{display:flex;gap:8px;margin-bottom:16px}
+.asha-auth-toggle button{
+  flex:1;
+  height:46px;
+  border:1px solid var(--accent-soft);
+  border-radius:16px;
+  background:var(--white);
+  color:var(--accent);
+  font:inherit;
+  font-weight:700;
+  cursor:pointer;
+}
+.asha-auth-toggle button.active{background:var(--accent);color:var(--white);border-color:var(--accent)}
+.asha-field{display:flex;flex-direction:column;gap:8px;margin-bottom:14px}
+.asha-field label,.asha-heading-row{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:700;color:var(--accent)}
+.asha-input,.asha-select,.asha-textarea{
+  width:100%;
+  height:52px;
+  border:1px solid var(--accent-soft);
+  border-radius:16px;
+  background:var(--white);
+  padding:0 14px;
+  font:inherit;
+  font-size:16px;
+  color:var(--text);
+  outline:none;
+}
+.asha-textarea{height:auto;min-height:112px;padding:14px;resize:vertical}
+.asha-input:focus,.asha-select:focus,.asha-textarea:focus{border-color:var(--accent)}
+.asha-primary,.asha-secondary,.asha-nav-item{border:none;border-radius:16px;font:inherit;cursor:pointer}
+.asha-primary{width:100%;height:52px;background:var(--accent);color:var(--white);font-weight:700}
+.asha-secondary{
+  width:100%;
+  height:48px;
+  background:var(--white);
+  color:var(--accent);
+  border:1px solid var(--accent-soft);
+  font-weight:700;
+}
+.asha-primary:active,.asha-secondary:active,.asha-nav-item:active,.asha-auth-toggle button:active,.asha-patient-card:active{
+  transform:scale(0.97);
+  background:var(--accent-dark);
+  color:var(--white);
+}
+
+.asha-message{margin-top:12px;padding:12px 14px;border-radius:16px;background:var(--white);color:var(--accent);font-size:14px;line-height:1.5}
+.asha-message.error{background:var(--danger-bg);color:var(--danger)}
+.asha-tabs{padding-bottom:12px}
+.asha-panel{display:flex;flex-direction:column;gap:14px}
+.asha-panel.hidden{display:none}
+.asha-progress-card{text-align:center}
+.asha-progress-ring{position:relative;width:120px;height:120px;margin:0 auto 14px}
+.asha-progress-ring svg{display:block;width:120px;height:120px}
+.asha-ring-bg{fill:none;stroke:#eeeeee;stroke-width:10}
+.asha-ring-fill{
+  fill:none;
+  stroke:var(--accent);
+  stroke-width:10;
+  stroke-linecap:round;
+  transform:rotate(-90deg);
+  transform-origin:60px 60px;
+  stroke-dasharray:326.73;
+  stroke-dashoffset:326.73;
+  transition:stroke-dashoffset .3s ease;
+}
+.asha-progress-center{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:800;color:var(--accent)}
+.asha-progress-copy{font-size:18px;font-weight:700;color:var(--accent)}
+.asha-target-chip{display:inline-flex;align-items:center;gap:8px;margin-top:12px;padding:8px 12px;border-radius:999px;background:var(--white);color:var(--accent);font-weight:700}
+.asha-heatmap-scroll{overflow-x:auto}
+.asha-heatmap-row{display:flex;gap:4px;width:max-content;padding-bottom:4px}
+.asha-heatmap-day{width:32px;height:32px;border-radius:8px;background:#eeeeee;border:1px solid transparent}
+.asha-heatmap-day.met{background:var(--accent)}
+.asha-heatmap-day.partial{background:var(--accent-soft)}
+.asha-heatmap-day.future{background:var(--white);border-color:#d9e7d8}
+.asha-popup{margin-top:10px;padding:10px 12px;border-radius:14px;background:var(--white);color:var(--accent);font-size:13px}
+.asha-stats{display:flex;flex-direction:column;gap:10px}
+.asha-stat{
+  min-height:72px;
+  border-left:4px solid var(--accent);
+  border-radius:18px;
+  background:var(--white);
+  padding:14px 16px;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:16px;
+  color:var(--accent);
+}
+.asha-stat strong{font-size:24px}
+.asha-patient-list{display:flex;flex-direction:column;gap:12px}
+.asha-patient-card{
+  width:100%;
+  text-align:left;
+  background:var(--card);
+  border:1px solid var(--card-soft);
+  border-left:3px solid var(--accent);
+  border-radius:18px;
+  padding:14px 14px 10px;
+}
+.asha-patient-head{display:flex;gap:12px;align-items:flex-start}
+.asha-avatar{width:40px;height:40px;border-radius:12px;background:#e8f5e9;display:flex;align-items:center;justify-content:center}
+.asha-patient-main{flex:1;min-width:0}
+.asha-patient-name{font-size:17px;font-weight:700;color:#24502a}
+.asha-patient-village{font-size:13px;color:var(--text-soft);margin-top:4px}
+.asha-trimester{display:inline-flex;align-items:center;justify-content:center;padding:6px 10px;border-radius:999px;background:var(--accent-soft);color:var(--accent);font-size:12px;font-weight:700}
+.asha-accordion{display:none;padding-top:12px}
+.asha-patient-card.expanded .asha-accordion{display:block}
+.asha-detail{font-size:13px;line-height:1.5;color:#355437;margin-bottom:6px}
+.asha-visit-history{display:flex;flex-direction:column;gap:8px;margin-top:8px}
+.asha-visit-entry{padding:10px 12px;border-radius:14px;background:var(--white);color:#355437;font-size:13px;line-height:1.5}
+.asha-empty{text-align:center;padding:24px 18px;background:var(--card);border-radius:20px}
+.asha-empty-text{margin-top:10px;font-size:16px;font-weight:700;color:var(--accent)}
+.asha-symptoms{display:flex;flex-direction:column;gap:10px}
+.asha-symptom{
+  min-height:52px;
+  border-radius:16px;
+  background:var(--card);
+  border:1px solid var(--card-soft);
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+  padding:10px 14px;
+}
+.asha-symptom label{display:flex;align-items:center;gap:8px;color:var(--accent);font-weight:700}
+.asha-switch{position:relative;display:inline-flex;width:46px;height:28px}
+.asha-switch input{opacity:0;width:0;height:0}
+.asha-slider{position:absolute;inset:0;border-radius:999px;background:#cfd8cf;transition:.2s}
+.asha-slider::before{
+  content:"";
+  position:absolute;
+  width:22px;
+  height:22px;
+  left:3px;
+  top:3px;
+  border-radius:50%;
+  background:var(--white);
+  transition:.2s;
+}
+.asha-switch input:checked + .asha-slider{background:var(--accent)}
+.asha-switch input:checked + .asha-slider::before{transform:translateX(18px)}
+.asha-bottom-nav{
+  position:sticky;
+  bottom:0;
+  margin-top:14px;
+  background:var(--white);
+  border-top:1px solid var(--accent-soft);
+  border-radius:18px 18px 0 0;
+  display:grid;
+  grid-template-columns:repeat(4,1fr);
+  height:60px;
+}
+.asha-nav-item{
+  background:var(--white);
+  color:#6e8a71;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  gap:3px;
+  position:relative;
+}
+.asha-nav-item.active{color:var(--accent)}
+.asha-nav-item.active::after{
+  content:"";
+  position:absolute;
+  left:18%;
+  right:18%;
+  bottom:0;
+  height:3px;
+  border-radius:999px;
+  background:var(--accent);
+}
+.asha-nav-label{font-size:11px;font-weight:700}
+
+@keyframes softReveal{
+  from{opacity:0;transform:translateY(10px)}
+  to{opacity:1;transform:translateY(0)}
+}
+
+@media (min-width:768px){
+  .asha-banner{min-height:220px}
+  .asha-banner-art svg{width:min(280px,45%)}
+}
+
+@media (max-width:520px){
+  .asha-screen{padding:14px 14px 88px}
+  .asha-banner-text{font-size:18px}
+  .asha-banner-art svg{width:min(190px,56%)}
+  .asha-stat{padding:12px 14px}
+}
 </style>
 </head>
 <body>
-  <div id="login-view" class="auth-screen">
-    <div class="auth-card">
-      <div id="role-chooser-view">
-        <div class="auth-kicker">Choose Interface</div>
-        <div class="auth-title">Welcome To Niva</div>
-        <div class="mode-switch">
-          <button class="mode-chip active" id="private-role-btn" type="button">Private Doctor</button>
-          <button class="mode-chip" id="asha-role-btn" type="button">ASHA Worker</button>
-        </div>
+<section class="asha-screen" id="asha-portal">
+  <div class="asha-shell">
+    <div class="asha-top-row">
+      <button class="portal-back asha-back" id="asha-back-btn" type="button" onclick="showLanding()">
+        <span>Back</span>
+      </button>
+      <div class="asha-lang-toggle">
+        <button class="active" id="asha-lang-en" type="button">EN</button>
+        <span>|</span>
+        <button id="asha-lang-hi" type="button">HI</button>
+      </div>
+    </div>
+
+    <div class="asha-banner">
+      <div class="asha-banner-art" aria-hidden="true">
+        <svg viewBox="0 0 680 400" xmlns="http://www.w3.org/2000/svg">
+          <path d="M 220 310 Q 180 280 170 230 Q 160 180 190 150 Q 210 130 230 150 Q 240 160 235 180 Q 260 140 270 120 Q 285 95 310 105 Q 330 115 320 145 Q 350 110 365 115 Q 385 122 375 155 Q 400 130 415 140 Q 435 155 420 185 Q 440 175 450 188 Q 462 205 445 225 Q 430 245 400 250 Q 370 255 340 245 Q 310 265 290 290 Q 265 320 250 330 Z" fill="#4caf50"/>
+          <path d="M 460 310 Q 500 280 510 230 Q 520 180 490 150 Q 470 130 450 150 Q 440 160 445 180 Q 420 140 410 120 Q 395 95 370 105 Q 350 115 360 145 Q 330 110 315 115 Q 295 122 305 155 Q 280 130 265 140 Q 245 155 260 185 Q 240 175 230 188 Q 218 205 235 225 Q 250 245 280 250 Q 310 255 340 245 Q 370 265 390 290 Q 415 320 430 330 Z" fill="#8bc34a"/>
+          <ellipse cx="340" cy="108" rx="22" ry="22" fill="#29b6f6"/>
+          <path d="M 318 128 Q 310 160 315 195 Q 325 210 340 212 Q 355 210 365 195 Q 370 160 362 128 Z" fill="#0288d1"/>
+          <path d="M 320 138 Q 295 115 278 95 Q 270 82 280 75 Q 292 70 305 85 Q 318 100 328 128" fill="#0288d1"/>
+          <path d="M 360 138 Q 385 115 402 95 Q 410 82 400 75 Q 388 70 375 85 Q 362 100 352 128" fill="#0288d1"/>
+          <path d="M 328 210 Q 318 240 315 270 Q 314 280 322 282 Q 332 283 336 268 Q 338 250 340 230" fill="#0288d1"/>
+          <path d="M 352 210 Q 362 240 365 270 Q 366 280 358 282 Q 348 283 344 268 Q 342 250 340 230" fill="#0288d1"/>
+          <text x="340" y="370" text-anchor="middle" font-family="Arial,sans-serif" font-size="38" font-weight="700" fill="#2e7d32" letter-spacing="8">ASHA</text>
+        </svg>
+      </div>
+      <div class="asha-banner-text">ASHA Worker Portal - Niva Prenatal Health</div>
+    </div>
+
+    <div class="asha-logo-wrap">
+      <div class="asha-logo-circle">
+        <svg width="100" height="100" viewBox="0 0 680 400" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <path d="M 220 310 Q 180 280 170 230 Q 160 180 190 150 Q 210 130 230 150 Q 240 160 235 180 Q 260 140 270 120 Q 285 95 310 105 Q 330 115 320 145 Q 350 110 365 115 Q 385 122 375 155 Q 400 130 415 140 Q 435 155 420 185 Q 440 175 450 188 Q 462 205 445 225 Q 430 245 400 250 Q 370 255 340 245 Q 310 265 290 290 Q 265 320 250 330 Z" fill="#4caf50"/>
+          <path d="M 460 310 Q 500 280 510 230 Q 520 180 490 150 Q 470 130 450 150 Q 440 160 445 180 Q 420 140 410 120 Q 395 95 370 105 Q 350 115 360 145 Q 330 110 315 115 Q 295 122 305 155 Q 280 130 265 140 Q 245 155 260 185 Q 240 175 230 188 Q 218 205 235 225 Q 250 245 280 250 Q 310 255 340 245 Q 370 265 390 290 Q 415 320 430 330 Z" fill="#8bc34a"/>
+          <ellipse cx="340" cy="108" rx="22" ry="22" fill="#29b6f6"/>
+          <path d="M 318 128 Q 310 160 315 195 Q 325 210 340 212 Q 355 210 365 195 Q 370 160 362 128 Z" fill="#0288d1"/>
+          <path d="M 320 138 Q 295 115 278 95 Q 270 82 280 75 Q 292 70 305 85 Q 318 100 328 128" fill="#0288d1"/>
+          <path d="M 360 138 Q 385 115 402 95 Q 410 82 400 75 Q 388 70 375 85 Q 362 100 352 128" fill="#0288d1"/>
+          <path d="M 328 210 Q 318 240 315 270 Q 314 280 322 282 Q 332 283 336 268 Q 338 250 340 230" fill="#0288d1"/>
+          <path d="M 352 210 Q 362 240 365 270 Q 366 280 358 282 Q 348 283 344 268 Q 342 250 340 230" fill="#0288d1"/>
+          <text x="340" y="370" text-anchor="middle" font-family="Arial,sans-serif" font-size="38" font-weight="700" fill="#2e7d32" letter-spacing="8">ASHA</text>
+        </svg>
+      </div>
+    </div>
+
+    <div class="asha-card" id="asha-auth-view">
+      <div class="asha-auth-toggle">
+        <button class="active" id="asha-auth-login-toggle" type="button">Login</button>
+        <button id="asha-auth-register-toggle" type="button">Register</button>
       </div>
 
-      <div id="private-login-view" class="auth-stack">
-        <div class="auth-title" style="margin-top:0">Welcome To Niva</div>
-        <div class="helper-card">
-          <strong>Private Doctor</strong>
-          <div>Use your clinic login to continue to the patient dashboard.</div>
+      <div id="asha-login-panel">
+        <div class="asha-field">
+          <label for="asha-login-worker-id"><span data-asha-key="worker_id">Worker ID</span></label>
+          <input class="asha-input" id="asha-login-worker-id" type="text" placeholder="ASHA-UP-001" autocomplete="username">
         </div>
-        <div class="form-group">
-          <label for="login-email">Email</label>
-          <input id="login-email" type="email" value="doctor@niva.local" autocomplete="email">
+        <div class="asha-field">
+          <label for="asha-login-password"><span data-asha-key="password">Password</span></label>
+          <input class="asha-input" id="asha-login-password" type="password" placeholder="Enter password" autocomplete="current-password">
         </div>
-        <div class="form-group">
-          <label for="login-password">Password</label>
-          <input id="login-password" type="password" value="doctor123" autocomplete="current-password">
-        </div>
-        <div class="inline-row">
-          <button class="btn btn-primary" id="login-btn" type="button">Sign In</button>
-          <button class="btn btn-secondary" id="back-role-btn" type="button">Back</button>
-        </div>
+        <button class="asha-primary" id="asha-login-btn" type="button" data-asha-key="login">Login</button>
       </div>
 
-      <div id="asha-login-view" class="auth-stack hidden">
-        <div class="auth-title" style="margin-top:0">Welcome To Niva</div>
-        <div class="mode-switch">
-          <button class="mode-chip active" id="asha-existing-btn" type="button">Existing User</button>
-          <button class="mode-chip" id="asha-new-btn" type="button">New User</button>
+      <div id="asha-register-panel" class="asha-hidden">
+        <div class="asha-field">
+          <label for="asha-register-name"><span data-asha-key="name">Name</span></label>
+          <input class="asha-input" id="asha-register-name" type="text" placeholder="Asha Devi">
         </div>
-        <div class="helper-card">
-          <strong>ASHA Verification</strong>
-          <div>Enter the ASHA ID to verify and fetch worker details automatically.</div>
+        <div class="asha-field">
+          <label for="asha-register-phone"><span data-asha-key="phone_label">Phone</span></label>
+          <input class="asha-input" id="asha-register-phone" type="text" placeholder="9876543210">
         </div>
-        <div class="form-group">
-          <label for="asha-id">ASHA ID</label>
-          <input id="asha-id" type="text" placeholder="ASHA-1024" autocomplete="off">
+        <div class="asha-field">
+          <label for="asha-register-worker-id"><span data-asha-key="worker_id">Worker ID</span></label>
+          <input class="asha-input" id="asha-register-worker-id" type="text" placeholder="ASHA-UP-001">
         </div>
-        <div id="asha-existing-fields">
-          <div class="form-group">
-            <label for="asha-passcode">Passcode</label>
-            <input id="asha-passcode" type="password" placeholder="Enter passcode">
+        <div class="asha-field">
+          <label for="asha-register-district"><span data-asha-key="district">District</span></label>
+          <input class="asha-input" id="asha-register-district" type="text" placeholder="Lucknow">
+        </div>
+        <div class="asha-field">
+          <label for="asha-register-password"><span data-asha-key="password">Password</span></label>
+          <input class="asha-input" id="asha-register-password" type="password" placeholder="Create password">
+        </div>
+        <button class="asha-primary" id="asha-register-btn" type="button">Register</button>
+      </div>
+
+      <div class="asha-message asha-hidden" id="asha-auth-message"></div>
+    </div>
+
+    <div class="asha-tabs asha-hidden" id="asha-app-view">
+      <div class="asha-panel" id="asha-panel-home">
+        <div class="asha-card asha-progress-card">
+          <div class="asha-progress-ring">
+            <svg viewBox="0 0 120 120" aria-hidden="true">
+              <circle class="asha-ring-bg" cx="60" cy="60" r="52"></circle>
+              <circle class="asha-ring-fill" id="asha-progress-fill" cx="60" cy="60" r="52"></circle>
+            </svg>
+            <div class="asha-progress-center" id="asha-progress-center">0</div>
+          </div>
+          <div class="asha-progress-copy" id="asha-progress-copy">0 / 5 visits today</div>
+          <div class="asha-target-chip asha-hidden" id="asha-target-chip">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#2e7d32" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13l4 4L19 7"></path></svg>
+            <span data-asha-key="target_met_today">Target met for today</span>
           </div>
         </div>
-        <div id="asha-new-fields" class="hidden">
-          <div class="form-group">
-            <label for="asha-phone">Phone Number</label>
-            <input id="asha-phone" type="tel" placeholder="+91 98xxx xxxxx" readonly>
+
+        <div class="asha-card">
+          <div class="asha-heading-row">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#555555" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"></rect><path d="M8 2v4"></path><path d="M16 2v4"></path><path d="M3 10h18"></path></svg>
+            <span data-asha-key="calendar">Calendar</span>
+          </div>
+          <div class="asha-heatmap-scroll">
+            <div class="asha-heatmap-row" id="asha-heatmap-row"></div>
+          </div>
+          <div class="asha-popup" id="asha-popup">Tap a day to see visits.</div>
+        </div>
+
+        <div class="asha-card">
+          <div class="asha-heading-row">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#555555" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20V10"></path><path d="M10 20V4"></path><path d="M16 20v-7"></path><path d="M22 20v-3"></path></svg>
+            <span data-asha-key="stats">Stats</span>
+          </div>
+          <div class="asha-stats">
+            <div class="asha-stat"><span data-asha-key="total_days_worked">Total days worked</span><strong id="asha-stat-worked">0</strong></div>
+            <div class="asha-stat"><span data-asha-key="days_target_met">Days target met</span><strong id="asha-stat-met">0</strong></div>
+            <div class="asha-stat"><span data-asha-key="days_target_missed">Days target missed</span><strong id="asha-stat-missed">0</strong></div>
+            <div class="asha-stat"><span data-asha-key="total_patients_visited">Total patients visited</span><strong id="asha-stat-patients">0</strong></div>
+            <div class="asha-stat"><span data-asha-key="current_streak">Current streak</span><strong id="asha-stat-streak">0</strong></div>
           </div>
         </div>
-        <div class="fetched-card hidden" id="asha-fetched-card">
-          <div class="fetched-title">Verified Worker</div>
-          <div class="fetched-grid" id="asha-fetched-grid"></div>
+      </div>
+
+      <div class="asha-panel hidden" id="asha-panel-patients">
+        <div class="asha-card">
+          <button class="asha-secondary" id="asha-toggle-patient-form" type="button" data-asha-key="register_patient">Register Patient</button>
+          <div class="asha-hidden" id="asha-patient-form">
+            <div class="asha-field">
+              <label for="asha-patient-name"><span data-asha-key="name">Name</span></label>
+              <input class="asha-input" id="asha-patient-name" type="text" placeholder="Sita Kumari">
+            </div>
+            <div class="asha-field">
+              <label for="asha-patient-age"><span data-asha-key="age">Age</span></label>
+              <input class="asha-input" id="asha-patient-age" type="number" min="15" max="55" placeholder="26">
+            </div>
+            <div class="asha-field">
+              <label for="asha-patient-phone"><span data-asha-key="phone_label">Phone</span></label>
+              <input class="asha-input" id="asha-patient-phone" type="text" placeholder="9876543210">
+            </div>
+            <div class="asha-field">
+              <label for="asha-patient-village"><span data-asha-key="village">Village</span></label>
+              <input class="asha-input" id="asha-patient-village" type="text" placeholder="Rampur">
+            </div>
+            <div class="asha-field">
+              <label for="asha-patient-district"><span data-asha-key="district">District</span></label>
+              <input class="asha-input" id="asha-patient-district" type="text" placeholder="Lucknow">
+            </div>
+            <div class="asha-field">
+              <label for="asha-patient-weeks"><span data-asha-key="weeks_pregnant">Weeks Pregnant</span></label>
+              <input class="asha-input" id="asha-patient-weeks" type="number" min="1" max="42" placeholder="24">
+            </div>
+            <div class="asha-symptoms">
+              <div class="asha-symptom"><label for="asha-history-prev"><span>Previous pregnancy</span></label><span class="asha-switch"><input id="asha-history-prev" type="checkbox"><span class="asha-slider"></span></span></div>
+              <div class="asha-symptom"><label for="asha-history-complications"><span>Complications history</span></label><span class="asha-switch"><input id="asha-history-complications" type="checkbox"><span class="asha-slider"></span></span></div>
+              <div class="asha-symptom"><label for="asha-history-diabetes"><span>Diabetes history</span></label><span class="asha-switch"><input id="asha-history-diabetes" type="checkbox"><span class="asha-slider"></span></span></div>
+              <div class="asha-symptom"><label for="asha-history-hypertension"><span>Hypertension history</span></label><span class="asha-switch"><input id="asha-history-hypertension" type="checkbox"><span class="asha-slider"></span></span></div>
+              <div class="asha-symptom"><label for="asha-history-preeclampsia"><span>Preeclampsia history</span></label><span class="asha-switch"><input id="asha-history-preeclampsia" type="checkbox"><span class="asha-slider"></span></span></div>
+            </div>
+            <div style="margin-top:14px">
+              <button class="asha-primary" id="asha-create-patient-btn" type="button" data-asha-key="register_patient">Register Patient</button>
+            </div>
+          </div>
         </div>
-        <div class="inline-row">
-          <button class="btn btn-primary" id="asha-verify-btn" type="button">Verify ASHA ID</button>
-          <button class="btn btn-secondary" id="asha-back-btn" type="button">Back</button>
+
+        <div class="asha-empty asha-hidden" id="asha-empty">
+          <svg viewBox="0 0 120 120" width="120" height="120" fill="none" stroke="#2e7d32" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <circle cx="42" cy="24" r="10"></circle>
+            <path d="M28 54c2-10 8-18 14-18s12 8 14 18"></path>
+            <path d="M24 78c4-10 12-16 20-16s16 6 20 16"></path>
+            <path d="M70 30h24v46H70z"></path>
+            <path d="M76 24h12"></path>
+            <path d="M76 42h12"></path>
+            <path d="M76 52h12"></path>
+            <path d="M76 62h8"></path>
+            <path d="M36 76v20"></path>
+            <path d="M48 76v20"></path>
+          </svg>
+          <div class="asha-empty-text" id="asha-empty-text">No patients yet. Register your first patient!</div>
+        </div>
+
+        <div class="asha-patient-list" id="asha-patient-list"></div>
+      </div>
+
+      <div class="asha-panel hidden" id="asha-panel-visit">
+        <div class="asha-card">
+          <div class="asha-field">
+            <label for="asha-visit-patient"><span data-asha-key="patient">Patient</span></label>
+            <select class="asha-select" id="asha-visit-patient"></select>
+          </div>
+          <div class="asha-field">
+            <label for="asha-visit-weeks">
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#555555" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v18"></path><path d="M7 8h10"></path><path d="M7 16h10"></path></svg>
+              <span data-asha-key="weeks_pregnant">Weeks Pregnant</span>
+            </label>
+            <input class="asha-input" id="asha-visit-weeks" type="number" min="1" max="42" placeholder="28">
+          </div>
+          <div class="asha-field">
+            <label for="asha-visit-bp-systolic">
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#555555" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20s-6-3.6-6-8.3A3.7 3.7 0 0 1 12 9a3.7 3.7 0 0 1 6 2.7C18 16.4 12 20 12 20z"></path><path d="M5 12h3l1.3-2.2L11 14l1.8-3 1.2 1H19"></path></svg>
+              <span data-asha-key="blood_pressure">Blood Pressure</span>
+            </label>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+              <input class="asha-input" id="asha-visit-bp-systolic" type="number" placeholder="120">
+              <input class="asha-input" id="asha-visit-bp-diastolic" type="number" placeholder="80">
+            </div>
+          </div>
+          <div class="asha-field">
+            <label for="asha-visit-weight">
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#555555" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M7 7h10"></path><path d="M6 7h12l1 11H5z"></path><path d="M9 7a3 3 0 0 1 6 0"></path></svg>
+              <span data-asha-key="weight">Weight</span>
+            </label>
+            <input class="asha-input" id="asha-visit-weight" type="number" step="0.1" placeholder="55.2">
+          </div>
+          <div class="asha-field">
+            <label for="asha-visit-haemoglobin">
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#555555" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3C9.4 6.5 7 8.9 7 12.2a5 5 0 0 0 10 0C17 8.9 14.6 6.5 12 3z"></path></svg>
+              <span data-asha-key="haemoglobin">Haemoglobin</span>
+            </label>
+            <input class="asha-input" id="asha-visit-haemoglobin" type="number" step="0.1" placeholder="10.8">
+          </div>
+          <div class="asha-symptoms">
+            <div class="asha-symptom">
+              <label for="asha-symptom-headache">
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#555555" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4a5 5 0 0 1 5 5c0 1.6-.8 2.9-2 3.8-.8.6-1.3 1.4-1.5 2.2h-3c-.2-.8-.7-1.6-1.5-2.2A4.7 4.7 0 0 1 7 9a5 5 0 0 1 5-5z"></path><path d="M9.5 19h5"></path></svg>
+                <span data-asha-key="headache">Headache</span>
+              </label>
+              <span class="asha-switch"><input id="asha-symptom-headache" type="checkbox"><span class="asha-slider"></span></span>
+            </div>
+            <div class="asha-symptom">
+              <label for="asha-symptom-swelling">
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#555555" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M8 4v6"></path><path d="M16 4v5"></path><path d="M8 10c0 3 1.5 5 3.8 6l1.4 3"></path><path d="M16 9c0 3.2-1.6 5.2-4 6.4"></path></svg>
+                <span data-asha-key="swelling">Swelling</span>
+              </label>
+              <span class="asha-switch"><input id="asha-symptom-swelling" type="checkbox"><span class="asha-slider"></span></span>
+            </div>
+            <div class="asha-symptom">
+              <label for="asha-symptom-blurred-vision">
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#555555" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-5 10-5 10 5 10 5-3.5 5-10 5S2 12 2 12z"></path><circle cx="12" cy="12" r="2.5"></circle></svg>
+                <span data-asha-key="blurred_vision">Blurred Vision</span>
+              </label>
+              <span class="asha-switch"><input id="asha-symptom-blurred-vision" type="checkbox"><span class="asha-slider"></span></span>
+            </div>
+            <div class="asha-symptom">
+              <label for="asha-symptom-bleeding">
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#555555" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 9l4-4 10 10-4 4L5 9z"></path><path d="M7 7l3 3"></path></svg>
+                <span data-asha-key="bleeding">Bleeding</span>
+              </label>
+              <span class="asha-switch"><input id="asha-symptom-bleeding" type="checkbox"><span class="asha-slider"></span></span>
+            </div>
+          </div>
+          <div class="asha-field">
+            <label for="asha-visit-notes">
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#555555" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="4" width="12" height="16" rx="2"></rect><path d="M9 8h6"></path><path d="M9 12h6"></path><path d="M9 16h4"></path></svg>
+              <span data-asha-key="notes">Notes</span>
+            </label>
+            <textarea class="asha-textarea" id="asha-visit-notes" placeholder="Add field notes"></textarea>
+          </div>
+          <button class="asha-primary" id="asha-submit-visit-btn" type="button" data-asha-key="record_visit">Record Visit</button>
         </div>
       </div>
-      <div class="login-error hidden" id="login-error"></div>
+
+      <div class="asha-panel hidden" id="asha-panel-profile">
+        <div class="asha-card">
+          <div class="asha-stats">
+            <div class="asha-stat"><span data-asha-key="name">Name</span><strong id="asha-profile-name">-</strong></div>
+            <div class="asha-stat"><span data-asha-key="worker_id">Worker ID</span><strong id="asha-profile-worker-id">-</strong></div>
+            <div class="asha-stat"><span data-asha-key="phone_label">Phone</span><strong id="asha-profile-phone">-</strong></div>
+            <div class="asha-stat"><span data-asha-key="district">District</span><strong id="asha-profile-district">-</strong></div>
+          </div>
+        </div>
+        <button class="asha-secondary" id="asha-logout-btn" type="button">Logout</button>
+      </div>
+
+      <div class="asha-message asha-hidden" id="asha-dashboard-message"></div>
+
+      <nav class="asha-bottom-nav">
+        <button class="asha-nav-item active" type="button" data-nav="home">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10.5 12 4l8 6.5"></path><path d="M6 10v10h12V10"></path></svg>
+          <span class="asha-nav-label" data-asha-key="home">Home</span>
+        </button>
+        <button class="asha-nav-item" type="button" data-nav="patients">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="3.5"></circle><path d="M6.5 19c1.3-3 3.3-4.5 5.5-4.5s4.2 1.5 5.5 4.5"></path></svg>
+          <span class="asha-nav-label" data-asha-key="patients">Patients</span>
+        </button>
+        <button class="asha-nav-item" type="button" data-nav="visit">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14"></path><path d="M5 12h14"></path></svg>
+          <span class="asha-nav-label" data-asha-key="new_visit">New Visit</span>
+        </button>
+        <button class="asha-nav-item" type="button" data-nav="profile">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="3.5"></circle><path d="M6.5 19c1.3-3 3.3-4.5 5.5-4.5s4.2 1.5 5.5 4.5"></path></svg>
+          <span class="asha-nav-label" data-asha-key="profile">Profile</span>
+        </button>
+      </nav>
     </div>
   </div>
-
-  <div id="app-view" class="app-shell hidden">
-    <div class="topbar">
-      <div>
-        <h1>Doctor Portal</h1>
-        <p id="viewer-line">Clinical review dashboard</p>
-      </div>
-      <div class="topbar-actions">
-        <a class="link-btn" href="/">Open Patient Portal</a>
-        <button class="btn btn-secondary" type="button" id="logout-btn">Logout</button>
-      </div>
-    </div>
-
-    <div id="alert-banner" class="alert-banner hidden"></div>
-
-    <div class="filters">
-      <div class="form-group" style="margin:0">
-        <label for="filter-risk">Risk level</label>
-        <select id="filter-risk">
-          <option value="">All risk levels</option>
-          <option value="go_to_hospital_today">Go To Hospital Today</option>
-          <option value="visit_phc_this_week">Visit PHC This Week</option>
-          <option value="monitor_at_home">Monitor At Home</option>
-        </select>
-      </div>
-      <div class="form-group" style="margin:0">
-        <label for="filter-flag">Condition flag</label>
-        <select id="filter-flag">
-          <option value="">All flags</option>
-          <option value="Preeclampsia">Preeclampsia</option>
-          <option value="GDM">GDM</option>
-          <option value="Anaemia">Anaemia</option>
-          <option value="Fetal Distress">Fetal Distress</option>
-          <option value="Preterm">Preterm</option>
-        </select>
-      </div>
-      <div class="form-group" style="margin:0">
-        <label for="filter-date">Last check-in date</label>
-        <input id="filter-date" type="date">
-      </div>
-      <div style="display:flex;align-items:end">
-        <button class="btn btn-secondary" id="refresh-btn" type="button" style="width:100%">Refresh</button>
-      </div>
-    </div>
-
-    <div class="board">
-      <div class="table-card">
-        <table>
-          <thead>
-            <tr>
-              <th>Patient Name</th>
-              <th>Week of Pregnancy</th>
-              <th>Last Check-in</th>
-              <th>Risk Level</th>
-              <th>Trend</th>
-              <th>Action</th>
-            </tr>
-          </thead>
-          <tbody id="patient-tbody"></tbody>
-        </table>
-      </div>
-    </div>
-  </div>
-
-  <aside id="detail-panel" class="detail-panel" aria-hidden="true">
-    <div class="detail-head">
-      <div>
-        <h2 id="detail-name">Patient detail</h2>
-        <div class="subtle" id="detail-subtitle">Select a patient</div>
-      </div>
-      <button class="close-btn" id="close-panel" type="button">&times;</button>
-    </div>
-    <div class="detail-body" id="detail-body">
-      <div class="empty">Choose a patient row to inspect trends and notes.</div>
-    </div>
-  </aside>
+</section>
 
 <script>
-const API = window.location.origin;
-const ASHA_REGISTRY = {
-  'ASHA-1024': {id:'ASHA-1024', name:'Sunita Devi', area:'Ward 1, Ludhiana', phone:'+91 98765 12001', passcode:'asha1024'},
-  'ASHA-2048': {id:'ASHA-2048', name:'Kamla Rani', area:'Ward 3, Ludhiana', phone:'+91 98765 12002', passcode:'asha2048'},
-  'ASHA-3072': {id:'ASHA-3072', name:'Pooja Sharma', area:'Ward 5, Jalandhar', phone:'+91 98765 12003', passcode:'asha3072'}
-};
-const state = {
-  token: localStorage.getItem('niva_doctor_token') || '',
-  viewerMode: localStorage.getItem('niva_clinical_mode') || '',
-  viewerName: localStorage.getItem('niva_clinical_name') || '',
-  ashaAuthMode: 'existing',
+const API_BASE_URL = new URLSearchParams(window.location.search).get("apiBase") || window.ASHA_API_BASE || "";
+
+const ashaState = {
+  token: "",
+  worker: null,
+  language: "en",
   patients: [],
-  selectedPatientId: null,
-  noteDraft: ''
+  visitsByPatient: {},
+  progress: { visits_completed: 0, target_met: false, date: null },
+  performance: {
+    total_days_worked: 0,
+    days_target_met: 0,
+    days_target_missed: 0,
+    total_patients_visited: 0,
+    current_streak: 0,
+  },
+  calendar: [],
 };
 
-const urgencyClass = {
-  go_to_hospital_today: 'danger',
-  visit_phc_this_week: 'warn',
-  monitor_at_home: 'safe'
+const ashaText = {
+  en: {
+    login: "Login",
+    register_worker: "Register",
+    register_patient: "Register Patient",
+    record_visit: "Record Visit",
+    blood_pressure: "Blood Pressure",
+    weight: "Weight",
+    haemoglobin: "Haemoglobin",
+    headache: "Headache",
+    swelling: "Swelling",
+    blurred_vision: "Blurred Vision",
+    bleeding: "Bleeding",
+    notes: "Notes",
+    target_met_today: "Target met for today",
+    no_patients_yet: "No patients yet. Register your first patient!",
+    back: "Back",
+    home: "Home",
+    patients: "Patients",
+    new_visit: "New Visit",
+    profile: "Profile",
+    calendar: "Calendar",
+    stats: "Stats",
+    total_days_worked: "Total days worked",
+    days_target_met: "Days target met",
+    days_target_missed: "Days target missed",
+    total_patients_visited: "Total patients visited",
+    current_streak: "Current streak",
+    name: "Name",
+    worker_id: "Worker ID",
+    phone_label: "Phone",
+    district: "District",
+    village: "Village",
+    patient: "Patient",
+    weeks_pregnant: "Weeks Pregnant",
+    password: "Password",
+    age: "Age",
+  },
+  hi: {
+    login: "लॉगिन",
+    register_worker: "रजिस्टर",
+    register_patient: "मरीज दर्ज करें",
+    record_visit: "विज़िट दर्ज करें",
+    blood_pressure: "रक्तचाप",
+    weight: "वज़न",
+    haemoglobin: "हीमोग्लोबिन",
+    headache: "सिरदर्द",
+    swelling: "सूजन",
+    blurred_vision: "धुंधली दृष्टि",
+    bleeding: "रक्तस्राव",
+    notes: "नोट्स",
+    target_met_today: "आज का लक्ष्य पूरा हुआ",
+    no_patients_yet: "अभी कोई मरीज नहीं है। पहला मरीज दर्ज करें!",
+    back: "वापस",
+    home: "होम",
+    patients: "मरीज",
+    new_visit: "नई विज़िट",
+    profile: "प्रोफ़ाइल",
+    calendar: "कैलेंडर",
+    stats: "आंकड़े",
+    total_days_worked: "कुल कार्य दिवस",
+    days_target_met: "लक्ष्य पूरे दिन",
+    days_target_missed: "लक्ष्य छूटे दिन",
+    total_patients_visited: "कुल मरीज विज़िट",
+    current_streak: "वर्तमान स्ट्रीक",
+    name: "नाम",
+    worker_id: "वर्कर आईडी",
+    phone_label: "फोन",
+    district: "जिला",
+    village: "गांव",
+    patient: "मरीज",
+    weeks_pregnant: "गर्भ सप्ताह",
+    password: "पासवर्ड",
+    age: "उम्र",
+  },
 };
 
-function showLogin(message=''){
-  document.getElementById('login-view').classList.remove('hidden');
-  document.getElementById('app-view').classList.add('hidden');
-  showRoleChooser();
-  renderLoginError(message);
+function apiUrl(path) {
+  if (!API_BASE_URL) return path;
+  return API_BASE_URL.replace(/\/$/, "") + path;
 }
 
-function showApp(){
-  document.getElementById('login-view').classList.add('hidden');
-  document.getElementById('app-view').classList.remove('hidden');
+function showLanding() {
+  if (window.history.length > 1) {
+    window.history.back();
+  }
 }
 
-function renderLoginError(message){
-  const box=document.getElementById('login-error');
-  box.textContent=message;
-  box.classList.toggle('hidden', !message);
+function applyEmbedAshaMode() {
+  const params = new URLSearchParams(window.location.search);
+  if (params.get("embedAsha") === "1") {
+    document.getElementById("asha-back-btn").classList.add("asha-hidden");
+  }
 }
 
-function setViewerLine(label){
-  document.getElementById('viewer-line').textContent = label;
+function ashaIcon(kind) {
+  const base = 'fill="none" stroke="#555555" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"';
+  if (kind === "avatar") {
+    return `<svg viewBox="0 0 24 24" width="20" height="20" ${base}><circle cx="12" cy="8" r="3.5"></circle><path d="M6.5 19c1.3-3 3.3-4.5 5.5-4.5s4.2 1.5 5.5 4.5"></path></svg>`;
+  }
+  return "";
 }
 
-function showRoleChooser(){
-  renderLoginError('');
-  setAshaAuthMode('existing');
-  renderAshaCard(null);
-  document.getElementById('role-chooser-view').classList.remove('hidden');
-  document.getElementById('private-login-view').classList.add('hidden');
-  document.getElementById('asha-login-view').classList.add('hidden');
-  document.getElementById('private-role-btn').classList.add('active');
-  document.getElementById('asha-role-btn').classList.remove('active');
+function escapeHtml(value) {
+  return String(value ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#39;");
 }
 
-function openPrivateLogin(){
-  renderLoginError('');
-  document.getElementById('role-chooser-view').classList.add('hidden');
-  document.getElementById('private-login-view').classList.remove('hidden');
-  document.getElementById('asha-login-view').classList.add('hidden');
-  document.getElementById('private-role-btn').classList.add('active');
-  document.getElementById('asha-role-btn').classList.remove('active');
+async function ashaFetch(path, options = {}) {
+  const response = await fetch(apiUrl(path), options);
+  const contentType = response.headers.get("content-type") || "";
+  const payload = contentType.includes("application/json") ? await response.json() : await response.text();
+  if (!response.ok) {
+    throw new Error(payload?.detail || "Request failed");
+  }
+  return payload;
 }
 
-function openAshaLogin(){
-  renderLoginError('');
-  setAshaAuthMode('existing');
-  document.getElementById('role-chooser-view').classList.add('hidden');
-  document.getElementById('private-login-view').classList.add('hidden');
-  document.getElementById('asha-login-view').classList.remove('hidden');
-  document.getElementById('private-role-btn').classList.remove('active');
-  document.getElementById('asha-role-btn').classList.add('active');
+function ashaHeaders(authenticated = false) {
+  const headers = { "Content-Type": "application/json" };
+  if (authenticated && ashaState.token) headers.Authorization = `Bearer ${ashaState.token}`;
+  return headers;
 }
 
-function setAshaAuthMode(mode){
-  state.ashaAuthMode = mode === 'new' ? 'new' : 'existing';
-  document.getElementById('asha-existing-btn').classList.toggle('active', state.ashaAuthMode === 'existing');
-  document.getElementById('asha-new-btn').classList.toggle('active', state.ashaAuthMode === 'new');
-  document.getElementById('asha-existing-fields').classList.toggle('hidden', state.ashaAuthMode !== 'existing');
-  document.getElementById('asha-new-fields').classList.toggle('hidden', state.ashaAuthMode !== 'new');
-}
-
-function renderAshaCard(worker){
-  const card = document.getElementById('asha-fetched-card');
-  const grid = document.getElementById('asha-fetched-grid');
-  if(!worker){
-    card.classList.add('hidden');
-    grid.innerHTML = '';
+function ashaSetMessage(targetId, message, error = false) {
+  const box = document.getElementById(targetId);
+  if (!message) {
+    box.classList.add("asha-hidden");
+    box.textContent = "";
+    box.classList.remove("error");
     return;
   }
-  document.getElementById('asha-phone').value = worker.phone;
-  grid.innerHTML = `
-    <div><strong>Name:</strong> ${worker.name}</div>
-    <div><strong>ASHA ID:</strong> ${worker.id}</div>
-    <div><strong>Area:</strong> ${worker.area}</div>
-    <div><strong>Phone:</strong> ${worker.phone}</div>
-  `;
-  card.classList.remove('hidden');
+  box.textContent = message;
+  box.classList.remove("asha-hidden");
+  box.classList.toggle("error", error);
 }
 
-function verifyAshaId(){
-  renderLoginError('');
-  const ashaId = document.getElementById('asha-id').value.trim().toUpperCase();
-  const worker = ASHA_REGISTRY[ashaId];
-  if(!worker){
-    renderAshaCard(null);
-    renderLoginError('ASHA ID not found. Please check the number.');
-    return;
+function ashaApplyLanguage() {
+  const text = ashaText[ashaState.language];
+  document.getElementById("asha-back-btn").querySelector("span").textContent = text.back;
+  document.querySelectorAll("[data-asha-key]").forEach((node) => {
+    const key = node.getAttribute("data-asha-key");
+    if (text[key]) node.textContent = text[key];
+  });
+  document.getElementById("asha-lang-en").classList.toggle("active", ashaState.language === "en");
+  document.getElementById("asha-lang-hi").classList.toggle("active", ashaState.language === "hi");
+  if (!ashaState.patients.length) {
+    document.getElementById("asha-empty-text").textContent = text.no_patients_yet;
   }
-  if(state.ashaAuthMode === 'existing'){
-    const passcode = document.getElementById('asha-passcode').value;
-    if(passcode !== worker.passcode){
-      renderAshaCard(worker);
-      renderLoginError('Invalid passcode for this ASHA ID.');
-      return;
-    }
-  }
-  renderAshaCard(worker);
-  state.viewerMode = 'asha';
-  state.viewerName = worker.name;
-  localStorage.setItem('niva_clinical_mode', state.viewerMode);
-  localStorage.setItem('niva_clinical_name', state.viewerName);
-  setViewerLine(`${worker.name} · ASHA Worker`);
-  showApp();
-  loadPatients().catch(error => renderLoginError(error.message));
 }
 
-function authHeaders(){
-  return {
-    'Content-Type': 'application/json',
-    'Authorization': `Bearer ${state.token}`
+function ashaToggleAuth(mode) {
+  document.getElementById("asha-auth-login-toggle").classList.toggle("active", mode === "login");
+  document.getElementById("asha-auth-register-toggle").classList.toggle("active", mode === "register");
+  document.getElementById("asha-login-panel").classList.toggle("asha-hidden", mode !== "login");
+  document.getElementById("asha-register-panel").classList.toggle("asha-hidden", mode !== "register");
+  ashaSetMessage("asha-auth-message", "");
+}
+
+async function ashaRegister() {
+  const payload = {
+    name: document.getElementById("asha-register-name").value.trim(),
+    phone: document.getElementById("asha-register-phone").value.trim(),
+    worker_id: document.getElementById("asha-register-worker-id").value.trim(),
+    district: document.getElementById("asha-register-district").value.trim(),
+    password: document.getElementById("asha-register-password").value,
   };
-}
 
-async function safeFetch(path, options={}){
-  const response = await fetch(API + path, options);
-  if(response.status === 401 || response.status === 403){
-    localStorage.removeItem('niva_doctor_token');
-    state.token = '';
-    showLogin('Session expired. Sign in again.');
-    throw new Error('Unauthorized');
-  }
-  if(!response.ok){
-    const payload = await response.json().catch(()=>({detail:'Request failed'}));
-    throw new Error(payload.detail || 'Request failed');
-  }
-  return response.json();
-}
-
-async function login(){
-  renderLoginError('');
-  const email = document.getElementById('login-email').value.trim();
-  const password = document.getElementById('login-password').value;
-  try{
-    const payload = await safeFetch('/auth/login', {
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({email, password, role:'doctor'})
+  try {
+    await ashaFetch("/asha/register", {
+      method: "POST",
+      headers: ashaHeaders(),
+      body: JSON.stringify(payload),
     });
-    state.token = payload.access_token;
-    localStorage.setItem('niva_doctor_token', state.token);
-    state.viewerMode = 'doctor';
-    state.viewerName = payload.user.display_name;
-    localStorage.setItem('niva_clinical_mode', state.viewerMode);
-    localStorage.setItem('niva_clinical_name', state.viewerName);
-    setViewerLine(`${payload.user.display_name} · Private Doctor`);
-    showApp();
-    await loadPatients();
-  }catch(error){
-    renderLoginError(error.message);
+    ashaSetMessage("asha-auth-message", "Worker registered successfully");
+    ashaToggleAuth("login");
+    document.getElementById("asha-login-worker-id").value = payload.worker_id;
+  } catch (error) {
+    ashaSetMessage("asha-auth-message", error.message, true);
   }
 }
 
-async function bootstrap(){
-  if(state.viewerMode === 'asha' && state.viewerName){
-    setViewerLine(`${state.viewerName} · ASHA Worker`);
-    showApp();
-    try{
-      await loadPatients();
-    }catch(error){
-      showLogin(error.message);
-    }
-    return;
-  }
-  if(!state.token){
-    showLogin();
-    return;
-  }
-  try{
-    const me = await safeFetch('/auth/me', {headers: authHeaders()});
-    if(me.role !== 'doctor'){
-      throw new Error('This login is not a doctor account.');
-    }
-    state.viewerMode = 'doctor';
-    state.viewerName = me.display_name;
-    localStorage.setItem('niva_clinical_mode', state.viewerMode);
-    localStorage.setItem('niva_clinical_name', state.viewerName);
-    setViewerLine(`${me.display_name} · Private Doctor`);
-    showApp();
-    await loadPatients();
-  }catch(error){
-    showLogin(error.message);
-  }
-}
-
-function paramsFromFilters(){
-  const params = new URLSearchParams();
-  const risk = document.getElementById('filter-risk').value;
-  const flag = document.getElementById('filter-flag').value;
-  const date = document.getElementById('filter-date').value;
-  if(risk) params.set('risk_level', risk);
-  if(flag) params.set('condition_flag', flag);
-  if(date) params.set('last_checkin_date', date);
-  const qs = params.toString();
-  return qs ? `?${qs}` : '';
-}
-
-function formatDate(value){
-  if(!value) return 'No check-in';
-  const date = new Date(value);
-  return date.toLocaleString([], {day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit'});
-}
-
-function riskBadge(level){
-  const labelMap = {
-    go_to_hospital_today: 'Go To Hospital Today',
-    visit_phc_this_week: 'Visit PHC This Week',
-    monitor_at_home: 'Monitor At Home'
+async function ashaLogin() {
+  const payload = {
+    worker_id: document.getElementById("asha-login-worker-id").value.trim(),
+    password: document.getElementById("asha-login-password").value,
   };
-  return `<span class="risk-badge ${urgencyClass[level] || 'safe'}">${labelMap[level] || level}</span>`;
-}
 
-function trendArrow(value){
-  const cls = value === '↑' ? 'up' : value === '↓' ? 'down' : 'steady';
-  return `<span class="trend ${cls}">${value || '→'}</span>`;
-}
-
-function renderBanner(items){
-  const banner = document.getElementById('alert-banner');
-  if(!items.length){
-    banner.classList.add('hidden');
-    banner.innerHTML = '';
-    return;
-  }
-  banner.classList.remove('hidden');
-  const names = items.map(item => item.patient_name).join(', ');
-  banner.innerHTML = `<strong>Escalated in last 24h</strong><div>${names}</div>`;
-}
-
-function renderPatients(items){
-  const tbody = document.getElementById('patient-tbody');
-  if(!items.length){
-    tbody.innerHTML = `<tr><td colspan="6"><div class="empty">No patients match the current filters.</div></td></tr>`;
-    return;
-  }
-  tbody.innerHTML = items.map(item => `
-    <tr data-id="${item.patient_id}">
-      <td>
-        <div class="patient-name">${item.patient_name}</div>
-        <div class="subtle">${item.predicted_condition_label}</div>
-      </td>
-      <td>${item.weeks_pregnant} weeks</td>
-      <td>${formatDate(item.last_checkin_at)}</td>
-      <td>${riskBadge(item.effective_urgency)}</td>
-      <td>${trendArrow(item.trend)}</td>
-      <td><span class="action-pill">Open</span></td>
-    </tr>
-  `).join('');
-
-  tbody.querySelectorAll('tr[data-id]').forEach(row=>{
-    row.addEventListener('click', () => openPatient(Number(row.dataset.id)));
-  });
-}
-
-async function loadPatients(){
-  const payload = await safeFetch(`/doctor/patients${paramsFromFilters()}`, {headers: authHeaders()});
-  state.patients = payload.patients || [];
-  renderBanner(payload.banner_patients || []);
-  renderPatients(state.patients);
-}
-
-function createChart(seriesList, formatter){
-  const allValues = seriesList.flatMap(series => series.data.map(point => point.value)).filter(value => value !== null && value !== undefined);
-  if(!allValues.length){
-    return `<div class="empty">Not enough data to draw a chart.</div>`;
-  }
-  const width = 440;
-  const height = 150;
-  const min = Math.min(...allValues);
-  const max = Math.max(...allValues);
-  const range = Math.max(max - min, 1);
-  const pointsCount = Math.max(...seriesList.map(series => series.data.length));
-
-  const polyline = (data) => data.map((point, index) => {
-    const x = pointsCount === 1 ? width / 2 : (index / (pointsCount - 1)) * width;
-    const y = height - (((point.value - min) / range) * (height - 18)) - 9;
-    return `${x.toFixed(1)},${y.toFixed(1)}`;
-  }).join(' ');
-
-  const xLabels = seriesList[0].data.map((point, index) => {
-    const x = pointsCount === 1 ? width / 2 : (index / (pointsCount - 1)) * width;
-    return `<text x="${x.toFixed(1)}" y="${height}" font-size="11" text-anchor="middle" fill="#7b8ca3">${formatter(point.label)}</text>`;
-  }).join('');
-
-  const paths = seriesList.map(series => `
-    <polyline fill="none" stroke="${series.color}" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round" points="${polyline(series.data)}"></polyline>
-  `).join('');
-
-  const guides = Array.from({length:4}).map((_, index)=>{
-    const y = 14 + ((height - 30) / 3) * index;
-    return `<line x1="0" y1="${y}" x2="${width}" y2="${y}" stroke="#e6edf6" stroke-width="1"></line>`;
-  }).join('');
-
-  return `<svg viewBox="0 0 ${width} ${height + 16}" preserveAspectRatio="none">${guides}${paths}${xLabels}</svg>`;
-}
-
-function renderDetail(detail){
-  const panel = document.getElementById('detail-panel');
-  const body = document.getElementById('detail-body');
-  document.getElementById('detail-name').textContent = detail.profile.name;
-  document.getElementById('detail-subtitle').textContent = `${detail.profile.region} · ${detail.profile.weeks_pregnant} weeks pregnant`;
-
-  const bpSvg = createChart([
-    {color:'#2f6fed', data: detail.bp_history.map(point => ({label: point.label, value: point.systolic}))},
-    {color:'#7aa8ff', data: detail.bp_history.map(point => ({label: point.label, value: point.diastolic}))}
-  ], label => label);
-
-  const weightSvg = createChart([
-    {color:'#1d4ed8', data: detail.weight_history.map(point => ({label: point.label, value: point.value}))}
-  ], label => label);
-
-  const kickSvg = createChart([
-    {color:'#2563eb', data: detail.kick_history.map(point => ({label: point.label, value: point.value}))}
-  ], label => label);
-
-  body.innerHTML = `
-    <div class="panel-card">
-      <div class="meta-grid">
-        <div class="meta-cell">
-          <div class="meta-label">Current Risk</div>
-          <div class="meta-value">${riskBadge(detail.summary.effective_urgency)}</div>
-        </div>
-        <div class="meta-cell">
-          <div class="meta-label">Trend</div>
-          <div class="meta-value">${trendArrow(detail.summary.trend)}</div>
-        </div>
-        <div class="meta-cell">
-          <div class="meta-label">Reviewed</div>
-          <div class="meta-value">${detail.reviewed ? 'Yes' : 'Pending'}</div>
-        </div>
-        <div class="meta-cell">
-          <div class="meta-label">Escalated</div>
-          <div class="meta-value">${detail.escalated_at ? 'Yes' : 'No'}</div>
-        </div>
-      </div>
-    </div>
-
-    <div class="panel-card">
-      <h3>Condition Flags Detected</h3>
-      <div class="flags">${(detail.summary.condition_flags || []).map(flag => `<span class="flag">${flag}</span>`).join('') || '<span class="subtle">No active flags</span>'}</div>
-    </div>
-
-    <div class="panel-card">
-      <h3>AI Diagnosis Summary</h3>
-      <div class="summary-box">${detail.ai_summary}</div>
-    </div>
-
-    <div class="panel-card">
-      <h3>Vitals History</h3>
-      <div class="chart-grid">
-        <div class="chart-box">
-          <h4>Blood Pressure</h4>
-          ${bpSvg}
-          <div class="legend"><span><i style="background:#2f6fed"></i>Systolic</span><span><i style="background:#7aa8ff"></i>Diastolic</span></div>
-        </div>
-        <div class="chart-box">
-          <h4>Weight</h4>
-          ${weightSvg}
-        </div>
-        <div class="chart-box">
-          <h4>Kick Count</h4>
-          ${kickSvg}
-        </div>
-      </div>
-    </div>
-
-    <div class="panel-card">
-      <h3>Doctor's Notes</h3>
-      <textarea id="notes-box" placeholder="Add clinical notes, context, or follow-up advice...">${detail.notes || ''}</textarea>
-      <div class="status-row">
-        <span>Autosaves on blur</span>
-        <span id="notes-status">${detail.reviewed_at ? `Reviewed ${formatDate(detail.reviewed_at)}` : 'Not reviewed yet'}</span>
-      </div>
-    </div>
-
-    <div class="panel-card">
-      <h3>Actions</h3>
-      <div class="panel-actions">
-        <button class="btn btn-secondary" id="mark-reviewed-btn" type="button">Mark Reviewed</button>
-        <button class="btn btn-primary" id="escalate-btn" type="button">Escalate To Hospital</button>
-      </div>
-    </div>
-  `;
-
-  document.getElementById('notes-box').addEventListener('blur', saveNotes);
-  document.getElementById('mark-reviewed-btn').addEventListener('click', markReviewed);
-  document.getElementById('escalate-btn').addEventListener('click', escalatePatient);
-  panel.classList.add('open');
-  panel.setAttribute('aria-hidden', 'false');
-}
-
-async function openPatient(patientId){
-  state.selectedPatientId = patientId;
-  const detail = await safeFetch(`/doctor/patients/${patientId}`, {headers: authHeaders()});
-  renderDetail(detail);
-}
-
-async function saveNotes(){
-  if(!state.selectedPatientId) return;
-  const notes = document.getElementById('notes-box').value;
-  const status = document.getElementById('notes-status');
-  status.textContent = 'Saving...';
-  try{
-    const payload = await safeFetch(`/doctor/patients/${state.selectedPatientId}/notes`, {
-      method:'PATCH',
-      headers: authHeaders(),
-      body: JSON.stringify({notes})
+  try {
+    const data = await ashaFetch("/asha/login", {
+      method: "POST",
+      headers: ashaHeaders(),
+      body: JSON.stringify(payload),
     });
-    status.textContent = `Saved ${formatDate(payload.updated_at)}`;
-  }catch(error){
-    status.textContent = error.message;
+    ashaState.token = data.access_token;
+    ashaState.worker = data.worker;
+    document.getElementById("asha-auth-view").classList.add("asha-hidden");
+    document.getElementById("asha-app-view").classList.remove("asha-hidden");
+    document.getElementById("asha-profile-name").textContent = data.worker.name;
+    document.getElementById("asha-profile-worker-id").textContent = data.worker.worker_id;
+    document.getElementById("asha-profile-phone").textContent = data.worker.phone;
+    document.getElementById("asha-profile-district").textContent = data.worker.district;
+    await ashaRefresh();
+  } catch (error) {
+    ashaSetMessage("asha-auth-message", error.message, true);
   }
 }
 
-async function markReviewed(){
-  if(!state.selectedPatientId) return;
-  const detail = await safeFetch(`/doctor/patients/${state.selectedPatientId}/review`, {
-    method:'POST',
-    headers: authHeaders()
+async function ashaRefresh() {
+  if (!ashaState.token) return;
+
+  try {
+    ashaSetMessage("asha-dashboard-message", "Refreshing...");
+    const [progress, performance, calendar, patients] = await Promise.all([
+      ashaFetch("/asha/today-progress", { headers: ashaHeaders(true) }),
+      ashaFetch("/asha/performance", { headers: ashaHeaders(true) }),
+      ashaFetch("/asha/performance/calendar", { headers: ashaHeaders(true) }),
+      ashaFetch("/asha/patients", { headers: ashaHeaders(true) }),
+    ]);
+
+    ashaState.progress = progress;
+    ashaState.performance = performance;
+    ashaState.calendar = Array.isArray(calendar) ? calendar : [];
+    ashaState.patients = Array.isArray(patients) ? patients : [];
+    ashaRenderProgress();
+    ashaRenderCalendar();
+    ashaRenderStats();
+    ashaRenderPatients();
+    ashaRenderPatientSelect();
+    ashaSetMessage("asha-dashboard-message", "");
+  } catch (error) {
+    ashaSetMessage("asha-dashboard-message", error.message, true);
+  }
+}
+
+function ashaRenderProgress() {
+  const visits = Number(ashaState.progress.visits_completed || 0);
+  const capped = Math.min(visits, 5);
+  const circumference = 326.73;
+  const offset = circumference - (circumference * capped) / 5;
+  document.getElementById("asha-progress-fill").style.strokeDashoffset = `${offset}`;
+  document.getElementById("asha-progress-center").textContent = String(visits);
+  document.getElementById("asha-progress-copy").textContent = `${visits} / 5 visits today`;
+  document.getElementById("asha-target-chip").classList.toggle("asha-hidden", visits < 5);
+}
+
+function ashaRenderCalendar() {
+  const row = document.getElementById("asha-heatmap-row");
+  row.innerHTML = "";
+
+  ashaState.calendar.forEach((item) => {
+    const square = document.createElement("button");
+    square.type = "button";
+    square.className = "asha-heatmap-day";
+
+    const dateValue = new Date(item.date);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    if (dateValue > today) square.classList.add("future");
+    else if (item.target_met) square.classList.add("met");
+    else if ((item.visits_completed || 0) > 0) square.classList.add("partial");
+
+    square.addEventListener("click", () => {
+      document.getElementById("asha-popup").textContent = `${item.date}: ${item.visits_completed || 0} visits`;
+    });
+
+    row.appendChild(square);
   });
-  renderDetail(detail);
-  await loadPatients();
 }
 
-async function escalatePatient(){
-  if(!state.selectedPatientId) return;
-  const detail = await safeFetch(`/doctor/patients/${state.selectedPatientId}/escalate`, {
-    method:'POST',
-    headers: authHeaders()
+function ashaRenderStats() {
+  document.getElementById("asha-stat-worked").textContent = ashaState.performance.total_days_worked || 0;
+  document.getElementById("asha-stat-met").textContent = ashaState.performance.days_target_met || 0;
+  document.getElementById("asha-stat-missed").textContent = ashaState.performance.days_target_missed || 0;
+  document.getElementById("asha-stat-patients").textContent = ashaState.performance.total_patients_visited || 0;
+  document.getElementById("asha-stat-streak").textContent = ashaState.performance.current_streak || 0;
+}
+
+function trimesterLabel(weeks) {
+  if (weeks <= 12) return "Trimester 1";
+  if (weeks <= 26) return "Trimester 2";
+  return "Trimester 3";
+}
+
+async function ashaTogglePatientDetails(patientId) {
+  if (!ashaState.visitsByPatient[patientId]) {
+    try {
+      ashaState.visitsByPatient[patientId] = await ashaFetch(`/asha/patients/${patientId}/visits`, {
+        headers: ashaHeaders(true),
+      });
+    } catch (_error) {
+      ashaState.visitsByPatient[patientId] = [];
+    }
+  }
+  ashaRenderPatients(patientId);
+}
+
+function ashaRenderPatients(expandedId = null) {
+  const list = document.getElementById("asha-patient-list");
+  const empty = document.getElementById("asha-empty");
+  list.innerHTML = "";
+
+  if (!ashaState.patients.length) {
+    empty.classList.remove("asha-hidden");
+    return;
+  }
+
+  empty.classList.add("asha-hidden");
+
+  ashaState.patients.forEach((patient) => {
+    const card = document.createElement("button");
+    card.type = "button";
+    card.className = "asha-patient-card";
+
+    const visits = ashaState.visitsByPatient[patient.id] || [];
+    const expanded = expandedId === patient.id;
+    if (expanded) card.classList.add("expanded");
+
+    const visitMarkup = visits.length
+      ? visits.map((visit) => {
+          const visitDate = escapeHtml((visit.visit_date || "").slice(0, 10));
+          const systolic = escapeHtml(visit.bp_systolic);
+          const diastolic = escapeHtml(visit.bp_diastolic);
+          const weight = escapeHtml(visit.weight_kg);
+          return `<div class="asha-visit-entry">${visitDate} - BP ${systolic}/${diastolic} - Weight ${weight} kg</div>`;
+        }).join("")
+      : '<div class="asha-visit-entry">No visits yet.</div>';
+
+    card.innerHTML = `
+      <div class="asha-patient-head">
+        <div class="asha-avatar">${ashaIcon("avatar")}</div>
+        <div class="asha-patient-main">
+          <div class="asha-patient-name">${escapeHtml(patient.name)}</div>
+          <div class="asha-patient-village">${escapeHtml(patient.village)}</div>
+        </div>
+        <span class="asha-trimester">${trimesterLabel(Number(patient.weeks_pregnant || 0))}</span>
+      </div>
+      <div class="asha-accordion">
+        <div class="asha-detail">Phone: ${escapeHtml(patient.phone)}</div>
+        <div class="asha-detail">District: ${escapeHtml(patient.district)}</div>
+        <div class="asha-detail">Weeks pregnant: ${escapeHtml(patient.weeks_pregnant)}</div>
+        <div class="asha-detail">Age: ${escapeHtml(patient.age)}</div>
+        <div class="asha-visit-history">${visitMarkup}</div>
+      </div>
+    `;
+
+    card.addEventListener("click", () => ashaTogglePatientDetails(patient.id));
+    list.appendChild(card);
   });
-  renderDetail(detail);
-  await loadPatients();
 }
 
-function closePanel(){
-  document.getElementById('detail-panel').classList.remove('open');
-  document.getElementById('detail-panel').setAttribute('aria-hidden', 'true');
+function ashaRenderPatientSelect() {
+  const select = document.getElementById("asha-visit-patient");
+  select.innerHTML = "";
+
+  if (!ashaState.patients.length) {
+    select.innerHTML = '<option value="">No patients available</option>';
+    return;
+  }
+
+  ashaState.patients.forEach((patient) => {
+    const option = document.createElement("option");
+    option.value = String(patient.id);
+    option.textContent = `${patient.name} - ${patient.village}`;
+    select.appendChild(option);
+  });
 }
 
-function logout(){
-  localStorage.removeItem('niva_doctor_token');
-  localStorage.removeItem('niva_clinical_mode');
-  localStorage.removeItem('niva_clinical_name');
-  state.token = '';
-  state.viewerMode = '';
-  state.viewerName = '';
-  closePanel();
-  showLogin();
+async function ashaCreatePatient() {
+  const payload = {
+    name: document.getElementById("asha-patient-name").value.trim(),
+    age: Number(document.getElementById("asha-patient-age").value),
+    phone: document.getElementById("asha-patient-phone").value.trim(),
+    village: document.getElementById("asha-patient-village").value.trim(),
+    district: document.getElementById("asha-patient-district").value.trim(),
+    weeks_pregnant: Number(document.getElementById("asha-patient-weeks").value),
+    history_prev_pregnancy: document.getElementById("asha-history-prev").checked,
+    history_complications: document.getElementById("asha-history-complications").checked,
+    history_diabetes: document.getElementById("asha-history-diabetes").checked,
+    history_hypertension: document.getElementById("asha-history-hypertension").checked,
+    history_preeclampsia: document.getElementById("asha-history-preeclampsia").checked,
+  };
+
+  try {
+    await ashaFetch("/asha/patients", {
+      method: "POST",
+      headers: ashaHeaders(true),
+      body: JSON.stringify(payload),
+    });
+    ashaSetMessage("asha-dashboard-message", "Patient registered successfully");
+    document.getElementById("asha-patient-form").classList.add("asha-hidden");
+    ["asha-patient-name","asha-patient-age","asha-patient-phone","asha-patient-village","asha-patient-district","asha-patient-weeks"]
+      .forEach((id) => { document.getElementById(id).value = ""; });
+    ["asha-history-prev","asha-history-complications","asha-history-diabetes","asha-history-hypertension","asha-history-preeclampsia"]
+      .forEach((id) => { document.getElementById(id).checked = false; });
+    await ashaRefresh();
+  } catch (error) {
+    ashaSetMessage("asha-dashboard-message", error.message, true);
+  }
 }
 
-document.getElementById('login-btn').addEventListener('click', login);
-document.getElementById('private-role-btn').addEventListener('click', openPrivateLogin);
-document.getElementById('asha-role-btn').addEventListener('click', openAshaLogin);
-document.getElementById('back-role-btn').addEventListener('click', showRoleChooser);
-document.getElementById('asha-back-btn').addEventListener('click', showRoleChooser);
-document.getElementById('asha-existing-btn').addEventListener('click', () => setAshaAuthMode('existing'));
-document.getElementById('asha-new-btn').addEventListener('click', () => setAshaAuthMode('new'));
-document.getElementById('asha-verify-btn').addEventListener('click', verifyAshaId);
-document.getElementById('logout-btn').addEventListener('click', logout);
-document.getElementById('refresh-btn').addEventListener('click', loadPatients);
-document.getElementById('filter-risk').addEventListener('change', loadPatients);
-document.getElementById('filter-flag').addEventListener('change', loadPatients);
-document.getElementById('filter-date').addEventListener('change', loadPatients);
-document.getElementById('close-panel').addEventListener('click', closePanel);
+async function ashaSubmitVisit() {
+  const patientId = document.getElementById("asha-visit-patient").value;
+  if (!patientId) {
+    ashaSetMessage("asha-dashboard-message", "Select a patient first", true);
+    return;
+  }
 
-window.addEventListener('keydown', event => {
-  if(event.key === 'Escape') closePanel();
+  const payload = {
+    weeks_pregnant_at_visit: Number(document.getElementById("asha-visit-weeks").value),
+    bp_systolic: Number(document.getElementById("asha-visit-bp-systolic").value),
+    bp_diastolic: Number(document.getElementById("asha-visit-bp-diastolic").value),
+    weight_kg: Number(document.getElementById("asha-visit-weight").value),
+    haemoglobin: document.getElementById("asha-visit-haemoglobin").value
+      ? Number(document.getElementById("asha-visit-haemoglobin").value)
+      : null,
+    symptom_headache: document.getElementById("asha-symptom-headache").checked,
+    symptom_swelling: document.getElementById("asha-symptom-swelling").checked,
+    symptom_blurred_vision: document.getElementById("asha-symptom-blurred-vision").checked,
+    symptom_bleeding: document.getElementById("asha-symptom-bleeding").checked,
+    notes: document.getElementById("asha-visit-notes").value.trim() || null,
+  };
+
+  try {
+    await ashaFetch(`/asha/patients/${patientId}/visit`, {
+      method: "POST",
+      headers: ashaHeaders(true),
+      body: JSON.stringify(payload),
+    });
+    ashaSetMessage("asha-dashboard-message", "Visit saved successfully");
+    ["asha-visit-weeks","asha-visit-bp-systolic","asha-visit-bp-diastolic","asha-visit-weight","asha-visit-haemoglobin","asha-visit-notes"]
+      .forEach((id) => { document.getElementById(id).value = ""; });
+    ["asha-symptom-headache","asha-symptom-swelling","asha-symptom-blurred-vision","asha-symptom-bleeding"]
+      .forEach((id) => { document.getElementById(id).checked = false; });
+    ashaState.visitsByPatient = {};
+    await ashaRefresh();
+  } catch (error) {
+    ashaSetMessage("asha-dashboard-message", error.message, true);
+  }
+}
+
+function ashaShowPanel(panel) {
+  document.querySelectorAll(".asha-panel").forEach((node) => node.classList.add("hidden"));
+  document.getElementById(`asha-panel-${panel}`).classList.remove("hidden");
+  document.querySelectorAll(".asha-nav-item").forEach((node) => {
+    node.classList.toggle("active", node.dataset.nav === panel);
+  });
+}
+
+function ashaLogout() {
+  ashaState.token = "";
+  ashaState.worker = null;
+  ashaState.patients = [];
+  ashaState.visitsByPatient = {};
+  document.getElementById("asha-app-view").classList.add("asha-hidden");
+  document.getElementById("asha-auth-view").classList.remove("asha-hidden");
+  document.getElementById("asha-login-password").value = "";
+  ashaSetMessage("asha-dashboard-message", "");
+  ashaShowPanel("home");
+}
+
+document.getElementById("asha-auth-login-toggle").addEventListener("click", () => ashaToggleAuth("login"));
+document.getElementById("asha-auth-register-toggle").addEventListener("click", () => ashaToggleAuth("register"));
+document.getElementById("asha-login-btn").addEventListener("click", ashaLogin);
+document.getElementById("asha-register-btn").addEventListener("click", ashaRegister);
+document.getElementById("asha-toggle-patient-form").addEventListener("click", () => {
+  document.getElementById("asha-patient-form").classList.toggle("asha-hidden");
+});
+document.getElementById("asha-create-patient-btn").addEventListener("click", ashaCreatePatient);
+document.getElementById("asha-submit-visit-btn").addEventListener("click", ashaSubmitVisit);
+document.getElementById("asha-logout-btn").addEventListener("click", ashaLogout);
+document.querySelectorAll(".asha-nav-item").forEach((button) => {
+  button.addEventListener("click", () => ashaShowPanel(button.dataset.nav));
+});
+document.getElementById("asha-lang-en").addEventListener("click", () => {
+  ashaState.language = "en";
+  ashaApplyLanguage();
+});
+document.getElementById("asha-lang-hi").addEventListener("click", () => {
+  ashaState.language = "hi";
+  ashaApplyLanguage();
 });
 
-bootstrap();
+ashaApplyLanguage();
+applyEmbedAshaMode();
 </script>
 </body>
 </html>
