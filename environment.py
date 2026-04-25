@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import random
 from typing import List, Optional
 import random
 from pydantic import BaseModel
@@ -45,6 +46,24 @@ CONDITION_URGENCY = {
     "low_risk": "monitor_at_home",
 }
 
+EPISODE_HIDEABLE_SIGNALS = [
+    "risk_flags",
+    "latest_blood_pressure",
+    "latest_kick_count",
+    "latest_symptoms",
+    "bp_trend",
+    "avg_kick_count",
+    "avg_meals",
+    "avg_sleep",
+    "latest_weight_kg",
+    "latest_energy",
+    "latest_breathlessness",
+]
+
+
+def _default_signal_mask() -> dict[str, bool]:
+    return {signal: True for signal in EPISODE_HIDEABLE_SIGNALS}
+
 
 class Observation(BaseModel):
     user_id: int
@@ -54,14 +73,20 @@ class Observation(BaseModel):
     risk_flags: List[str]
     bp_trend: str
     avg_kick_count: Optional[float]
-    avg_meals: float
-    avg_sleep: float
+    avg_meals: Optional[float]
+    avg_sleep: Optional[float]
     latest_weight_kg: Optional[float]
     latest_energy: Optional[int]
     latest_breathlessness: Optional[int]
     history_flags: List[str]
     days_of_data: int
     masked_signals: List[str] = []
+    episode_day_index: int = 1
+    total_episode_days: int = 1
+    belief_state: dict[str, float] = Field(default_factory=dict)
+    available_signals: List[str] = Field(default_factory=list)
+    withheld_signals: List[str] = Field(default_factory=list)
+    signal_mask: dict[str, bool] = Field(default_factory=_default_signal_mask)
 
 
 class PromptObservation(BaseModel):
@@ -96,6 +121,7 @@ class ActionModel(BaseModel):
     urgency: Optional[str] = None
     rationale: Optional[str] = None
     action_type: Optional[str] = None
+    signal_name: Optional[str] = None
     target: Optional[str] = Field(default=None, exclude=True)
 
 
@@ -255,19 +281,103 @@ def _build_observation(user: UserProfile, daily: list, checkin3: Optional[Checki
     )
 
 
+def _build_belief_state(visible_daily_desc: list) -> dict[str, float]:
+    latest_first = list(visible_daily_desc)
+    total_days = len(latest_first)
+    if total_days == 0:
+        return {
+            "visible_day_count": 0.0,
+            "critical_bp_days": 0.0,
+            "high_bp_days": 0.0,
+            "low_kick_days": 0.0,
+            "bleeding_days": 0.0,
+            "abdominal_pain_days": 0.0,
+            "dizziness_days": 0.0,
+            "low_meal_days": 0.0,
+        }
+
+    return {
+        "visible_day_count": float(total_days),
+        "critical_bp_days": float(sum(1 for day in latest_first if day.bp_systolic >= 160 or day.bp_diastolic >= 110)),
+        "high_bp_days": float(sum(1 for day in latest_first if day.bp_systolic >= 140 or day.bp_diastolic >= 90)),
+        "low_kick_days": float(sum(1 for day in latest_first if day.kick_count is not None and day.kick_count < 3)),
+        "bleeding_days": float(sum(1 for day in latest_first if day.symptom_bleeding)),
+        "abdominal_pain_days": float(sum(1 for day in latest_first if day.symptom_abdominal_pain)),
+        "dizziness_days": float(sum(1 for day in latest_first if day.symptom_dizziness)),
+        "low_meal_days": float(sum(1 for day in latest_first if day.meals_count < 2)),
+    }
+
+
+def _annotate_episode_observation(
+    observation: Observation,
+    *,
+    episode_day_index: int,
+    total_episode_days: int,
+    belief_state: dict[str, float],
+) -> Observation:
+    annotated = observation.model_copy(deep=True)
+    annotated.episode_day_index = episode_day_index
+    annotated.total_episode_days = total_episode_days
+    annotated.belief_state = belief_state
+    return annotated
+
+
+def _mask_observation(observation: Observation, withheld_signals: List[str]) -> Observation:
+    signal_mask = _default_signal_mask()
+    for signal in withheld_signals:
+        if signal in signal_mask:
+            signal_mask[signal] = False
+
+    masked = observation.model_copy(deep=True)
+    if not signal_mask["risk_flags"]:
+        masked.risk_flags = []
+    if not signal_mask["bp_trend"]:
+        masked.bp_trend = "unknown"
+    if not signal_mask["avg_kick_count"]:
+        masked.avg_kick_count = None
+    if not signal_mask["avg_meals"]:
+        masked.avg_meals = None
+    if not signal_mask["avg_sleep"]:
+        masked.avg_sleep = None
+    if not signal_mask["latest_weight_kg"]:
+        masked.latest_weight_kg = None
+    if not signal_mask["latest_energy"]:
+        masked.latest_energy = None
+    if not signal_mask["latest_breathlessness"]:
+        masked.latest_breathlessness = None
+
+    masked.signal_mask = signal_mask
+    masked.withheld_signals = sorted(withheld_signals)
+    masked.available_signals = [
+        signal_name for signal_name, is_visible in signal_mask.items() if is_visible
+    ]
+    return masked
+
+
 def observation_to_prompt(obs: Observation, text_observation: str) -> PromptObservation:
     system_prompt = (
         "You are an obstetric triage agent operating inside OpenEnv. "
-        "Return a JSON object with keys: condition, urgency, rationale. "
+        "Return a JSON object with keys: action_type, signal_name, condition, urgency, rationale. "
         f"Valid conditions: {', '.join(SAFE_CONDITIONS)}. "
         f"Valid urgencies: {', '.join(URGENCY_ORDER)}. "
-        "Always prioritize patient safety and do not under-escalate danger flags."
+        "Always prioritize patient safety and do not under-escalate danger flags. "
+        "Some clinically useful signals may be intentionally withheld each episode. "
+        "Use action_type='request_signal' to reveal one withheld signal before a final diagnosis."
     )
-    user_prompt = text_observation + "\n\nPredict the best condition label and urgency for this patient."
+    user_prompt = (
+        text_observation
+        + "\n\nSome signals may be withheld for this episode. "
+        "Reason only from visible information and avoid hallucinating hidden values."
+        + f"\nCurrently withheld signal names: {', '.join(obs.withheld_signals) if obs.withheld_signals else 'none'}."
+        + "\nIf you need one more hidden signal, request it explicitly."
+        + "\nIf you are ready to finish, use action_type='diagnose'."
+    )
     response_format = json.dumps(
         {
-            "condition": "one of the valid condition labels",
-            "urgency": "one of the valid urgency labels",
+            "action_type": "one of: assess, request_signal, diagnose",
+            "signal_name": "withheld signal name when action_type=request_signal, otherwise null",
+            "condition": "one of the valid condition labels when action_type=diagnose, otherwise null",
+            "urgency": "one of the valid urgency labels when action_type=diagnose, otherwise null",
             "rationale": "short clinical explanation",
         },
         indent=2,
@@ -294,6 +404,7 @@ def parse_llm_output(raw_output: str) -> ActionModel:
         urgency=parsed.get("urgency"),
         rationale=parsed.get("rationale"),
         action_type=parsed.get("action_type"),
+        signal_name=parsed.get("signal_name"),
         target=parsed.get("target"),
     )
 
@@ -316,30 +427,85 @@ class PrenatalEnvironment(OpenEnvEnvironment):
     def __init__(self):
         self.current_user_id: Optional[int] = None
         self.current_obs: Optional[Observation] = None
+        self.current_full_obs: Optional[Observation] = None
         self.current_prompt: Optional[PromptObservation] = None
         self.current_text_observation: Optional[str] = None
         self.current_user: Optional[UserProfile] = None
         self.current_daily: list = []
+        self.current_visible_daily: list = []
+        self.current_episode_timeline: list = []
+        self.current_visible_day_count: int = 0
+        self.episode_withheld_signals: List[str] = []
         self.current_checkin3: Optional[Checkin3Day] = None
         self.episode_done: bool = False
         self.reference_condition: Optional[str] = None
 
-    def get_text_observation(self, observation: Observation) -> str:
-        latest_daily = self.current_daily[0] if self.current_daily else None
-        latest_bp = (
-            f"{latest_daily.bp_systolic}/{latest_daily.bp_diastolic} mmHg"
-            if latest_daily
-            else "unknown"
+    def _refresh_visible_prompt(self) -> None:
+        if self.current_obs is None:
+            return
+        self.current_text_observation = self.get_text_observation(self.current_obs)
+        self.current_prompt = observation_to_prompt(self.current_obs, self.current_text_observation)
+
+    def _rebuild_visible_episode_state(self) -> None:
+        if self.current_user is None:
+            raise RuntimeError("No active user for episode state rebuild.")
+        if not self.current_episode_timeline:
+            raise RuntimeError("No episode timeline available for state rebuild.")
+
+        visible_slice_asc = self.current_episode_timeline[: self.current_visible_day_count]
+        visible_slice_desc = list(reversed(visible_slice_asc))
+        self.current_visible_daily = visible_slice_desc
+        visible_checkin3 = self.current_checkin3 if self.current_visible_day_count >= len(self.current_episode_timeline) else None
+        visible_obs = _build_observation(self.current_user, visible_slice_desc, visible_checkin3)
+        visible_obs = _annotate_episode_observation(
+            visible_obs,
+            episode_day_index=max(self.current_visible_day_count, 1),
+            total_episode_days=len(self.current_episode_timeline),
+            belief_state=_build_belief_state(visible_slice_desc),
         )
-        latest_kicks = latest_daily.kick_count if latest_daily and latest_daily.kick_count is not None else "unknown"
-        latest_bleeding = "yes" if latest_daily and latest_daily.symptom_bleeding else "no"
-        latest_headache = "yes" if latest_daily and latest_daily.symptom_headache else "no"
-        latest_swelling = "yes" if latest_daily and latest_daily.symptom_swelling else "no"
-        latest_vision = "yes" if latest_daily and latest_daily.symptom_blurred_vision else "no"
-        latest_abdominal_pain = "yes" if latest_daily and latest_daily.symptom_abdominal_pain else "no"
-        latest_dizziness = "yes" if latest_daily and latest_daily.symptom_dizziness else "no"
+        self.current_obs = _mask_observation(visible_obs, self.episode_withheld_signals)
+        self._refresh_visible_prompt()
+
+    def get_text_observation(self, observation: Observation) -> str:
+        signal_mask = observation.signal_mask or _default_signal_mask()
+
+        def render_value(signal_name: str, value, *, none_label: str = "unknown", formatter=None) -> str:
+            if not signal_mask.get(signal_name, True):
+                return "withheld"
+            if value is None:
+                return none_label
+            return formatter(value) if formatter else str(value)
+
+        latest_daily = self.current_visible_daily[0] if self.current_visible_daily else None
+        latest_bp = render_value(
+            "latest_blood_pressure",
+            latest_daily,
+            formatter=lambda day: f"{day.bp_systolic}/{day.bp_diastolic} mmHg",
+        )
+        latest_kicks = render_value(
+            "latest_kick_count",
+            latest_daily.kick_count if latest_daily else None,
+        )
+        if signal_mask.get("latest_symptoms", True):
+            latest_bleeding = "yes" if latest_daily and latest_daily.symptom_bleeding else "no"
+            latest_headache = "yes" if latest_daily and latest_daily.symptom_headache else "no"
+            latest_swelling = "yes" if latest_daily and latest_daily.symptom_swelling else "no"
+            latest_vision = "yes" if latest_daily and latest_daily.symptom_blurred_vision else "no"
+            latest_abdominal_pain = "yes" if latest_daily and latest_daily.symptom_abdominal_pain else "no"
+            latest_dizziness = "yes" if latest_daily and latest_daily.symptom_dizziness else "no"
+        else:
+            latest_bleeding = "withheld"
+            latest_headache = "withheld"
+            latest_swelling = "withheld"
+            latest_vision = "withheld"
+            latest_abdominal_pain = "withheld"
+            latest_dizziness = "withheld"
 
         profile_name = self.current_user.name if self.current_user else f"Patient {observation.user_id}"
+        belief_text = ", ".join(
+            f"{key}={int(value) if float(value).is_integer() else round(value, 2)}"
+            for key, value in observation.belief_state.items()
+        ) if observation.belief_state else "none"
         return (
             "Patient profile:\n"
             f"- Name: {profile_name}\n"
@@ -348,6 +514,9 @@ class PrenatalEnvironment(OpenEnvEnvironment):
             f"- Weeks pregnant: {observation.weeks_pregnant}\n"
             f"- Trimester: {observation.trimester}\n"
             f"- History flags: {', '.join(observation.history_flags) if observation.history_flags else 'none'}\n\n"
+            "Episode progress:\n"
+            f"- Visible day: {observation.episode_day_index}/{observation.total_episode_days}\n"
+            f"- Carried belief state: {belief_text}\n\n"
             "Latest vitals and symptoms:\n"
             f"- Latest blood pressure: {latest_bp}\n"
             f"- Latest kick count: {latest_kicks}\n"
@@ -357,16 +526,18 @@ class PrenatalEnvironment(OpenEnvEnvironment):
             f"- Blurred vision: {latest_vision}\n"
             f"- Abdominal pain: {latest_abdominal_pain}\n"
             f"- Dizziness: {latest_dizziness}\n"
-            f"- Latest weight (kg): {observation.latest_weight_kg if observation.latest_weight_kg is not None else 'unknown'}\n"
-            f"- Latest energy (1-10): {observation.latest_energy if observation.latest_energy is not None else 'unknown'}\n"
-            f"- Latest breathlessness (1-10): {observation.latest_breathlessness if observation.latest_breathlessness is not None else 'unknown'}\n\n"
+            f"- Latest weight (kg): {render_value('latest_weight_kg', observation.latest_weight_kg)}\n"
+            f"- Latest energy (1-10): {render_value('latest_energy', observation.latest_energy)}\n"
+            f"- Latest breathlessness (1-10): {render_value('latest_breathlessness', observation.latest_breathlessness)}\n\n"
             "3-day summary:\n"
-            f"- Blood-pressure trend: {observation.bp_trend}\n"
-            f"- Average kick count: {observation.avg_kick_count if observation.avg_kick_count is not None else 'unknown'}\n"
-            f"- Average meals per day: {observation.avg_meals:.2f}\n"
-            f"- Average sleep hours: {observation.avg_sleep:.2f}\n"
-            f"- Risk flags: {', '.join(observation.risk_flags) if observation.risk_flags else 'none'}\n"
-            f"- Days of data: {observation.days_of_data}"
+            f"- Blood-pressure trend: {render_value('bp_trend', observation.bp_trend, none_label='unknown')}\n"
+            f"- Average kick count: {render_value('avg_kick_count', observation.avg_kick_count)}\n"
+            f"- Average meals per day: {render_value('avg_meals', observation.avg_meals, formatter=lambda value: f'{value:.2f}')}\n"
+            f"- Average sleep hours: {render_value('avg_sleep', observation.avg_sleep, formatter=lambda value: f'{value:.2f}')}\n"
+            f"- Risk flags: {render_value('risk_flags', observation.risk_flags, none_label='none', formatter=lambda flags: ', '.join(flags) if flags else 'none')}\n"
+            f"- Days of data: {observation.days_of_data}\n"
+            f"- Available signals: {', '.join(observation.available_signals) if observation.available_signals else 'all'}\n"
+            f"- Withheld signals: {', '.join(observation.withheld_signals) if observation.withheld_signals else 'none'}"
         )
 
     def reset(self, user_id: int) -> PromptObservation:
@@ -374,12 +545,30 @@ class PrenatalEnvironment(OpenEnvEnvironment):
         self.current_user_id = user_id
         self.current_user = user
         self.current_daily = daily
+        self.current_visible_daily = daily
+        self.current_episode_timeline = list(reversed(daily)) if daily else []
+        self.current_visible_day_count = 1 if self.current_episode_timeline else 0
         self.current_checkin3 = checkin3
-        self.current_obs = _build_observation(user, daily, checkin3)
-        self.current_text_observation = self.get_text_observation(self.current_obs)
-        self.current_prompt = observation_to_prompt(self.current_obs, self.current_text_observation)
+        full_observation = _build_observation(user, daily, checkin3)
+        full_observation = _annotate_episode_observation(
+            full_observation,
+            episode_day_index=max(len(self.current_episode_timeline), 1),
+            total_episode_days=max(len(self.current_episode_timeline), 1),
+            belief_state=_build_belief_state(daily),
+        )
+        withheld_signals = random.sample(
+            EPISODE_HIDEABLE_SIGNALS,
+            k=random.randint(1, 2),
+        )
+        self.current_full_obs = full_observation
+        self.episode_withheld_signals = withheld_signals
+        if self.current_episode_timeline:
+            self._rebuild_visible_episode_state()
+        else:
+            self.current_obs = _mask_observation(full_observation, withheld_signals)
+            self._refresh_visible_prompt()
         self.episode_done = False
-        self.reference_condition = infer_reference_condition(self.current_obs)
+        self.reference_condition = infer_reference_condition(self.current_full_obs)
         self._signals_requested = 0
         return self.current_prompt
 
@@ -393,6 +582,11 @@ class PrenatalEnvironment(OpenEnvEnvironment):
         chosen_condition = action.condition or action.target
 
         if action_mode == "assess":
+            advanced = False
+            if self.current_episode_timeline and self.current_visible_day_count < len(self.current_episode_timeline):
+                self.current_visible_day_count += 1
+                self._rebuild_visible_episode_state()
+                advanced = True
             return StepResult(
                 observation=self.current_obs,
                 text_observation=self.current_text_observation or "",
@@ -410,8 +604,120 @@ class PrenatalEnvironment(OpenEnvEnvironment):
                 predicted_condition=None,
                 urgency=None,
                 diet_advice=[],
-                rationale="Assessment step requested; observation and prompt returned for further reasoning.",
-                reference_condition=self.reference_condition,
+                rationale=(
+                    f"Assessment step requested; observation returned for reasoning. "
+                    f"{'Episode advanced to the next visible day slice.' if advanced else 'No later day slice remains; reassess current belief.'}"
+                ),
+                reference_condition=None,
+                reference_urgency=None,
+                latent_risks={},
+            )
+
+        if action_mode == "request_signal":
+            hidden_signals = list(self.current_obs.withheld_signals)
+            if not hidden_signals:
+                return StepResult(
+                    observation=self.current_obs,
+                    text_observation=self.current_text_observation or "",
+                    prompt=self.current_prompt,
+                    reward=-0.1,
+                    reward_components={
+                        "request_cost": -0.1,
+                        "revealed_signal": None,
+                        "remaining_hidden_signals": 0,
+                        "total_reward": -0.1,
+                    },
+                    done=False,
+                    predicted_condition=None,
+                    urgency=None,
+                    diet_advice=[],
+                    rationale="No hidden signals remain. Proceed with assessment or diagnosis.",
+                    reference_condition=None,
+                    reference_urgency=None,
+                    latent_risks={},
+                )
+
+            requested_signal = action.signal_name or hidden_signals[0]
+            if requested_signal not in EPISODE_HIDEABLE_SIGNALS:
+                return StepResult(
+                    observation=self.current_obs,
+                    text_observation=self.current_text_observation or "",
+                    prompt=self.current_prompt,
+                    reward=-0.2,
+                    reward_components={
+                        "request_cost": -0.2,
+                        "revealed_signal": None,
+                        "remaining_hidden_signals": len(hidden_signals),
+                        "total_reward": -0.2,
+                    },
+                    done=False,
+                    predicted_condition=None,
+                    urgency=None,
+                    diet_advice=[],
+                    rationale=f"Signal '{requested_signal}' is not a valid requestable signal.",
+                    reference_condition=None,
+                    reference_urgency=None,
+                    latent_risks={},
+                )
+
+            if requested_signal not in hidden_signals:
+                return StepResult(
+                    observation=self.current_obs,
+                    text_observation=self.current_text_observation or "",
+                    prompt=self.current_prompt,
+                    reward=-0.1,
+                    reward_components={
+                        "request_cost": -0.1,
+                        "revealed_signal": None,
+                        "remaining_hidden_signals": len(hidden_signals),
+                        "total_reward": -0.1,
+                    },
+                    done=False,
+                    predicted_condition=None,
+                    urgency=None,
+                    diet_advice=[],
+                    rationale=f"Signal '{requested_signal}' is already visible or was not withheld this episode.",
+                    reference_condition=None,
+                    reference_urgency=None,
+                    latent_risks={},
+                )
+
+            remaining_hidden = [signal for signal in hidden_signals if signal != requested_signal]
+            if self.current_full_obs is None:
+                raise RuntimeError("Full observation missing for request_signal flow.")
+            visible_slice_asc = self.current_episode_timeline[: self.current_visible_day_count]
+            visible_slice_desc = list(reversed(visible_slice_asc))
+            visible_checkin3 = self.current_checkin3 if self.current_visible_day_count >= len(self.current_episode_timeline) else None
+            visible_obs = _build_observation(self.current_user, visible_slice_desc, visible_checkin3)
+            visible_obs = _annotate_episode_observation(
+                visible_obs,
+                episode_day_index=max(self.current_visible_day_count, 1),
+                total_episode_days=max(len(self.current_episode_timeline), 1),
+                belief_state=_build_belief_state(visible_slice_desc),
+            )
+            self.episode_withheld_signals = remaining_hidden
+            self.current_obs = _mask_observation(visible_obs, remaining_hidden)
+            self._refresh_visible_prompt()
+            return StepResult(
+                observation=self.current_obs,
+                text_observation=self.current_text_observation or "",
+                prompt=self.current_prompt,
+                reward=-0.25,
+                reward_components={
+                    "request_cost": -0.25,
+                    "revealed_signal": requested_signal,
+                    "remaining_hidden_signals": len(remaining_hidden),
+                    "total_reward": -0.25,
+                },
+                done=False,
+                predicted_condition=None,
+                urgency=None,
+                diet_advice=[],
+                rationale=(
+                    f"Signal '{requested_signal}' has been revealed. "
+                    "Reassess the patient before issuing a final diagnosis."
+                ),
+                reference_condition=None,
                 reference_urgency=None,
                 latent_risks={},
             )
@@ -506,7 +812,8 @@ class PrenatalEnvironment(OpenEnvEnvironment):
         if action.urgency not in URGENCY_ORDER:
             raise ValueError(f"Unknown urgency: {action.urgency}. Valid: {URGENCY_ORDER}")
 
-        breakdown = calculate_reward(chosen_condition, action.urgency, self.current_obs)
+        reference_observation = self.current_full_obs or self.current_obs
+        breakdown = calculate_reward(chosen_condition, action.urgency, reference_observation)
         self.episode_done = True
         latent_advice = [
             LATENT_CONDITION_ADVICE[name]
@@ -541,11 +848,20 @@ class PrenatalEnvironment(OpenEnvEnvironment):
             "observation": self.current_obs.model_dump(),
             "text_observation": self.current_text_observation,
             "prompt": self.current_prompt.model_dump(),
-            "reference_condition": self.reference_condition,
+            "reference_condition": self.reference_condition if self.episode_done else None,
             "valid_actions": [
                 {"action_type": "assess"},
                 *[
-                    {"condition": condition, "urgency": urgency, "rationale": "clinical explanation"}
+                    {"action_type": "request_signal", "signal_name": signal_name}
+                    for signal_name in self.current_obs.withheld_signals
+                ],
+                *[
+                    {
+                        "action_type": "diagnose",
+                        "condition": condition,
+                        "urgency": urgency,
+                        "rationale": "clinical explanation",
+                    }
                     for condition in SAFE_CONDITIONS
                     for urgency in URGENCY_ORDER
                 ],

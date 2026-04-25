@@ -1,295 +1,295 @@
 ---
-title: Niva Prenatal Health
+title: MAAS
 colorFrom: pink
 colorTo: blue
 sdk: docker
 pinned: false
+app_port: 7860
 ---
 
-# Niva - AI Prenatal Health Monitor
+# MAAS: Multi-Step Maternal Triage for OpenEnv Theme 3.1
 
-Early risk detection for maternal health using AI and real-time monitoring.
+MAAS is an OpenEnv-compatible maternal-care environment framed as a **professional workflow / world-modeling** task.
+An agent must reason over incomplete prenatal data, request missing signals, carry temporal belief state across multiple check-in days, and decide the safest final triage action.
 
----
+## Quick Links
 
-## What is Niva?
+- Hugging Face repo mirror: [https://huggingface.co/sparsh122/MAAS](https://huggingface.co/sparsh122/MAAS)
+- Latest HF GRPO artifacts: [https://huggingface.co/sparsh122/maas-grpo-qwen05b-fix2](https://huggingface.co/sparsh122/maas-grpo-qwen05b-fix2)
+- OpenEnv manifest: [`openenv.yaml`](openenv.yaml)
+- Primary training script: [`train_openenv_ppo.py`](train_openenv_ppo.py)
+- Colab-friendly PPO entrypoint: [`train_trl.py`](train_trl.py)
+- Optional GRPO / Unsloth path: [`train_grpo.py`](train_grpo.py)
+- PPO notebook: [`niva_training.ipynb`](niva_training.ipynb)
+- GRPO notebook: [`niva_grpo_training.ipynb`](niva_grpo_training.ipynb)
+- Space deployment files: [`Dockerfile`](Dockerfile), [`requirements-space.txt`](requirements-space.txt), [`.dockerignore`](.dockerignore)
+- Submission slides: [OpenEnv Hackathon Deck](https://docs.google.com/presentation/d/1KzV0MxZYYA6PXXJ-nAcSRUn5staJkfQvEgHF1QVl5as/preview?pru=AAABnedodns*3ITAIB6zwg6GBoSPLOY7LQ&slide=id.g3e610e50443_9_233)
+- Training curve: [`results/maas_deep_policy_demo/training_curve.png`](results/maas_deep_policy_demo/training_curve.png)
+- Training summary: [`results/maas_deep_policy_demo/demo_summary.json`](results/maas_deep_policy_demo/demo_summary.json)
+- Submission evidence summary: [`results/submission_evidence.md`](results/submission_evidence.md)
+- Baseline report: [`results/baseline_report.md`](results/baseline_report.md)
+- Baseline vs trained summary: [`results/baseline_vs_trained.json`](results/baseline_vs_trained.json)
 
-Niva is an AI-powered prenatal health monitoring system that detects early warning signs during pregnancy and guides users toward timely medical action before complications escalate.
+## Current Submission Status
 
-It combines daily health check-ins, symptom tracking, and an LLM-based inference pipeline to classify risk and generate urgency-based guidance in real time.
+- The environment itself is ready for review: partial observability, multi-step actions, temporal belief state, and deterministic safety-first reward logic are all implemented in-repo.
+- The latest post-fix Hugging Face GRPO job (`69ed2261d70108f37acdef0e`, created on April 26, 2026 at 01:51 IST) completed successfully and uploaded checkpoints, completion logs, and `training_summary.json` to [`sparsh122/maas-grpo-qwen05b-fix2`](https://huggingface.co/sparsh122/maas-grpo-qwen05b-fix2).
+- The earlier post-fix run [`sparsh122/maas-grpo-qwen05b-fix1`](https://huggingface.co/sparsh122/maas-grpo-qwen05b-fix1) proved the `-20` reward collapse was fixed and logged a non-zero-gradient step.
+- The current limitation is that the newest 3-epoch run still has a mean benchmark score of about `0.01`, with most steps returning `grad_norm = 0` and `reward_std = 0`, so the GRPO path is operational but not yet a strong proof of policy improvement.
+- Space deployment files are included in this repo, but the public Space should only be linked as the primary demo once the live app sync is finalized.
 
----
+## Problem
 
-## The Problem
+Maternal triage in low-resource settings is often delayed because the right decision depends on:
 
-Maternal complications are common and often missed:
+- incomplete or noisy signals,
+- short time windows of recent check-ins,
+- latent complications that are not directly observable,
+- and urgent escalation decisions where under-escalation is costly.
 
-| Condition | Prevalence |
-|----------|------------|
-| Gestational Diabetes | ~40% of pregnancies |
-| Anemia | ~14% of pregnancies |
-| Preeclampsia | ~1 in 12 pregnancies |
-| Preterm Labor | Major cause of neonatal mortality |
+MAAS turns that into an OpenEnv training problem. The goal is not just classification. The goal is to train an agent to **behave safely under uncertainty**.
 
-These conditions frequently go undetected until they become emergencies, especially in regions with limited healthcare access, inconsistent monitoring, or low awareness.
+## Why This Fits Theme 3.1
 
----
+This environment is designed around **world modeling / professional tasks**:
 
-## What Niva Does
+- The agent sees only part of the clinically useful information at first.
+- It can choose to **assess**, **request a hidden signal**, or **diagnose**.
+- Episodes unfold across multiple visible day slices instead of one static snapshot.
+- Reward is shaped by medical safety, urgency alignment, temporal evidence, and under-escalation penalties.
 
-Niva acts as a digital prenatal companion that:
+That makes MAAS closer to a professional triage workflow than a one-shot health classifier.
 
-- Collects daily health signals such as blood pressure, symptoms, hydration, sleep, and fetal kick counts
-- Detects early risk patterns using AI
-- Classifies severity and assigns an urgency level
-- Provides personalized care and diet recommendations
+## Environment Design
 
----
+### What the Agent Sees
 
-## Urgency Tiers
+`reset(user_id)` returns:
 
-| Level | Meaning |
-|------|--------|
-| `monitor_at_home` | No immediate danger, continue monitoring |
-| `visit_phc_this_week` | Concerning signs, consult a doctor soon |
-| `go_to_hospital_today` | High risk, immediate medical attention required |
+- a structured `observation`,
+- an LLM-readable `text_observation`,
+- system and user prompts,
+- valid conditions and urgencies.
 
----
+The observation includes:
 
-## Conditions Detected
+- patient profile and pregnancy stage,
+- visible vitals and symptom summaries,
+- temporal metadata such as `episode_day_index` and `belief_state`,
+- `available_signals`, `withheld_signals`, and `signal_mask`.
 
-- Preeclampsia: high blood pressure (>=160/110), headaches, swelling
-- Gestational Diabetes: fatigue, breathlessness, family history
-- Anemia: low nutrition indicators and fatigue patterns
-- Fetal Distress: kick count < 3 in 2 hours
-- Preterm Risk: early detection from combined symptom patterns
+### What the Agent Can Do
 
----
+The action schema is:
 
-## Why This Is an RL Environment
-
-This project is an OpenEnv-compatible reinforcement learning environment designed for verifiable decision-making.
-
-### Core Properties
-
-- Step-by-step structured decision-making
-- Deterministic reward evaluation
-- Partially observable system
-
-In this environment, the agent does not see full medical ground truth. It only sees recent check-ins, vitals, symptoms, and short-term trends, while the true latent risk state must be inferred from incomplete observations.
-
-### Environment Interface
-
-```python
-env.reset()   # initialize a new patient scenario
-env.step()    # submit diagnosis and urgency action
-env.state()   # observe current health signals
+```json
+{
+  "action_type": "assess | request_signal | diagnose",
+  "signal_name": "optional hidden signal name",
+  "condition": "optional final diagnosis",
+  "urgency": "optional final urgency",
+  "rationale": "short explanation"
+}
 ```
 
----
+Current supported actions:
 
-## Getting Started
+- `assess`: summarize visible evidence and advance reasoning without ending the episode
+- `request_signal`: reveal one withheld clinical signal at a small cost
+- `diagnose`: finish the episode with condition + urgency
 
-### Prerequisites
+### Temporal Belief Updates
 
-- Python 3.10 or above
-- OpenAI-compatible API (OpenAI, Together, or Groq)
+Episodes are not static. MAAS now carries evidence forward across multiple check-in days:
 
----
+- `reset()` starts from the first visible day slice
+- `assess` can move the episode to the next visible day
+- `belief_state` accumulates counts such as high-BP days, low-kick days, and bleeding days
 
-### 1. Clone the Repository
+### Partial Observability
+
+At the start of each episode, MAAS withholds 1-2 clinically useful signals. The agent must decide whether it has enough information already or should request another signal before diagnosing.
+
+## Reward Logic
+
+Reward is computed in [`xai_reward_model.py`](xai_reward_model.py) and returned by `step()` with `reward_components`.
+
+Key pieces:
+
+- class-weighted condition accuracy
+- urgency alignment
+- strong under-escalation penalty
+- extra danger-flag under-escalation penalty
+- small data-recency bonus
+- small request cost for `request_signal`
+
+This is designed to teach the agent that **unsafe confidence is expensive**.
+
+## OpenEnv API
+
+MAAS follows the standard Gym-style surface:
+
+```python
+env.reset(user_id=1)
+env.step(action)
+env.state()
+```
+
+HTTP endpoints:
+
+- `POST /reset`
+- `POST /step`
+- `GET /state`
+- `GET /health`
+
+Example:
+
+```bash
+curl -X POST http://127.0.0.1:7860/reset \
+  -H "Content-Type: application/json" \
+  -d '{"user_id": 1}'
+
+curl -X POST http://127.0.0.1:7860/step \
+  -H "Content-Type: application/json" \
+  -d '{"action_type":"assess","rationale":"Summarize visible evidence first"}'
+
+curl http://127.0.0.1:7860/state
+```
+
+## Training
+
+### Primary Training Path
+
+The main rerunnable script is [`train_openenv_ppo.py`](train_openenv_ppo.py).
+
+It trains directly against the current MAAS environment loop:
+
+```text
+reset -> prompt observation -> multi-step LLM actions -> env.step -> reward -> PPO update
+```
+
+Example:
+
+```bash
+python train_openenv_ppo.py \
+  --model-name Qwen/Qwen2.5-1.5B-Instruct \
+  --user-ids 1,2,3 \
+  --epochs 1 \
+  --batch-size 1 \
+  --mini-batch-size 1 \
+  --max-episode-steps 4
+```
+
+If your local `trl` build does not expose PPO classes anymore, use the GRPO path below or run the PPO script in a PPO-capable TRL environment on Colab / Hugging Face Jobs.
+
+### Colab-Friendly Entrypoint
+
+[`train_trl.py`](train_trl.py) re-exports the same PPO loop for notebook usage.
+
+### Notebooks
+
+- PPO workflow notebook: [`niva_training.ipynb`](niva_training.ipynb)
+- GRPO workflow notebook: [`niva_grpo_training.ipynb`](niva_grpo_training.ipynb)
+
+### Optional GRPO / Unsloth Path
+
+[`train_grpo.py`](train_grpo.py) provides an optional TRL GRPO path with `--use-unsloth` support for hackathon GPU runs and Hugging Face Jobs.
+
+Example:
+
+```bash
+python train_grpo.py \
+  --model-name Qwen/Qwen2.5-1.5B-Instruct \
+  --epochs 1 \
+  --num-generations 2 \
+  --use-unsloth
+```
+
+To persist a Hugging Face Jobs run back to the Hub:
+
+```bash
+python train_grpo.py \
+  --model-name Qwen/Qwen2-0.5B-Instruct \
+  --epochs 1 \
+  --num-generations 2 \
+  --hub-model-id sparsh122/maas-grpo-qwen05b \
+  --push-to-hub
+```
+
+## Training Evidence
+
+The repo includes checked-in evidence that MAAS was actually trained and evaluated:
+
+- Training curve image: [`results/maas_deep_policy_demo/training_curve.png`](results/maas_deep_policy_demo/training_curve.png)
+- Training history: [`results/maas_deep_policy_demo/training_history.json`](results/maas_deep_policy_demo/training_history.json)
+- Demo run summary: [`results/maas_deep_policy_demo/demo_summary.json`](results/maas_deep_policy_demo/demo_summary.json)
+- Baseline report: [`results/baseline_report.md`](results/baseline_report.md)
+- Baseline vs trained summary: [`results/baseline_vs_trained.json`](results/baseline_vs_trained.json)
+- Latest HF GRPO artifacts: [sparsh122/maas-grpo-qwen05b-fix2](https://huggingface.co/sparsh122/maas-grpo-qwen05b-fix2)
+
+Current checked-in demo metrics from `demo_summary.json`:
+
+- validation condition accuracy: `0.9792`
+- validation urgency accuracy: `1.0000`
+- validation loss: `0.0808`
+
+Current checked-in baseline summary from `baseline_report.md`:
+
+- average baseline benchmark score: `0.3367`
+- PPO stack connected and emitted reward logs before the small-model GPU run stopped
+
+### Training Curve
+
+![MAAS training curve](results/maas_deep_policy_demo/training_curve.png)
+
+Caption: training loss drops over epochs while validation condition/urgency accuracy remains high on the held-out demo split.
+
+## Running the Environment Locally
+
+### Install
 
 ```bash
 git clone https://github.com/sparsh1258/MAAS.git
 cd MAAS
-```
-
----
-
-### 2. Install Dependencies
-
-```bash
 pip install -r requirements.txt
 ```
 
----
-
-### 3. Set Environment Variables
+### Start the API
 
 ```bash
-export API_BASE_URL="https://api.openai.com/v1"
-export MODEL_NAME="gpt-4o"
-export HF_TOKEN="your_token_here"
+uvicorn main:app --host 0.0.0.0 --port 7860
 ```
 
-Do not commit API keys to the repository.
+Open:
 
-You can also use the example config file already included in the repo:
+- app: [http://127.0.0.1:7860/](http://127.0.0.1:7860/)
+- health: [http://127.0.0.1:7860/health](http://127.0.0.1:7860/health)
 
-`.env.example` -> copy its values into your local `.env` file before running the app.
-
----
-
-### 4. Run the Application
-
-```bash
-uvicorn main:app --reload
-```
-
-Open in browser:
-
-`http://localhost:8000`
-
----
-
-## API Endpoints
-
-### Reset Environment
-
-```bash
-curl -X POST http://localhost:8000/reset \
-  -H "Content-Type: application/json" \
-  -d '{"user_id": 1}'
-```
-
-### Step Environment
-
-```bash
-curl -X POST http://localhost:8000/step \
-  -H "Content-Type: application/json" \
-  -d '{"condition":"preeclampsia","urgency":"go_to_hospital_today","rationale":"Critical BP with danger flags"}'
-```
-
-### Get Current State
-
-```bash
-curl http://localhost:8000/state
-```
-
----
-
-## Running the AI Agent
-
-```bash
-python inference.py
-```
-
----
-
-## Training
-
-### TRL PPO Training
-
-```bash
-python train_trl.py --user-ids 1
-```
-
-### OpenEnv PPO Training
-
-```bash
-python train_openenv_ppo.py --user-ids 1
-```
-
----
-
-### Training Evidence
-
-Minimal RL training artifacts and baseline comparison files are available in the `results/` folder.
-
-Files:
-- `results/baseline_output.txt`
-- `results/baseline_report.md`
-- `results/baseline_vs_trained.json`
-
----
-
-## Project Structure
+## Repo Structure
 
 ```text
 MAAS/
-|-- inference.py
-|-- main.py
-|-- openenv.yaml
 |-- environment.py
-|-- models.py
-|-- schemas.py
-|-- database.py
-|-- requirements.txt
-|-- Dockerfile
-|-- preview.html
-|-- tasks/
-|   |-- task_1_easy.py
-|   |-- task_2_medium.py
-|   |-- task_3_hard.py
+|-- xai_reward_model.py
+|-- openenv.yaml
+|-- main.py
+|-- inference.py
+|-- train_openenv_ppo.py
+|-- train_trl.py
+|-- train_grpo.py
+|-- niva_training.ipynb
+|-- results/
 |-- routers/
-|   |-- users.py
-|   |-- checkin_daily.py
-|   |-- checkin_3day.py
-|   |-- diagnosis.py
+|-- tasks/
 ```
 
----
+## Why This Matters
 
-## How Inference Works
+MAAS is meant to show a more realistic RL-for-agents setting:
 
-1. Health signals are structured into input
-2. The LLM analyzes symptom patterns
-3. Outputs condition and urgency level
-4. The environment evaluates correctness and assigns reward
+- incomplete information,
+- temporal evidence,
+- safety-sensitive reward shaping,
+- and professional escalation behavior.
 
----
-
-## Evaluation Tasks
-
-| Task | Difficulty | Scenario |
-|------|-----------|----------|
-| Task 1 | Easy | Preeclampsia detection |
-| Task 2 | Medium | Fetal distress |
-| Task 3 | Hard | Gestational diabetes with noisy signals |
-
----
-
-## Reward Logic
-
-| Outcome | Effect |
-|--------|--------|
-| Correct diagnosis | Positive reward |
-| Correct urgency | Additional reward |
-| Recent data | Bonus |
-| Incorrect or unsafe output | Penalty |
-
-The verifier also exposes reward components for condition match, urgency match, under-escalation penalties, danger-flag override penalties, and data recency bonus.
-
----
-
-## Deployment
-
-- HF Space: https://huggingface.co/spaces/nancyyyyyyy/niva-prenatal-health
-- Project writeup/video: PASTE_YOUR_LINK_HERE
-
----
-
-## Tech Stack
-
-| Layer | Technology |
-|------|-----------|
-| Backend | FastAPI, SQLAlchemy |
-| Database | SQLite |
-| Frontend | HTML, CSS, JavaScript |
-| AI Layer | OpenAI-compatible LLM |
-| Deployment | Hugging Face Spaces (Docker) |
-| RL Framework | OpenEnv + TRL |
-
----
-
-## Team
-
-- Muskaan Kohli
-- Nancy Garg
-- Sparsh Gupta
-
----
-
-## License
-
-MIT License - see `LICENSE` for details.
+The point is not just to say “the model predicted a label.” The point is to train and evaluate whether it learns when to ask for more information and when to escalate safely.

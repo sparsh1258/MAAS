@@ -1,20 +1,18 @@
 #!/usr/bin/env python3
 """
-inference.py — Baseline Agent for Prenatal Health Monitor (OpenEnv)
-=====================================================================
-Runs a language model against all 3 tasks in the Prenatal OpenEnv.
+inference.py - Baseline Agent for Prenatal Health Monitor (OpenEnv)
+===================================================================
+Runs a language model against all benchmark tasks in the Prenatal OpenEnv.
 
 Uses the OpenAI-compatible API client. Set these environment variables:
-  API_BASE_URL  — base URL for the API (e.g. https://api.openai.com/v1)
-  MODEL_NAME    — model to run (e.g. gpt-4o, claude-3-5-sonnet-20241022)
-  HF_TOKEN      — Hugging Face token (used as the API key / bearer token)
+  API_BASE_URL  - base URL for the API (e.g. https://api.openai.com/v1)
+  MODEL_NAME    - model to run (e.g. gpt-4o, claude-3-5-sonnet-20241022)
+  HF_TOKEN      - Hugging Face token (used as the API key / bearer token)
 
 Emits EXACT stdout format required by OpenEnv judge:
   [START] task=<task_id> env=prenatal_health model=<model_name>
   [STEP]  step=<n> action=<action_str> reward=<0.00> done=<true|false> error=<msg|null>
   [END]   success=<true|false> steps=<n> score=<0.000> rewards=<r1,r2,...>
-
-Any deviation = disqualified.
 
 Usage:
   export API_BASE_URL="https://api.openai.com/v1"
@@ -23,24 +21,62 @@ Usage:
   python inference.py
 """
 
-import os
-import sys
 import json
+import os
 import re
-from typing import Optional
+import sys
+from typing import Any, Optional
+
 from openai import OpenAI
-from tasks import TASKS
+
+from environment import Observation, _mask_observation, observation_to_prompt
 from rl_risk_model import RL_RISK_MODEL
+from tasks import TASKS
 
-# ── Environment variables ──────────────────────────────────────────────────────
+# Environment variables
 API_BASE_URL = os.environ.get("API_BASE_URL", "https://api.openai.com/v1")
-MODEL_NAME   = os.environ.get("MODEL_NAME",   "gpt-4o")
-HF_TOKEN     = os.environ.get("HF_TOKEN")
-BENCHMARK    = "prenatal_health"
+MODEL_NAME = os.environ.get("MODEL_NAME", "gpt-4o")
+HF_TOKEN = os.environ.get("HF_TOKEN")
+BENCHMARK = "prenatal_health"
 
-SUCCESS_SCORE_THRESHOLD = 0.5  # score >= 0.5 counts as success
+SUCCESS_SCORE_THRESHOLD = 0.5
 MIN_STRICT_SCORE = 0.01
 MAX_STRICT_SCORE = 0.99
+MAX_EPISODE_STEPS = 4
+REQUEST_SIGNAL_COST = -0.25
+
+TASK_HIDEABLE_SIGNALS = [
+    "risk_flags",
+    "bp_trend",
+    "avg_kick_count",
+    "avg_meals",
+    "avg_sleep",
+    "latest_weight_kg",
+    "latest_energy",
+    "latest_breathlessness",
+]
+
+SYSTEM_PROMPT = """You are Niva, an AI maternal health assistant for rural India.
+You operate in a multi-step triage loop. Some patient signals may be intentionally withheld.
+
+You MUST respond with ONLY a valid JSON object using this exact schema:
+{"action_type":"<assess|request_signal|diagnose>","signal_name":"<hidden signal or null>","condition":"<condition or null>","urgency":"<urgency or null>","rationale":"<short explanation>"}
+
+Rules:
+- Use action_type="assess" when you want to summarize visible evidence before final diagnosis.
+- Use action_type="request_signal" to reveal one hidden signal.
+- Use action_type="diagnose" only when ready to finish with a condition and urgency.
+- If any DANGER_ flags are visible, do not under-escalate urgency.
+- Do not include markdown or extra text. Return JSON only."""
+
+FALLBACK_DIAGNOSE_ACTION = {
+    "action_type": "diagnose",
+    "signal_name": None,
+    "condition": "low_risk",
+    "urgency": "monitor_at_home",
+    "rationale": "Fallback due to parsing or API failure.",
+}
+
 
 if not HF_TOKEN:
     print("[ERROR] HF_TOKEN environment variable is required.", file=sys.stderr)
@@ -51,26 +87,6 @@ client = OpenAI(
     base_url=API_BASE_URL,
 )
 
-SYSTEM_PROMPT = """You are Niva, an AI maternal health assistant for rural India.
-You will be given a patient observation and must diagnose the primary condition.
-
-You MUST respond with ONLY a valid JSON object in this exact format:
-{"condition": "<condition>", "urgency": "<urgency>", "rationale": "<short explanation>"}
-
-Valid conditions: preeclampsia, gestational_diabetes, anemia, preterm_risk, fetal_distress, low_risk
-Valid urgencies:  monitor_at_home, visit_phc_this_week, go_to_hospital_today
-
-Rules:
-- If any DANGER_ flags are present in risk_flags, urgency MUST be go_to_hospital_today
-- DANGER_BP_CRITICAL means BP >= 160/110 — always go_to_hospital_today
-- DANGER_LOW_KICKS means kick count < 3 — always go_to_hospital_today
-- DANGER_BLEEDING means active bleeding — always go_to_hospital_today
-- HIGH_BP (without DANGER) means >= 140/90 — consider visit_phc_this_week
-- If no risk flags and no history: likely low_risk with monitor_at_home
-- Do NOT include any explanation, markdown, or extra text — ONLY the JSON object."""
-
-
-# ── Stdout logging helpers (spec-compliant) ────────────────────────────────────
 
 def log_start(task: str, env: str, model: str) -> None:
     print(f"[START] task={task} env={env} model={model}", flush=True)
@@ -94,192 +110,522 @@ def log_end(success: bool, steps: int, score: float, rewards: list) -> None:
     )
 
 
-# ── Action parsing ─────────────────────────────────────────────────────────────
-
-FALLBACK_ACTION = {
-    "condition": "low_risk",
-    "urgency": "monitor_at_home",
-    "rationale": "Fallback due to parsing or API failure.",
-}
-
-
-def parse_action(raw: str) -> dict:
-    """Parse JSON action from model output, with fallback."""
+def parse_action(raw: str) -> dict[str, Any]:
+    """Parse JSON action from model output, with schema normalization."""
     clean = raw.strip()
     if clean.startswith("```"):
-        lines = clean.split("\n")
-        clean = "\n".join(l for l in lines if not l.startswith("```")).strip()
+        lines = clean.splitlines()
+        clean = "\n".join(line for line in lines if not line.startswith("```")).strip()
+
+    parsed: Optional[dict[str, Any]] = None
     try:
-        parsed = json.loads(clean)
+        candidate = json.loads(clean)
+        if isinstance(candidate, dict):
+            parsed = candidate
     except json.JSONDecodeError:
-        match = re.search(r'\{[^}]+\}', raw)
+        match = re.search(r"\{.*\}", raw, re.S)
         if match:
             try:
-                parsed = json.loads(match.group())
+                candidate = json.loads(match.group())
+                if isinstance(candidate, dict):
+                    parsed = candidate
             except Exception:
                 parsed = None
-        else:
-            parsed = None
+
     if parsed is None:
-        return FALLBACK_ACTION.copy()
+        return FALLBACK_DIAGNOSE_ACTION.copy()
+
     if "condition" not in parsed and "target" in parsed:
         parsed["condition"] = parsed["target"]
-    if "rationale" not in parsed:
-        parsed["rationale"] = "Model response parsed without an explicit rationale."
-    return parsed
+
+    action_type = parsed.get("action_type")
+    if action_type not in {"assess", "request_signal", "diagnose"}:
+        if parsed.get("signal_name"):
+            action_type = "request_signal"
+        elif parsed.get("condition") or parsed.get("urgency"):
+            action_type = "diagnose"
+        else:
+            action_type = "assess"
+
+    normalized = {
+        "action_type": action_type,
+        "signal_name": parsed.get("signal_name"),
+        "condition": parsed.get("condition"),
+        "urgency": parsed.get("urgency"),
+        "rationale": parsed.get("rationale")
+        or "Model response parsed without an explicit rationale.",
+    }
+
+    if normalized["action_type"] != "request_signal":
+        normalized["signal_name"] = None
+    if normalized["action_type"] != "diagnose":
+        normalized["condition"] = None
+        normalized["urgency"] = None
+
+    return normalized
 
 
-def get_rl_action(task: dict) -> tuple[dict, float]:
-    """Use RL policy to get action and confidence (log_prob proxy)."""
-    obs_data = task.get("observation", {})
+def _build_minimal_obs(observation: Observation):
+    class MinimalObs:
+        def __init__(self, obs: Observation):
+            self.risk_flags = obs.risk_flags
+            self.history_flags = obs.history_flags
+            self.avg_meals = obs.avg_meals
+            self.avg_sleep = obs.avg_sleep
+            self.avg_kick_count = obs.avg_kick_count
+            self.latest_energy = obs.latest_energy
+            self.latest_breathlessness = obs.latest_breathlessness
+            self.weeks_pregnant = obs.weeks_pregnant
+            self.trimester = obs.trimester
+            self.bp_trend = obs.bp_trend
+            self.latest_weight_kg = obs.latest_weight_kg
+
+    return MinimalObs(observation)
+
+
+def get_rl_action(observation: Observation, rationale: Optional[str] = None) -> tuple[dict[str, Any], float]:
+    """Use the lightweight risk policy as a final-diagnosis fallback."""
     try:
-        # Build a minimal obs object rl_risk_model.featurize() can handle
-        class MinimalObs:
-            def __init__(self, d):
-                self.risk_flags = d.get("risk_flags", [])
-                self.history_flags = d.get("history_flags", [])
-                self.avg_meals = d.get("avg_meals")
-                self.avg_sleep = d.get("avg_sleep")
-                self.avg_kick_count = d.get("avg_kick_count")
-                self.latest_energy = d.get("latest_energy")
-                self.latest_breathlessness = d.get("latest_breathlessness")
-                self.weeks_pregnant = d.get("weeks_pregnant")
-                self.trimester = d.get("trimester")
-                self.bp_trend = d.get("bp_trend")
-                self.latest_weight_kg = d.get("latest_weight_kg")
-
-        obs = MinimalObs(obs_data)
-        result = RL_RISK_MODEL.predict(obs)
+        result = RL_RISK_MODEL.predict(_build_minimal_obs(observation))
         action = {
             "action_type": "diagnose",
-            "target": result.condition,
+            "signal_name": None,
+            "condition": result.condition,
             "urgency": result.urgency,
+            "rationale": rationale or "Fallback diagnosis from the risk policy.",
         }
         return action, float(result.confidence)
     except Exception:
-        return FALLBACK_ACTION.copy(), 0.01
+        action = FALLBACK_DIAGNOSE_ACTION.copy()
+        if rationale:
+            action["rationale"] = rationale
+        return action, 0.01
 
 
-# ── Single task runner ─────────────────────────────────────────────────────────
+def observation_has_value(observation: Observation, signal_name: str) -> bool:
+    value = getattr(observation, signal_name, None)
+    if signal_name == "risk_flags":
+        return value is not None
+    return value is not None and value != ""
+
+
+def select_withheld_signals(task: dict, observation: Observation) -> list[str]:
+    candidates = [name for name in TASK_HIDEABLE_SIGNALS if observation_has_value(observation, name)]
+    if not candidates:
+        return []
+
+    count = 1 if task.get("difficulty") == "easy" else min(2, len(candidates))
+    ordered = sorted(candidates)
+    offset = sum(ord(char) for char in task["id"]) % len(ordered)
+    return [ordered[(offset + index) % len(ordered)] for index in range(count)]
+
+
+def render_task_observation(observation: Observation) -> str:
+    signal_mask = observation.signal_mask or {}
+
+    def render_value(signal_name: str, value, *, none_label: str = "unknown", formatter=None) -> str:
+        if not signal_mask.get(signal_name, True):
+            return "withheld"
+        if value is None:
+            return none_label
+        return formatter(value) if formatter else str(value)
+
+    return (
+        "Benchmark patient observation:\n"
+        f"- User ID: {observation.user_id}\n"
+        f"- Region: {observation.region}\n"
+        f"- Weeks pregnant: {observation.weeks_pregnant}\n"
+        f"- Trimester: {observation.trimester}\n"
+        f"- History flags: {', '.join(observation.history_flags) if observation.history_flags else 'none'}\n"
+        f"- Risk flags: {render_value('risk_flags', observation.risk_flags, none_label='none', formatter=lambda flags: ', '.join(flags) if flags else 'none')}\n"
+        f"- BP trend: {render_value('bp_trend', observation.bp_trend, none_label='unknown')}\n"
+        f"- Average kick count: {render_value('avg_kick_count', observation.avg_kick_count)}\n"
+        f"- Average meals per day: {render_value('avg_meals', observation.avg_meals, formatter=lambda value: f'{value:.2f}')}\n"
+        f"- Average sleep hours: {render_value('avg_sleep', observation.avg_sleep, formatter=lambda value: f'{value:.2f}')}\n"
+        f"- Latest weight (kg): {render_value('latest_weight_kg', observation.latest_weight_kg)}\n"
+        f"- Latest energy (1-10): {render_value('latest_energy', observation.latest_energy)}\n"
+        f"- Latest breathlessness (1-10): {render_value('latest_breathlessness', observation.latest_breathlessness)}\n"
+        f"- Days of data: {observation.days_of_data}\n"
+        f"- Available signals: {', '.join(observation.available_signals) if observation.available_signals else 'all'}\n"
+        f"- Withheld signals: {', '.join(observation.withheld_signals) if observation.withheld_signals else 'none'}"
+    )
+
+
+def build_task_prompt(observation: Observation):
+    text_observation = render_task_observation(observation)
+    return observation_to_prompt(observation, text_observation)
+
+
+def init_task_episode(task: dict) -> Optional[dict[str, Any]]:
+    observation = task.get("observation")
+    if not isinstance(observation, Observation):
+        return None
+
+    full_observation = observation.model_copy(deep=True)
+    withheld_signals = select_withheld_signals(task, full_observation)
+    visible_observation = _mask_observation(full_observation, withheld_signals)
+    prompt = build_task_prompt(visible_observation)
+    return {
+        "full_observation": full_observation,
+        "visible_observation": visible_observation,
+        "prompt": prompt,
+    }
+
+
+def build_turn_user_prompt(base_prompt: str, history: list[dict[str, Any]], stage: str) -> str:
+    stage_instruction = {
+        "assess": "This turn is an assessment turn. Summarize visible evidence with action_type='assess'.",
+        "request_signal": "This turn must request the single most informative hidden signal with action_type='request_signal'.",
+        "diagnose": "This is the final turn. Provide action_type='diagnose' with condition and urgency.",
+    }[stage]
+
+    if not history:
+        return base_prompt + "\n\nCurrent turn instruction: " + stage_instruction
+
+    history_lines = []
+    for item in history:
+        signal_suffix = f", signal_name={item['signal_name']}" if item.get("signal_name") else ""
+        diagnosis_suffix = ""
+        if item.get("condition") or item.get("urgency"):
+            diagnosis_suffix = (
+                f", condition={item.get('condition')}, urgency={item.get('urgency')}"
+            )
+        history_lines.append(
+            f"- Step {item['step']}: action_type={item['action_type']}{signal_suffix}{diagnosis_suffix}; "
+            f"feedback={item['feedback']}"
+        )
+
+    history_block = "\n".join(history_lines)
+    return (
+        base_prompt
+        + "\n\nEpisode history so far:\n"
+        + history_block
+        + "\n\nCurrent turn instruction: "
+        + stage_instruction
+    )
+
+
+def call_model(system_prompt: str, user_prompt: str) -> tuple[str, Optional[str], float]:
+    try:
+        response = client.chat.completions.create(
+            model=MODEL_NAME,
+            temperature=0.0,
+            max_tokens=256,
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt},
+            ],
+        )
+        raw = (response.choices[0].message.content or "").strip()
+        return raw, None, 0.01
+    except Exception as exc:
+        error = str(exc).replace("\n", " ")
+        print(f"[DEBUG] API call failed: {error}", file=sys.stderr)
+        return "", error, 0.01
+
+
+def fallback_stage_action(
+    stage: str,
+    visible_observation: Optional[Observation],
+    hidden_signals: list[str],
+    *,
+    rationale: str,
+) -> tuple[dict[str, Any], float]:
+    if stage == "assess":
+        return (
+            {
+                "action_type": "assess",
+                "signal_name": None,
+                "condition": None,
+                "urgency": None,
+                "rationale": rationale,
+            },
+            0.01,
+        )
+
+    if stage == "request_signal":
+        return (
+            {
+                "action_type": "request_signal",
+                "signal_name": hidden_signals[0] if hidden_signals else None,
+                "condition": None,
+                "urgency": None,
+                "rationale": rationale,
+            },
+            0.01,
+        )
+
+    if visible_observation is None:
+        action = FALLBACK_DIAGNOSE_ACTION.copy()
+        action["rationale"] = rationale
+        return action, 0.01
+    return get_rl_action(visible_observation, rationale=rationale)
+
+
+def coerce_action_to_stage(
+    action: dict[str, Any],
+    stage: str,
+    visible_observation: Optional[Observation],
+    hidden_signals: list[str],
+) -> tuple[dict[str, Any], float]:
+    rationale = action.get("rationale") or "Stage-coerced action."
+
+    if stage == "assess":
+        return (
+            {
+                "action_type": "assess",
+                "signal_name": None,
+                "condition": None,
+                "urgency": None,
+                "rationale": rationale,
+            },
+            0.01,
+        )
+
+    if stage == "request_signal":
+        signal_name = action.get("signal_name")
+        if signal_name not in hidden_signals:
+            signal_name = hidden_signals[0] if hidden_signals else None
+        return (
+            {
+                "action_type": "request_signal",
+                "signal_name": signal_name,
+                "condition": None,
+                "urgency": None,
+                "rationale": rationale,
+            },
+            0.01,
+        )
+
+    if action.get("condition") and action.get("urgency"):
+        return (
+            {
+                "action_type": "diagnose",
+                "signal_name": None,
+                "condition": action.get("condition"),
+                "urgency": action.get("urgency"),
+                "rationale": rationale,
+            },
+            0.01,
+        )
+
+    return fallback_stage_action(
+        "diagnose",
+        visible_observation,
+        hidden_signals,
+        rationale=rationale or "Missing diagnosis fields in final turn.",
+    )
+
+
+def apply_episode_step(
+    episode: Optional[dict[str, Any]],
+    action: dict[str, Any],
+    grade_fn,
+) -> dict[str, Any]:
+    if episode is None:
+        grade_result = grade_fn(action)
+        score = min(max(float(grade_result["score"]), MIN_STRICT_SCORE), MAX_STRICT_SCORE)
+        return {
+            "action": action,
+            "reward": score,
+            "done": True,
+            "feedback": grade_result.get("feedback", ""),
+            "score": score,
+            "success": score >= SUCCESS_SCORE_THRESHOLD,
+            "grade_result": grade_result,
+        }
+
+    visible_observation: Observation = episode["visible_observation"]
+    full_observation: Observation = episode["full_observation"]
+    hidden_signals = list(visible_observation.withheld_signals)
+    action_type = action.get("action_type", "assess")
+
+    if action_type == "assess":
+        return {
+            "action": action,
+            "reward": 0.0,
+            "done": False,
+            "feedback": "Assessment recorded. Continue gathering evidence or diagnose when ready.",
+            "score": 0.0,
+            "success": False,
+            "grade_result": None,
+        }
+
+    if action_type == "request_signal":
+        if not hidden_signals:
+            return {
+                "action": action,
+                "reward": -0.1,
+                "done": False,
+                "feedback": "No hidden signals remain. Move to assessment or diagnosis.",
+                "score": 0.0,
+                "success": False,
+                "grade_result": None,
+            }
+
+        requested_signal = action.get("signal_name") or hidden_signals[0]
+        if requested_signal not in hidden_signals:
+            requested_signal = hidden_signals[0]
+            action["signal_name"] = requested_signal
+
+        remaining_hidden = [signal for signal in hidden_signals if signal != requested_signal]
+        updated_visible = _mask_observation(full_observation, remaining_hidden)
+        episode["visible_observation"] = updated_visible
+        episode["prompt"] = build_task_prompt(updated_visible)
+        return {
+            "action": action,
+            "reward": REQUEST_SIGNAL_COST,
+            "done": False,
+            "feedback": (
+                f"Signal '{requested_signal}' has been revealed. Reassess before the final diagnosis."
+            ),
+            "score": 0.0,
+            "success": False,
+            "grade_result": None,
+        }
+
+    final_action = {
+        "condition": action.get("condition"),
+        "urgency": action.get("urgency"),
+        "rationale": action.get("rationale"),
+    }
+    grade_result = grade_fn(final_action)
+    score = min(max(float(grade_result["score"]), MIN_STRICT_SCORE), MAX_STRICT_SCORE)
+    return {
+        "action": action,
+        "reward": score,
+        "done": True,
+        "feedback": grade_result.get("feedback", ""),
+        "score": score,
+        "success": score >= SUCCESS_SCORE_THRESHOLD,
+        "grade_result": grade_result,
+    }
+
+
+def update_rl_policy(observation: Observation, action: dict[str, Any], reward: float) -> None:
+    try:
+        predicted = action.get("condition") or "low_risk"
+        RL_RISK_MODEL.update_from_reward(_build_minimal_obs(observation), predicted, reward)
+    except Exception:
+        pass
+
 
 def run_agent(task: dict) -> dict:
     """
     Run the agent on a single task.
-    Emits one [START], one [STEP] (single-step task), one [END].
-    Returns grading result dict.
+    Emits one [START], multi-step [STEP] lines, and one [END].
     """
-    task_id  = task["id"]
+    task_id = task["id"]
     grade_fn = task["grade"]
     prompt_fn = task["prompt"]
+    observation = task.get("observation")
 
-    user_prompt = prompt_fn()
+    episode = init_task_episode(task)
+    if episode and episode["visible_observation"].withheld_signals:
+        stage_plan = ["assess", "request_signal", "assess", "diagnose"]
+    elif episode:
+        stage_plan = ["assess", "diagnose"]
+    else:
+        stage_plan = ["diagnose"]
 
-    rewards    = []
+    rewards: list[float] = []
+    history: list[dict[str, Any]] = []
     steps_taken = 0
-    score      = 0.0
-    success    = False
-    action     = FALLBACK_ACTION.copy()
-    api_error  = None
-    log_prob   = 0.01
-    result     = {"score": 0.01, "passed": False, "feedback": "No grading result produced."}
-
+    score = 0.0
+    success = False
     log_start(task=task_id, env=BENCHMARK, model=MODEL_NAME)
 
+    final_action = FALLBACK_DIAGNOSE_ACTION.copy()
+    result = {"score": MIN_STRICT_SCORE, "passed": False, "feedback": "No grading result produced."}
+
     try:
-        # ── Call the model ─────────────────────────────────────────────────────
-        try:
-            response = client.chat.completions.create(
-                model=MODEL_NAME,
-                temperature=0.0,
-                max_tokens=256,
-                messages=[
-                    {"role": "system", "content": SYSTEM_PROMPT},
-                    {"role": "user",   "content": user_prompt},
-                ],
+        for step_number, stage in enumerate(stage_plan, start=1):
+            if step_number > MAX_EPISODE_STEPS:
+                break
+
+            if episode:
+                prompt_observation = episode["prompt"]
+                system_prompt = prompt_observation.system_prompt
+                user_prompt = build_turn_user_prompt(prompt_observation.user_prompt, history, stage)
+            else:
+                system_prompt = SYSTEM_PROMPT
+                user_prompt = prompt_fn()
+
+            raw_output, api_error, log_prob = call_model(system_prompt, user_prompt)
+            if raw_output:
+                proposed_action = parse_action(raw_output)
+                visible_observation = episode["visible_observation"] if episode else None
+                hidden_signals = list(visible_observation.withheld_signals) if visible_observation else []
+                action, fallback_log_prob = coerce_action_to_stage(
+                    proposed_action,
+                    stage,
+                    visible_observation,
+                    hidden_signals,
+                )
+                if fallback_log_prob != 0.01:
+                    log_prob = fallback_log_prob
+            else:
+                visible_observation = episode["visible_observation"] if episode else None
+                hidden_signals = list(visible_observation.withheld_signals) if visible_observation else []
+                action, log_prob = fallback_stage_action(
+                    stage,
+                    visible_observation,
+                    hidden_signals,
+                    rationale="Fallback action due to API failure.",
+                )
+
+            step_result = apply_episode_step(episode, action, grade_fn)
+            reward = float(step_result["reward"])
+            rewards.append(reward)
+            steps_taken = step_number
+            final_action = step_result["action"]
+
+            history.append(
+                {
+                    "step": step_number,
+                    "action_type": final_action.get("action_type"),
+                    "signal_name": final_action.get("signal_name"),
+                    "condition": final_action.get("condition"),
+                    "urgency": final_action.get("urgency"),
+                    "feedback": step_result["feedback"],
+                }
             )
-            raw = response.choices[0].message.content.strip()
-            api_error = None
-        except Exception as e:
-            raw = json.dumps(FALLBACK_ACTION)
-            api_error = str(e).replace("\n", " ")
-            print(f"[DEBUG] API call failed for {task_id}: {e}", file=sys.stderr)
 
-        # ── Parse action ───────────────────────────────────────────────────────
-        action = parse_action(raw)
+            if step_result["done"] and isinstance(observation, Observation):
+                update_rl_policy(observation, final_action, reward)
 
-        # ── RL policy (runs alongside LLM) ─────────────────────────────────────
-        obs_data = task.get("observation", {})
-        if isinstance(obs_data, dict) and obs_data:
-            rl_action, log_prob = get_rl_action(task)
-            action = rl_action
-        else:
-            log_prob = 0.01
+            log_step(
+                step=step_number,
+                action=json.dumps(final_action),
+                reward=reward,
+                done=step_result["done"],
+                error=api_error,
+                log_prob=log_prob,
+            )
 
-        if "condition" not in action and "target" in action:
-            action["condition"] = action["target"]
-        if "rationale" not in action:
-            action["rationale"] = "Action selected without an explicit rationale."
+            if step_result["done"]:
+                score = step_result["score"]
+                success = step_result["success"]
+                result = step_result["grade_result"] or result
+                break
 
-        # ── Grade ──────────────────────────────────────────────────────────────
-        result  = grade_fn(action)
-        score   = float(result["score"])
-        score   = min(max(score, MIN_STRICT_SCORE), MAX_STRICT_SCORE)   # clamp to strict (0, 1)
-        reward  = score                        # single-step: reward == score
-        success = score >= SUCCESS_SCORE_THRESHOLD
-
-        rewards.append(reward)
-        steps_taken = 1
-
-        # ── Online update hook (must never break judge run) ────────────────────
-        if isinstance(obs_data, dict) and obs_data:
-            try:
-                class MinimalObs:
-                    def __init__(self, d):
-                        self.risk_flags = d.get("risk_flags", [])
-                        self.history_flags = d.get("history_flags", [])
-                        self.avg_meals = d.get("avg_meals")
-                        self.avg_sleep = d.get("avg_sleep")
-                        self.avg_kick_count = d.get("avg_kick_count")
-                        self.latest_energy = d.get("latest_energy")
-                        self.latest_breathlessness = d.get("latest_breathlessness")
-                        self.weeks_pregnant = d.get("weeks_pregnant")
-                        self.trimester = d.get("trimester")
-                        self.bp_trend = d.get("bp_trend")
-                        self.latest_weight_kg = d.get("latest_weight_kg")
-
-                obs = MinimalObs(obs_data)
-                pred = action.get("target", action.get("condition", "low_risk"))
-                RL_RISK_MODEL.update_from_reward(obs, pred, reward)
-            except Exception:
-                pass
-
-        # ── [STEP] ─────────────────────────────────────────────────────────────
-        log_step(
-            step=1,
-            action=json.dumps(action),
-            reward=reward,
-            done=True,
-            error=api_error,
-            log_prob=log_prob,
-        )
+        if not rewards:
+            rewards.append(MIN_STRICT_SCORE)
 
     finally:
-        # ── [END] always emitted, even on unexpected exception ─────────────────
         log_end(success=success, steps=steps_taken, score=score, rewards=rewards)
 
     return {
-        "task_id":  task_id,
-        "score":    score,
-        "passed":   result.get("passed", success),
+        "task_id": task_id,
+        "score": score,
+        "passed": result.get("passed", success),
         "feedback": result.get("feedback", ""),
-        "action":   action,
+        "action": final_action,
     }
 
 
-# ── Main ───────────────────────────────────────────────────────────────────────
-
 def main():
-    results    = []
+    results = []
     total_score = 0.0
 
     for task in TASKS:
@@ -289,14 +635,13 @@ def main():
 
     avg_score = total_score / len(TASKS) if TASKS else 0.0
 
-    # ── Final summary to stderr (not captured by judge) ───────────────────────
     print("\n" + "=" * 60, file=sys.stderr)
     print("BASELINE RESULTS SUMMARY", file=sys.stderr)
     print("=" * 60, file=sys.stderr)
-    for r in results:
-        status = "PASS" if r["passed"] else "FAIL"
-        print(f"  [{status}] {r['task_id']:25s} score={r['score']:.4f}", file=sys.stderr)
-        feedback_preview = r["feedback"][:80] if r["feedback"] else ""
+    for result in results:
+        status = "PASS" if result["passed"] else "FAIL"
+        print(f"  [{status}] {result['task_id']:25s} score={result['score']:.4f}", file=sys.stderr)
+        feedback_preview = result["feedback"][:80] if result["feedback"] else ""
         print(f"         feedback: {feedback_preview}...", file=sys.stderr)
     print(f"\n  AVERAGE SCORE: {avg_score:.4f}", file=sys.stderr)
     print("=" * 60, file=sys.stderr)

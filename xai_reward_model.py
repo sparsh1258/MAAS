@@ -40,6 +40,15 @@ CONDITION_WEIGHTS = {
     "low_risk": 0.7,
 }
 
+CONDITION_REWARD_WEIGHTS = {
+    "preeclampsia": 1.25,
+    "fetal_distress": 1.25,
+    "preterm_risk": 1.15,
+    "gestational_diabetes": 1.0,
+    "anemia": 1.0,
+    "low_risk": 0.9,
+}
+
 FEATURE_CONDITION_RULES = {
     "preeclampsia": [
         "danger_bp",
@@ -199,8 +208,9 @@ def calculate_reward(llm_diagnosis: str, llm_urgency: str, observation) -> Rewar
     reference_condition = infer_reference_condition(observation)
     reference_urgency = choose_urgency(reference_condition, features)
     urgency_idx = URGENCY_ORDER.index
+    class_weight = CONDITION_REWARD_WEIGHTS[reference_condition]
 
-    condition_score = 12.0 if llm_diagnosis == reference_condition else -6.0
+    condition_score = (12.0 if llm_diagnosis == reference_condition else -6.0) * class_weight
     urgency_score = 0.0
     under_escalation_penalty = 0.0
     danger_override_penalty = 0.0
@@ -209,12 +219,12 @@ def calculate_reward(llm_diagnosis: str, llm_urgency: str, observation) -> Rewar
 
     under_escalated = False
     if llm_urgency == reference_urgency:
-        urgency_score = 6.0
+        urgency_score = 6.0 * class_weight
     elif urgency_idx(llm_urgency) > urgency_idx(reference_urgency):
         urgency_score = -2.0
     else:
         under_escalated = True
-        under_escalation_penalty = -max(12.0, CONDITION_SEVERITY[reference_condition] * 2.5) * weight
+        under_escalation_penalty = -max(12.0, CONDITION_SEVERITY[reference_condition] * 2.5) * class_weight
 
     if observation.days_of_data >= 3:
         data_recency_bonus = 2.0
@@ -230,6 +240,7 @@ def calculate_reward(llm_diagnosis: str, llm_urgency: str, observation) -> Rewar
     supporting = supporting_features(reference_condition, features)
     latent = latent_risk_scores(features)
     reward_components = {
+        "class_weight": class_weight,
         "condition_score": condition_score,
         "urgency_score": urgency_score,
         "under_escalation_penalty": under_escalation_penalty,

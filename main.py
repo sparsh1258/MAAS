@@ -53,7 +53,7 @@ def root():
 
 @app.get("/health", tags=["System"])
 def healthcheck(request: Request):
-    payload = {"status": "ok"}
+    payload = {"status": "healthy"}
     accept = request.headers.get("accept", "")
     if "text/html" in accept:
         return HTMLResponse(
@@ -71,7 +71,7 @@ def healthcheck(request: Request):
               <body>
                 <div class="card">
                   <h1>MAAS Health Check</h1>
-                  <p class="pill">Status: ok</p>
+                  <p class="pill">Status: healthy</p>
                   <p>The MAAS server is running and responding.</p>
                 </div>
               </body>
@@ -98,7 +98,7 @@ def health_page():
           <body>
             <div class="card">
               <h1>MAAS Health Check</h1>
-              <p class="pill">Status: ok</p>
+              <p class="pill">Status: healthy</p>
               <p>The MAAS server is running and responding.</p>
             </div>
           </body>
