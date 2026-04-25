@@ -185,7 +185,19 @@ Example:
 python train_grpo.py \
   --model-name Qwen/Qwen2.5-1.5B-Instruct \
   --epochs 1 \
+  --num-generations 2 \
   --use-unsloth
+```
+
+To persist a Hugging Face Jobs run back to the Hub:
+
+```bash
+python train_grpo.py \
+  --model-name Qwen/Qwen2-0.5B-Instruct \
+  --epochs 1 \
+  --num-generations 2 \
+  --hub-model-id sparsh122/maas-grpo-qwen05b \
+  --push-to-hub
 ```
 
 ## Training Evidence

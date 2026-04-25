@@ -14,6 +14,9 @@ from __future__ import annotations
 import argparse
 import inspect
 import json
+import os
+from datetime import datetime, timezone
+from pathlib import Path
 from typing import Any
 
 from environment import parse_llm_output
@@ -33,6 +36,7 @@ def build_prompt(task: dict) -> str:
         "You are a maternal-health triage assistant.\n"
         "This GRPO benchmark scores the final diagnosis only, so respond with action_type='diagnose'.\n"
         "Read the patient observation below and respond with JSON only.\n"
+        "Do not add markdown fences, commentary, or any text before/after the JSON object.\n"
         f"JSON schema:\n{json.dumps(schema, indent=2)}\n\n"
         f"{task['prompt']()}\n"
     )
@@ -109,6 +113,64 @@ def load_unsloth_model(model_name: str, max_seq_length: int, load_in_4bit: bool)
     return model, tokenizer
 
 
+def save_training_artifacts(output_dir: str, args, train_result, trainer, dataset_size: int) -> None:
+    output_path = Path(output_dir)
+    output_path.mkdir(parents=True, exist_ok=True)
+    summary = {
+        "created_at_utc": datetime.now(timezone.utc).isoformat(),
+        "model_name": args.model_name,
+        "epochs": args.epochs,
+        "batch_size": args.batch_size,
+        "gradient_accumulation_steps": args.gradient_accumulation_steps,
+        "learning_rate": args.learning_rate,
+        "num_generations": args.num_generations,
+        "max_prompt_length": args.max_prompt_length,
+        "max_completion_length": args.max_completion_length,
+        "dataset_size": dataset_size,
+        "train_metrics": getattr(train_result, "metrics", {}),
+        "log_history": trainer.state.log_history,
+    }
+    (output_path / "training_summary.json").write_text(
+        json.dumps(summary, indent=2),
+        encoding="utf-8",
+    )
+    report = (
+        "# MAAS GRPO Run\n\n"
+        f"- model: `{args.model_name}`\n"
+        f"- epochs: `{args.epochs}`\n"
+        f"- batch size: `{args.batch_size}`\n"
+        f"- gradient accumulation steps: `{args.gradient_accumulation_steps}`\n"
+        f"- num generations: `{args.num_generations}`\n"
+        f"- learning rate: `{args.learning_rate}`\n"
+        f"- dataset size: `{dataset_size}`\n"
+        f"- output dir: `{output_dir}`\n"
+        f"- train metrics: `{json.dumps(getattr(train_result, 'metrics', {}), sort_keys=True)}`\n"
+    )
+    (output_path / "README.md").write_text(report, encoding="utf-8")
+
+
+def maybe_push_to_hub(output_dir: str, repo_id: str | None, private: bool, commit_message: str) -> None:
+    if not repo_id:
+        return
+    try:
+        from huggingface_hub import HfApi
+    except ImportError as exc:
+        raise SystemExit(
+            "huggingface_hub is required for --hub-model-id / --push-to-hub flows."
+        ) from exc
+
+    token = os.environ.get("HF_TOKEN")
+    api = HfApi(token=token) if token else HfApi()
+    api.create_repo(repo_id=repo_id, repo_type="model", private=private, exist_ok=True)
+    api.upload_folder(
+        repo_id=repo_id,
+        repo_type="model",
+        folder_path=output_dir,
+        commit_message=commit_message,
+    )
+    print(f"Pushed MAAS GRPO artifacts to https://huggingface.co/{repo_id}")
+
+
 def main(args) -> None:
     try:
         from datasets import Dataset
@@ -117,6 +179,9 @@ def main(args) -> None:
         raise SystemExit(
             "GRPO dependencies missing. Install `datasets`, `transformers`, and `trl` first."
         ) from exc
+
+    if args.num_generations < 2:
+        raise SystemExit("GRPO requires --num-generations >= 2. Use 2 or more.")
 
     if args.use_unsloth:
         model, tokenizer = load_unsloth_model(
@@ -153,9 +218,25 @@ def main(args) -> None:
         train_dataset=dataset,
         processing_class=tokenizer,
     )
-    trainer.train()
+    train_result = trainer.train()
     trainer.save_model(args.output_dir)
     tokenizer.save_pretrained(args.output_dir)
+    save_training_artifacts(
+        output_dir=args.output_dir,
+        args=args,
+        train_result=train_result,
+        trainer=trainer,
+        dataset_size=len(dataset),
+    )
+    repo_id = args.hub_model_id or (os.environ.get("HF_HUB_MODEL_ID") if args.push_to_hub else None)
+    if args.push_to_hub and not repo_id:
+        raise SystemExit("Use --hub-model-id or set HF_HUB_MODEL_ID when enabling --push-to-hub.")
+    maybe_push_to_hub(
+        output_dir=args.output_dir,
+        repo_id=repo_id,
+        private=args.hub_private,
+        commit_message=args.hub_commit_message,
+    )
 
 
 if __name__ == "__main__":
@@ -169,8 +250,12 @@ if __name__ == "__main__":
     parser.add_argument("--max-prompt-length", type=int, default=1536)
     parser.add_argument("--max-completion-length", type=int, default=192)
     parser.add_argument("--max-seq-length", type=int, default=2048)
-    parser.add_argument("--num-generations", type=int, default=1)
+    parser.add_argument("--num-generations", type=int, default=2)
     parser.add_argument("--use-unsloth", action="store_true")
     parser.add_argument("--no-4bit", action="store_true")
     parser.add_argument("--use-cpu", action="store_true")
+    parser.add_argument("--push-to-hub", action="store_true")
+    parser.add_argument("--hub-model-id")
+    parser.add_argument("--hub-private", action="store_true")
+    parser.add_argument("--hub-commit-message", default="Upload MAAS GRPO checkpoint")
     main(parser.parse_args())
