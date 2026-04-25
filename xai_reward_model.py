@@ -31,6 +31,15 @@ CONDITION_SEVERITY = {
     "low_risk": 0,
 }
 
+CONDITION_WEIGHTS = {
+    "preeclampsia": 2.0,
+    "fetal_distress": 2.0,
+    "gestational_diabetes": 1.5,
+    "preterm_risk": 1.5,
+    "anemia": 1.2,
+    "low_risk": 0.7,
+}
+
 FEATURE_CONDITION_RULES = {
     "preeclampsia": [
         "danger_bp",
@@ -205,7 +214,7 @@ def calculate_reward(llm_diagnosis: str, llm_urgency: str, observation) -> Rewar
         urgency_score = -2.0
     else:
         under_escalated = True
-        under_escalation_penalty = -max(12.0, CONDITION_SEVERITY[reference_condition] * 2.5)
+        under_escalation_penalty = -max(12.0, CONDITION_SEVERITY[reference_condition] * 2.5) * weight
 
     if observation.days_of_data >= 3:
         data_recency_bonus = 2.0
