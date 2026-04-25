@@ -122,6 +122,10 @@ export HF_TOKEN="your_token_here"
 
 Do not commit API keys to the repository.
 
+You can also use the example config file already included in the repo:
+
+`.env.example`
+
 ---
 
 ### 4. Run the Application
