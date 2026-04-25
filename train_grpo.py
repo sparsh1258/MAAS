@@ -472,7 +472,8 @@ def main(args) -> None:
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Optional GRPO trainer for the MAAS benchmark.")
-    parser.add_argument("--model-name", default="Qwen/Qwen2.5-1.5B-Instruct")
+    parser.add_argument("--model-name", default="Qwen/Qwen2-0.5B-Instruct")
+
     parser.add_argument("--output-dir", default="./artifacts/niva-grpo")
     parser.add_argument("--epochs", type=int, default=1)
     parser.add_argument("--batch-size", type=int, default=1)
