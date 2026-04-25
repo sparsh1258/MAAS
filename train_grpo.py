@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+﻿#!/usr/bin/env python3
 """
 Optional GRPO trainer for MAAS.
 
@@ -7,6 +7,9 @@ This script is designed for notebook / Colab / HF Jobs use. It supports:
 - optional Unsloth acceleration via --use-unsloth
 
 It trains directly against the deterministic environment reward.
+
+Each reward_fn call also prints a one-line JSON **reward_probe** (min/mean/max/std)
+when there are multiple generations—useful for diagnosing flat `reward_std`.
 """
 
 from __future__ import annotations
@@ -16,9 +19,28 @@ import inspect
 import json
 import os
 import re
+import statistics
+import sys
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
+
+
+def _ensure_utf8_mode() -> None:
+    """
+    On some Windows setups, Python defaults to a non-UTF8 locale (e.g. cp1252).
+    TRL may read bundled `.jinja` templates without an explicit encoding, which
+    can raise UnicodeDecodeError on import. Relaunch in UTF-8 mode before TRL loads.
+    """
+
+    if os.name != "nt":
+        return
+    if sys.flags.utf8_mode:
+        return
+    os.execv(sys.executable, [sys.executable, "-X", "utf8", *sys.argv])
+
+
+_ensure_utf8_mode()
 
 from environment import ActionModel
 from tasks import TASKS
@@ -258,6 +280,23 @@ def reward_fn(prompts, completions, task_id, log_extra=None, log_metric=None, **
             "maas/structured_output_rate",
             sum(mode in {"exact", "recovered", "keyword"} for mode in parse_modes) / total,
         )
+    if rewards:
+        floats = [float(r) for r in rewards]
+        mean = statistics.fmean(floats)
+        std = statistics.pstdev(floats) if len(floats) > 1 else 0.0
+        print(
+            json.dumps(
+                {
+                    "reward_probe": True,
+                    "reward_min": round(min(floats), 4),
+                    "reward_mean": round(mean, 4),
+                    "reward_max": round(max(floats), 4),
+                    "reward_std": round(std, 4),
+                    "n": len(floats),
+                },
+                ensure_ascii=False,
+            )
+        )
     return rewards
 
 
@@ -306,6 +345,7 @@ def save_training_artifacts(output_dir: str, args, train_result, trainer, datase
         "dataset_size": dataset_size,
         "prompt_format": "chat_messages",
         "log_completions": args.log_completions,
+        "probe_steps": getattr(args, "probe_steps", 0),
         "train_metrics": getattr(train_result, "metrics", {}),
         "log_history": trainer.state.log_history,
     }
@@ -398,6 +438,15 @@ def main(args) -> None:
         config_kwargs["max_prompt_length"] = args.max_prompt_length
     train_args = GRPOConfig(**config_kwargs)
 
+    if getattr(args, "probe_steps", 0) and args.probe_steps > 0:
+        if "max_steps" in config_signature:
+            train_args.max_steps = int(args.probe_steps)
+            train_args.num_train_epochs = 1
+        else:
+            raise SystemExit(
+                "This TRL build's GRPOConfig has no max_steps; remove --probe-steps or upgrade TRL."
+            )
+
     trainer = GRPOTrainer(
         model=model,
         reward_funcs=reward_fn,
@@ -440,6 +489,12 @@ if __name__ == "__main__":
     parser.add_argument("--max-completion-length", type=int, default=192)
     parser.add_argument("--max-seq-length", type=int, default=1024)
     parser.add_argument("--num-generations", type=int, default=2)
+    parser.add_argument(
+        "--probe-steps",
+        type=int,
+        default=0,
+        help="If >0, run only this many training steps (sets max_steps) for quick reward-variance checks.",
+    )
     parser.add_argument("--num-completions-to-print", type=int, default=4)
     parser.add_argument("--use-unsloth", action="store_true")
     parser.add_argument("--no-4bit", action="store_true")
