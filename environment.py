@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 from typing import List, Optional
-
+import random
 from pydantic import BaseModel
 from pydantic import Field
 
@@ -61,6 +61,7 @@ class Observation(BaseModel):
     latest_breathlessness: Optional[int]
     history_flags: List[str]
     days_of_data: int
+    masked_signals: List[str] = []
 
 
 class PromptObservation(BaseModel):
@@ -223,6 +224,17 @@ def _build_observation(user: UserProfile, daily: list, checkin3: Optional[Checki
         risk_flags.append("LOW_NUTRITION")
     if avg_kicks is not None and avg_kicks < 6:
         risk_flags.append("LOW_KICK_AVG")
+    masked_signals = []
+    danger_present = any(f.startswith("DANGER") for f in risk_flags)
+    if not danger_present:
+        if random.random() < 0.35:
+            avg_kicks = None
+            masked_signals.append("kick_count")
+        if random.random() < 0.35:
+            masked_signals.append("energy_level")
+        if random.random() < 0.25 and bp_trend == "stable":
+            bp_trend = "unknown"
+            masked_signals.append("bp_trend")
 
     return Observation(
         user_id=user.id,
@@ -239,6 +251,7 @@ def _build_observation(user: UserProfile, daily: list, checkin3: Optional[Checki
         latest_breathlessness=checkin3.breathlessness if checkin3 else None,
         history_flags=history_flags,
         days_of_data=len(daily),
+        masked_signals=masked_signals,
     )
 
 
