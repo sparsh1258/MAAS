@@ -192,6 +192,17 @@ python train_openenv_ppo.py --user-ids 1
 
 ---
 
+### Training Evidence
+
+Minimal RL training artifacts and baseline comparison files are available in the `results/` folder.
+
+Files:
+- `results/baseline_output.txt`
+- `results/baseline_report.md`
+- `results/baseline_vs_trained.json`
+
+---
+
 ## Project Structure
 
 ```text
