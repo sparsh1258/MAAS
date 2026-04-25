@@ -224,7 +224,7 @@ def calculate_reward(llm_diagnosis: str, llm_urgency: str, observation) -> Rewar
         urgency_score = -2.0
     else:
         under_escalated = True
-        under_escalation_penalty = -max(12.0, CONDITION_SEVERITY[reference_condition] * 2.5) * weight
+        under_escalation_penalty = -max(12.0, CONDITION_SEVERITY[reference_condition] * 2.5) * class_weight
 
     if observation.days_of_data >= 3:
         data_recency_bonus = 2.0

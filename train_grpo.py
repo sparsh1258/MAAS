@@ -15,16 +15,41 @@ import argparse
 import inspect
 import json
 import os
+import re
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-from environment import parse_llm_output
+from environment import ActionModel
 from tasks import TASKS
 from xai_reward_model import calculate_reward
 
+VALID_CONDITIONS = (
+    "preeclampsia",
+    "gestational_diabetes",
+    "anemia",
+    "preterm_risk",
+    "fetal_distress",
+    "low_risk",
+)
+VALID_URGENCIES = (
+    "monitor_at_home",
+    "visit_phc_this_week",
+    "go_to_hospital_today",
+)
+PARSE_MODE_REWARD = {
+    "exact": 2.0,
+    "recovered": 0.75,
+    "keyword": -2.0,
+    "invalid": -4.0,
+}
+BENCHMARK_REWARD_SCALE = 20.0
+BENCHMARK_REWARD_OFFSET = -5.0
+SAFETY_REWARD_WEIGHT = 0.35
+INVALID_SAFETY_PENALTY = -1.5
 
-def build_prompt(task: dict) -> str:
+
+def build_prompt(task: dict) -> list[dict[str, str]]:
     schema = {
         "action_type": "diagnose",
         "signal_name": None,
@@ -32,17 +57,26 @@ def build_prompt(task: dict) -> str:
         "urgency": "monitor_at_home|visit_phc_this_week|go_to_hospital_today",
         "rationale": "short explanation",
     }
-    return (
-        "You are a maternal-health triage assistant.\n"
-        "This GRPO benchmark scores the final diagnosis only, so respond with action_type='diagnose'.\n"
-        "Read the patient observation below and respond with JSON only.\n"
-        "Do not add markdown fences, commentary, or any text before/after the JSON object.\n"
-        f"JSON schema:\n{json.dumps(schema, indent=2)}\n\n"
-        f"{task['prompt']()}\n"
+    system_prompt = (
+        "You are MAAS, a maternal-health triage assistant trained for OpenEnv Theme 3.1. "
+        "Be safety-first, reason from observed evidence only, and return exactly one JSON object. "
+        "Do not include markdown fences or any text outside the JSON."
     )
+    user_prompt = (
+        f"{task['prompt']()}\n\n"
+        "This GRPO benchmark scores only the final diagnosis action.\n"
+        "Use action_type='diagnose' and keep signal_name set to null.\n"
+        "If the observation contains DANGER_ flags, do not under-escalate urgency.\n"
+        "Return exactly this JSON schema:\n"
+        f"{json.dumps(schema, indent=2)}"
+    )
+    return [
+        {"role": "system", "content": system_prompt},
+        {"role": "user", "content": user_prompt},
+    ]
 
 
-def build_dataset_records() -> list[dict[str, str]]:
+def build_dataset_records() -> list[dict[str, Any]]:
     return [
         {
             "task_id": task["id"],
@@ -53,36 +87,177 @@ def build_dataset_records() -> list[dict[str, str]]:
     ]
 
 
+def _extract_text_blob(value: Any) -> str:
+    if value is None:
+        return ""
+    if isinstance(value, str):
+        return value
+    if isinstance(value, list):
+        return "\n".join(part for part in (_extract_text_blob(item) for item in value) if part).strip()
+    if isinstance(value, dict):
+        if "content" in value:
+            return _extract_text_blob(value["content"])
+        if "text" in value:
+            return _extract_text_blob(value["text"])
+        if "value" in value:
+            return _extract_text_blob(value["value"])
+    return str(value)
+
+
 def _completion_text(completion: Any) -> str:
-    if isinstance(completion, str):
-        return completion
-    if isinstance(completion, list):
-        parts: list[str] = []
-        for item in completion:
-            if isinstance(item, str):
-                parts.append(item)
-            elif isinstance(item, dict):
-                parts.append(str(item.get("content", "")))
-        return "\n".join(part for part in parts if part).strip()
-    return str(completion)
+    return _extract_text_blob(completion).strip()
 
 
-def reward_fn(prompts, completions, task_id, **kwargs):
+def _strip_code_fences(raw_text: str) -> str:
+    clean = raw_text.strip()
+    if clean.startswith("```"):
+        lines = clean.splitlines()
+        clean = "\n".join(line for line in lines if not line.startswith("```")).strip()
+    return clean
+
+
+def _first_label_match(raw_text: str, labels: tuple[str, ...]) -> str | None:
+    lowered = raw_text.lower()
+    matches = []
+    for label in labels:
+        idx = lowered.find(label.lower())
+        if idx != -1:
+            matches.append((idx, label))
+    if not matches:
+        return None
+    matches.sort(key=lambda item: item[0])
+    return matches[0][1]
+
+
+def _normalize_action_payload(payload: dict[str, Any]) -> ActionModel:
+    condition = payload.get("condition") or payload.get("target")
+    urgency = payload.get("urgency")
+    signal_name = payload.get("signal_name")
+    action_type = payload.get("action_type")
+    if action_type not in {"assess", "request_signal", "diagnose"}:
+        if signal_name:
+            action_type = "request_signal"
+        elif condition or urgency:
+            action_type = "diagnose"
+        else:
+            action_type = None
+    return ActionModel(
+        condition=condition,
+        urgency=urgency,
+        rationale=payload.get("rationale"),
+        action_type=action_type,
+        signal_name=signal_name,
+        target=payload.get("target"),
+    )
+
+
+def _parse_completion_action(raw_text: str) -> tuple[ActionModel, str]:
+    clean = _strip_code_fences(raw_text)
+    candidate: dict[str, Any] | None = None
+    parse_mode = "recovered" if clean != raw_text.strip() else "exact"
+
+    try:
+        maybe_payload = json.loads(clean)
+        if isinstance(maybe_payload, dict):
+            candidate = maybe_payload
+    except json.JSONDecodeError:
+        parse_mode = "recovered" if clean != raw_text.strip() else "invalid"
+
+    if candidate is None:
+        match = re.search(r"\{.*\}", clean if parse_mode == "recovered" else raw_text, re.S)
+        if match:
+            try:
+                maybe_payload = json.loads(match.group())
+                if isinstance(maybe_payload, dict):
+                    candidate = maybe_payload
+                    parse_mode = "recovered"
+            except json.JSONDecodeError:
+                candidate = None
+
+    if candidate is not None:
+        return _normalize_action_payload(candidate), parse_mode
+
+    keyword_action = ActionModel(
+        condition=_first_label_match(raw_text, VALID_CONDITIONS),
+        urgency=_first_label_match(raw_text, VALID_URGENCIES),
+        rationale="Keyword-recovered action from non-JSON completion.",
+    )
+    if keyword_action.condition or keyword_action.urgency:
+        keyword_action.action_type = "diagnose"
+        return keyword_action, "keyword"
+
+    return ActionModel(rationale="Unparseable completion."), "invalid"
+
+
+def _benchmark_reward(task: dict, action: ActionModel) -> tuple[float, float]:
+    grade_result = task["grade"](
+        {
+            "condition": action.condition,
+            "urgency": action.urgency,
+            "rationale": action.rationale,
+            "target": action.condition,
+        }
+    )
+    benchmark_score = float(grade_result.get("score", 0.0))
+    reward = (benchmark_score * BENCHMARK_REWARD_SCALE) + BENCHMARK_REWARD_OFFSET
+    return benchmark_score, reward
+
+
+def _safety_reward(task: dict, action: ActionModel) -> float:
+    if action.condition not in VALID_CONDITIONS or action.urgency not in VALID_URGENCIES:
+        return INVALID_SAFETY_PENALTY
+    breakdown = calculate_reward(action.condition, action.urgency, task["observation"])
+    return float(breakdown.reward) * SAFETY_REWARD_WEIGHT
+
+
+def reward_fn(prompts, completions, task_id, log_extra=None, log_metric=None, **kwargs):
     task_lookup = {task["id"]: task for task in TASKS}
     rewards: list[float] = []
+    parse_modes: list[str] = []
+    predicted_conditions: list[str] = []
+    predicted_urgencies: list[str] = []
+    benchmark_scores: list[float] = []
+    safety_rewards: list[float] = []
 
     for completion, current_task_id in zip(completions, task_id):
         task = task_lookup[current_task_id]
         raw_text = _completion_text(completion)
+        action, parse_mode = _parse_completion_action(raw_text)
+
+        benchmark_score, benchmark_reward = _benchmark_reward(task, action)
         try:
-            action = parse_llm_output(raw_text)
-            if action.action_type not in {None, "diagnose"}:
-                rewards.append(-20.0)
-                continue
-            breakdown = calculate_reward(action.condition, action.urgency, task["observation"])
-            rewards.append(float(breakdown.reward))
+            safety_reward = _safety_reward(task, action)
         except Exception:
-            rewards.append(-20.0)
+            safety_reward = INVALID_SAFETY_PENALTY
+
+        action_reward = 0.5 if action.action_type == "diagnose" else (-4.0 if action.action_type else 0.0)
+        format_reward = PARSE_MODE_REWARD[parse_mode]
+        total_reward = benchmark_reward + safety_reward + format_reward + action_reward
+
+        rewards.append(round(float(total_reward), 4))
+        parse_modes.append(parse_mode)
+        predicted_conditions.append(action.condition or "")
+        predicted_urgencies.append(action.urgency or "")
+        benchmark_scores.append(round(benchmark_score, 4))
+        safety_rewards.append(round(safety_reward, 4))
+
+    if callable(log_extra):
+        log_extra("maas_parse_mode", parse_modes)
+        log_extra("maas_condition", predicted_conditions)
+        log_extra("maas_urgency", predicted_urgencies)
+        log_extra("maas_reward", rewards)
+        log_extra("maas_benchmark_score", benchmark_scores)
+        log_extra("maas_safety_reward", safety_rewards)
+    if callable(log_metric) and rewards:
+        total = float(len(rewards))
+        log_metric("maas/mean_reward", sum(rewards) / total)
+        log_metric("maas/mean_benchmark_score", sum(benchmark_scores) / total)
+        log_metric("maas/mean_safety_reward", sum(safety_rewards) / total)
+        log_metric("maas/exact_json_rate", sum(mode == "exact" for mode in parse_modes) / total)
+        log_metric(
+            "maas/structured_output_rate",
+            sum(mode in {"exact", "recovered", "keyword"} for mode in parse_modes) / total,
+        )
     return rewards
 
 
@@ -123,10 +298,14 @@ def save_training_artifacts(output_dir: str, args, train_result, trainer, datase
         "batch_size": args.batch_size,
         "gradient_accumulation_steps": args.gradient_accumulation_steps,
         "learning_rate": args.learning_rate,
+        "temperature": args.temperature,
+        "top_p": args.top_p,
         "num_generations": args.num_generations,
         "max_prompt_length": args.max_prompt_length,
         "max_completion_length": args.max_completion_length,
         "dataset_size": dataset_size,
+        "prompt_format": "chat_messages",
+        "log_completions": args.log_completions,
         "train_metrics": getattr(train_result, "metrics", {}),
         "log_history": trainer.state.log_history,
     }
@@ -142,7 +321,11 @@ def save_training_artifacts(output_dir: str, args, train_result, trainer, datase
         f"- gradient accumulation steps: `{args.gradient_accumulation_steps}`\n"
         f"- num generations: `{args.num_generations}`\n"
         f"- learning rate: `{args.learning_rate}`\n"
+        f"- temperature: `{args.temperature}`\n"
+        f"- top_p: `{args.top_p}`\n"
         f"- dataset size: `{dataset_size}`\n"
+        f"- prompt format: `chat_messages`\n"
+        f"- log completions: `{args.log_completions}`\n"
         f"- output dir: `{output_dir}`\n"
         f"- train metrics: `{json.dumps(getattr(train_result, 'metrics', {}), sort_keys=True)}`\n"
     )
@@ -204,6 +387,10 @@ def main(args) -> None:
         "logging_steps": 1,
         "save_strategy": "no",
         "report_to": "none",
+        "temperature": args.temperature,
+        "top_p": args.top_p,
+        "log_completions": args.log_completions,
+        "num_completions_to_print": args.num_completions_to_print,
         "use_cpu": args.use_cpu,
     }
     config_signature = inspect.signature(GRPOConfig).parameters
@@ -247,15 +434,20 @@ if __name__ == "__main__":
     parser.add_argument("--batch-size", type=int, default=2)
     parser.add_argument("--gradient-accumulation-steps", type=int, default=1)
     parser.add_argument("--learning-rate", type=float, default=5e-6)
+    parser.add_argument("--temperature", type=float, default=0.7)
+    parser.add_argument("--top-p", type=float, default=0.9)
     parser.add_argument("--max-prompt-length", type=int, default=1536)
     parser.add_argument("--max-completion-length", type=int, default=192)
     parser.add_argument("--max-seq-length", type=int, default=2048)
     parser.add_argument("--num-generations", type=int, default=2)
+    parser.add_argument("--num-completions-to-print", type=int, default=4)
     parser.add_argument("--use-unsloth", action="store_true")
     parser.add_argument("--no-4bit", action="store_true")
     parser.add_argument("--use-cpu", action="store_true")
+    parser.add_argument("--no-log-completions", action="store_false", dest="log_completions")
     parser.add_argument("--push-to-hub", action="store_true")
     parser.add_argument("--hub-model-id")
     parser.add_argument("--hub-private", action="store_true")
     parser.add_argument("--hub-commit-message", default="Upload MAAS GRPO checkpoint")
+    parser.set_defaults(log_completions=True)
     main(parser.parse_args())
