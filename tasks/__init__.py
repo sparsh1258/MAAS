@@ -5,6 +5,8 @@ from tasks.task_4_gestational_diabetes import TASK_OBSERVATION as TASK4_OBS, gra
 from tasks.task_5_anemia import TASK_OBSERVATION as TASK5_OBS, grade as grade_task5, get_task_prompt as prompt5, TASK_ID as T5_ID, TASK_NAME as T5_NAME
 from tasks.task_6_fetal_distress import TASK_OBSERVATION as TASK6_OBS, grade as grade_task6, get_task_prompt as prompt6, TASK_ID as T6_ID, TASK_NAME as T6_NAME
 from tasks.task_7_preterm_risk import TASK_OBSERVATION as TASK7_OBS, grade as grade_task7, get_task_prompt as prompt7, TASK_ID as T7_ID, TASK_NAME as T7_NAME
+from tasks.task_8_preeclampsia_watch import TASK_OBSERVATION as TASK8_OBS, grade as grade_task8, get_task_prompt as prompt8, TASK_ID as T8_ID, TASK_NAME as T8_NAME
+from tasks.task_9_history_noise_low_risk import TASK_OBSERVATION as TASK9_OBS, grade as grade_task9, get_task_prompt as prompt9, TASK_ID as T9_ID, TASK_NAME as T9_NAME
 
 TASKS = [
     {
@@ -62,5 +64,21 @@ TASKS = [
         "observation": TASK7_OBS,
         "grade": grade_task7,
         "prompt": prompt7,
+    },
+    {
+        "id": T8_ID,
+        "name": T8_NAME,
+        "difficulty": "medium",
+        "observation": TASK8_OBS,
+        "grade": grade_task8,
+        "prompt": prompt8,
+    },
+    {
+        "id": T9_ID,
+        "name": T9_NAME,
+        "difficulty": "medium",
+        "observation": TASK9_OBS,
+        "grade": grade_task9,
+        "prompt": prompt9,
     },
 ]
