@@ -59,14 +59,7 @@ ADJACENT_CONDITIONS = {"preterm_risk"}
 
 
 def grade(action: dict) -> dict:
-    if action.get("action_type") != "diagnose":
-        return {
-            "score": 0.01,
-            "passed": False,
-            "feedback": "Must use action_type='diagnose' to complete this task.",
-        }
-
-    predicted = action.get("target")
+    predicted = action.get("condition") or action.get("target")
     urgency = action.get("urgency")
 
     correct_condition = predicted == EXPECTED_CONDITION
@@ -156,9 +149,10 @@ HIGH_BP means latest reading was >=140/90 but below critical threshold (160/110)
 
 === YOUR TASK ===
 Call the diagnose action with:
-  - target: one of [preeclampsia, gestational_diabetes, anemia, preterm_risk, fetal_distress, low_risk]
+  - condition: one of [preeclampsia, gestational_diabetes, anemia, preterm_risk, fetal_distress, low_risk]
   - urgency: one of [monitor_at_home, visit_phc_this_week, go_to_hospital_today]
+  - rationale: a short clinical explanation
 
 Respond in JSON:
-{{"action_type": "diagnose", "target": "<condition>", "urgency": "<urgency>"}}
+{{"condition": "<condition>", "urgency": "<urgency>", "rationale": "<short explanation>"}}
 """.strip()

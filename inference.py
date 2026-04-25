@@ -54,7 +54,7 @@ SYSTEM_PROMPT = """You are Niva, an AI maternal health assistant for rural India
 You will be given a patient observation and must diagnose the primary condition.
 
 You MUST respond with ONLY a valid JSON object in this exact format:
-{"action_type": "diagnose", "target": "<condition>", "urgency": "<urgency>"}
+{"condition": "<condition>", "urgency": "<urgency>", "rationale": "<short explanation>"}
 
 Valid conditions: preeclampsia, gestational_diabetes, anemia, preterm_risk, fetal_distress, low_risk
 Valid urgencies:  monitor_at_home, visit_phc_this_week, go_to_hospital_today
@@ -94,7 +94,11 @@ def log_end(success: bool, steps: int, score: float, rewards: list) -> None:
 
 # ── Action parsing ─────────────────────────────────────────────────────────────
 
-FALLBACK_ACTION = {"action_type": "diagnose", "target": "low_risk", "urgency": "monitor_at_home"}
+FALLBACK_ACTION = {
+    "condition": "low_risk",
+    "urgency": "monitor_at_home",
+    "rationale": "Fallback due to parsing or API failure.",
+}
 
 
 def parse_action(raw: str) -> dict:
@@ -104,15 +108,23 @@ def parse_action(raw: str) -> dict:
         lines = clean.split("\n")
         clean = "\n".join(l for l in lines if not l.startswith("```")).strip()
     try:
-        return json.loads(clean)
+        parsed = json.loads(clean)
     except json.JSONDecodeError:
         match = re.search(r'\{[^}]+\}', raw)
         if match:
             try:
-                return json.loads(match.group())
+                parsed = json.loads(match.group())
             except Exception:
-                pass
-    return FALLBACK_ACTION.copy()
+                parsed = None
+        else:
+            parsed = None
+    if parsed is None:
+        return FALLBACK_ACTION.copy()
+    if "condition" not in parsed and "target" in parsed:
+        parsed["condition"] = parsed["target"]
+    if "rationale" not in parsed:
+        parsed["rationale"] = "Model response parsed without an explicit rationale."
+    return parsed
 
 
 # ── Single task runner ─────────────────────────────────────────────────────────

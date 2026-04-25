@@ -89,6 +89,7 @@ class RewardBreakdown:
     urgency: str
     reference_urgency: str
     reward: float
+    reward_components: Dict[str, float]
     under_escalated: bool
     rationale: str
     latent_risks: Dict[str, float]
@@ -190,36 +191,47 @@ def calculate_reward(llm_diagnosis: str, llm_urgency: str, observation) -> Rewar
     reference_urgency = choose_urgency(reference_condition, features)
     urgency_idx = URGENCY_ORDER.index
 
-    reward = 0.0
-    if llm_diagnosis == reference_condition:
-        reward += 12.0
-    else:
-        reward -= 6.0
+    condition_score = 12.0 if llm_diagnosis == reference_condition else -6.0
+    urgency_score = 0.0
+    under_escalation_penalty = 0.0
+    danger_override_penalty = 0.0
+    data_recency_bonus = 0.0
+    reward = condition_score
 
     under_escalated = False
     if llm_urgency == reference_urgency:
-        reward += 6.0
+        urgency_score = 6.0
     elif urgency_idx(llm_urgency) > urgency_idx(reference_urgency):
-        reward -= 2.0
+        urgency_score = -2.0
     else:
         under_escalated = True
-        reward -= max(12.0, CONDITION_SEVERITY[reference_condition] * 2.5)
+        under_escalation_penalty = -max(12.0, CONDITION_SEVERITY[reference_condition] * 2.5)
 
     if observation.days_of_data >= 3:
-        reward += 2.0
+        data_recency_bonus = 2.0
     elif observation.days_of_data == 2:
-        reward += 1.0
+        data_recency_bonus = 1.0
 
     if any(flag.startswith("DANGER") for flag in observation.risk_flags) and llm_urgency != "go_to_hospital_today":
-        reward -= 10.0
+        danger_override_penalty = -10.0
         under_escalated = True
+
+    reward += urgency_score + under_escalation_penalty + danger_override_penalty + data_recency_bonus
 
     supporting = supporting_features(reference_condition, features)
     latent = latent_risk_scores(features)
+    reward_components = {
+        "condition_score": condition_score,
+        "urgency_score": urgency_score,
+        "under_escalation_penalty": under_escalation_penalty,
+        "danger_override_penalty": danger_override_penalty,
+        "data_recency_bonus": data_recency_bonus,
+        "total_reward": reward,
+    }
     rationale = (
         f"Reference condition={reference_condition}, reference urgency={reference_urgency}, "
         f"LLM condition={llm_diagnosis}, LLM urgency={llm_urgency}, reward={reward:.2f}. "
-        f"Reward features: {', '.join(supporting)}."
+        f"Reward features: {', '.join(supporting)}. Reward components: {reward_components}."
     )
     if under_escalated:
         rationale += " Severe under-escalation penalty applied."
@@ -232,6 +244,7 @@ def calculate_reward(llm_diagnosis: str, llm_urgency: str, observation) -> Rewar
         urgency=llm_urgency,
         reference_urgency=reference_urgency,
         reward=reward,
+        reward_components=reward_components,
         under_escalated=under_escalated,
         rationale=rationale,
         latent_risks=latent,

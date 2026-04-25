@@ -39,10 +39,10 @@ These conditions frequently go undetected until they become emergencies, especia
 
 Niva acts as a digital prenatal companion that:
 
-- Collects daily health signals such as blood pressure, symptoms, hydration, sleep, and fetal kick counts  
-- Detects early risk patterns using AI  
-- Classifies severity and assigns an urgency level  
-- Provides personalized care and diet recommendations  
+- Collects daily health signals such as blood pressure, symptoms, hydration, sleep, and fetal kick counts
+- Detects early risk patterns using AI
+- Classifies severity and assigns an urgency level
+- Provides personalized care and diet recommendations
 
 ---
 
@@ -58,11 +58,11 @@ Niva acts as a digital prenatal companion that:
 
 ## Conditions Detected
 
-- Preeclampsia: high blood pressure (>=160/110), headaches, swelling  
-- Gestational Diabetes: fatigue, breathlessness, family history  
-- Anemia: low nutrition indicators and fatigue patterns  
-- Fetal Distress: kick count < 3 in 2 hours  
-- Preterm Risk: early detection from combined symptom patterns  
+- Preeclampsia: high blood pressure (>=160/110), headaches, swelling
+- Gestational Diabetes: fatigue, breathlessness, family history
+- Anemia: low nutrition indicators and fatigue patterns
+- Fetal Distress: kick count < 3 in 2 hours
+- Preterm Risk: early detection from combined symptom patterns
 
 ---
 
@@ -72,9 +72,11 @@ This project is an OpenEnv-compatible reinforcement learning environment designe
 
 ### Core Properties
 
-- Step-by-step structured decision-making  
-- Deterministic reward evaluation  
-- Partially observable system  
+- Step-by-step structured decision-making
+- Deterministic reward evaluation
+- Partially observable system
+
+In this environment, the agent does not see full medical ground truth. It only sees recent check-ins, vitals, symptoms, and short-term trends, while the true latent risk state must be inferred from incomplete observations.
 
 ### Environment Interface
 
@@ -90,7 +92,7 @@ env.state()   # observe current health signals
 
 ### Prerequisites
 
-- Python 3.10 or above  
+- Python 3.10 or above
 - OpenAI-compatible API (OpenAI, Together, or Groq)
 
 ---
@@ -124,7 +126,7 @@ Do not commit API keys to the repository.
 
 You can also use the example config file already included in the repo:
 
-`.env.example`
+`.env.example` -> copy its values into your local `.env` file before running the app.
 
 ---
 
@@ -136,7 +138,7 @@ uvicorn main:app --reload
 
 Open in browser:
 
-http://localhost:8000
+`http://localhost:8000`
 
 ---
 
@@ -146,21 +148,17 @@ http://localhost:8000
 
 ```bash
 curl -X POST http://localhost:8000/reset \
--H "Content-Type: application/json" \
--d '{"user_id": 1}'
+  -H "Content-Type: application/json" \
+  -d '{"user_id": 1}'
 ```
-
----
 
 ### Step Environment
 
 ```bash
 curl -X POST http://localhost:8000/step \
--H "Content-Type: application/json" \
--d '{"action_type":"diagnose","target":"preeclampsia","urgency":"go_to_hospital_today","rationale":"Critical BP with danger flags"}'
+  -H "Content-Type: application/json" \
+  -d '{"condition":"preeclampsia","urgency":"go_to_hospital_today","rationale":"Critical BP with danger flags"}'
 ```
-
----
 
 ### Get Current State
 
@@ -198,37 +196,35 @@ python train_openenv_ppo.py --user-ids 1
 
 ```text
 MAAS/
-│── inference.py
-│── main.py
-│── openenv.yaml
-│── environment.py
-│── models.py
-│── schemas.py
-│── database.py
-│── requirements.txt
-│── Dockerfile
-│── preview.html
-│
-├── tasks/
-│   ├── task_1_easy.py
-│   ├── task_2_medium.py
-│   ├── task_3_hard.py
-│
-├── routers/
-│   ├── users.py
-│   ├── checkin_daily.py
-│   ├── checkin_3day.py
-│   ├── diagnosis.py
+|-- inference.py
+|-- main.py
+|-- openenv.yaml
+|-- environment.py
+|-- models.py
+|-- schemas.py
+|-- database.py
+|-- requirements.txt
+|-- Dockerfile
+|-- preview.html
+|-- tasks/
+|   |-- task_1_easy.py
+|   |-- task_2_medium.py
+|   |-- task_3_hard.py
+|-- routers/
+|   |-- users.py
+|   |-- checkin_daily.py
+|   |-- checkin_3day.py
+|   |-- diagnosis.py
 ```
 
 ---
 
 ## How Inference Works
 
-1. Health signals are structured into input  
-2. The LLM analyzes symptom patterns  
-3. Outputs condition and urgency level  
-4. The environment evaluates correctness and assigns reward  
+1. Health signals are structured into input
+2. The LLM analyzes symptom patterns
+3. Outputs condition and urgency level
+4. The environment evaluates correctness and assigns reward
 
 ---
 
@@ -251,11 +247,14 @@ MAAS/
 | Recent data | Bonus |
 | Incorrect or unsafe output | Penalty |
 
+The verifier also exposes reward components for condition match, urgency match, under-escalation penalties, danger-flag override penalties, and data recency bonus.
+
 ---
 
 ## Deployment
 
-https://huggingface.co/spaces/nancyyyyyyy/niva-prenatal-health
+- HF Space: https://huggingface.co/spaces/nancyyyyyyy/niva-prenatal-health
+- Project writeup/video: PASTE_YOUR_LINK_HERE
 
 ---
 
@@ -274,12 +273,12 @@ https://huggingface.co/spaces/nancyyyyyyy/niva-prenatal-health
 
 ## Team
 
-- Muskaan Kohli  
-- Nancy Garg  
-- Sparsh Gupta  
+- Muskaan Kohli
+- Nancy Garg
+- Sparsh Gupta
 
 ---
 
 ## License
 
-MIT License
+MIT License - see `LICENSE` for details.

@@ -73,14 +73,7 @@ DISQUALIFYING_CONDITIONS = {"low_risk", "gestational_diabetes", "anemia"}
 
 
 def grade(action: dict) -> dict:
-    if action.get("action_type") != "diagnose":
-        return {
-            "score": 0.01,
-            "passed": False,
-            "feedback": "Must use action_type='diagnose' to complete this task.",
-        }
-
-    predicted = action.get("target")
+    predicted = action.get("condition") or action.get("target")
     urgency = action.get("urgency")
 
     correct_urgency = urgency == REQUIRED_URGENCY
@@ -198,9 +191,10 @@ Multiple danger conditions are present simultaneously.
 Determine the PRIMARY condition and appropriate urgency.
 
 Call the diagnose action with:
-  - target: one of [preeclampsia, gestational_diabetes, anemia, preterm_risk, fetal_distress, low_risk]
+  - condition: one of [preeclampsia, gestational_diabetes, anemia, preterm_risk, fetal_distress, low_risk]
   - urgency: one of [monitor_at_home, visit_phc_this_week, go_to_hospital_today]
+  - rationale: a short clinical explanation
 
 Respond in JSON:
-{{"action_type": "diagnose", "target": "<condition>", "urgency": "<urgency>"}}
+{{"condition": "<condition>", "urgency": "<urgency>", "rationale": "<short explanation>"}}
 """.strip()

@@ -4,6 +4,7 @@ import json
 from typing import List, Optional
 
 from pydantic import BaseModel
+from pydantic import Field
 
 from database import SessionLocal
 from models import Checkin3Day, DailyCheckin, UserProfile
@@ -77,6 +78,7 @@ class StepResult(BaseModel):
     text_observation: str
     prompt: PromptObservation
     reward: float
+    reward_components: dict
     done: bool
     predicted_condition: Optional[str]
     urgency: Optional[str]
@@ -89,10 +91,11 @@ class StepResult(BaseModel):
 
 
 class ActionModel(BaseModel):
-    action_type: str
-    target: Optional[str] = None
+    condition: Optional[str] = None
     urgency: Optional[str] = None
     rationale: Optional[str] = None
+    action_type: Optional[str] = None
+    target: Optional[str] = Field(default=None, exclude=True)
 
 
 LATENT_CONDITION_ADVICE = {
@@ -274,10 +277,11 @@ def parse_llm_output(raw_output: str) -> ActionModel:
         raise ValueError("LLM output must be valid JSON.") from exc
 
     return ActionModel(
-        action_type="diagnose",
-        target=parsed.get("condition"),
+        condition=parsed.get("condition") or parsed.get("target"),
         urgency=parsed.get("urgency"),
         rationale=parsed.get("rationale"),
+        action_type=parsed.get("action_type"),
+        target=parsed.get("target"),
     )
 
 
@@ -371,12 +375,23 @@ class PrenatalEnvironment(OpenEnvEnvironment):
         if self.current_obs is None or self.current_prompt is None:
             raise RuntimeError("No active episode. Call reset() first.")
 
-        if action.action_type == "assess":
+        action_mode = action.action_type or "diagnose"
+        chosen_condition = action.condition or action.target
+
+        if action_mode == "assess":
             return StepResult(
                 observation=self.current_obs,
                 text_observation=self.current_text_observation or "",
                 prompt=self.current_prompt,
                 reward=0.0,
+                reward_components={
+                    "condition_score": 0.0,
+                    "urgency_score": 0.0,
+                    "under_escalation_penalty": 0.0,
+                    "danger_override_penalty": 0.0,
+                    "data_recency_bonus": 0.0,
+                    "total_reward": 0.0,
+                },
                 done=False,
                 predicted_condition=None,
                 urgency=None,
@@ -387,29 +402,30 @@ class PrenatalEnvironment(OpenEnvEnvironment):
                 latent_risks={},
             )
 
-        if action.action_type != "diagnose":
-            raise ValueError(f"Unknown action_type: {action.action_type}. Use 'assess' or 'diagnose'.")
-        if action.target not in SAFE_CONDITIONS:
-            raise ValueError(f"Unknown condition: {action.target}. Valid: {SAFE_CONDITIONS}")
+        if action_mode != "diagnose":
+            raise ValueError(f"Unknown action_type: {action_mode}. Use 'assess' or 'diagnose'.")
+        if chosen_condition not in SAFE_CONDITIONS:
+            raise ValueError(f"Unknown condition: {chosen_condition}. Valid: {SAFE_CONDITIONS}")
         if action.urgency not in URGENCY_ORDER:
             raise ValueError(f"Unknown urgency: {action.urgency}. Valid: {URGENCY_ORDER}")
 
-        breakdown = calculate_reward(action.target, action.urgency, self.current_obs)
+        breakdown = calculate_reward(chosen_condition, action.urgency, self.current_obs)
         self.episode_done = True
         latent_advice = [
             LATENT_CONDITION_ADVICE[name]
             for name in breakdown.latent_risks
             if name in LATENT_CONDITION_ADVICE
         ]
-        diet = DIET_ADVICE.get(action.target, DIET_ADVICE["low_risk"]) + latent_advice[:2]
+        diet = DIET_ADVICE.get(chosen_condition, DIET_ADVICE["low_risk"]) + latent_advice[:2]
 
         return StepResult(
             observation=self.current_obs,
             text_observation=self.current_text_observation or "",
             prompt=self.current_prompt,
             reward=breakdown.reward,
+            reward_components=breakdown.reward_components,
             done=True,
-            predicted_condition=action.target,
+            predicted_condition=chosen_condition,
             urgency=action.urgency,
             diet_advice=diet,
             rationale=action.rationale or breakdown.rationale,
@@ -432,7 +448,7 @@ class PrenatalEnvironment(OpenEnvEnvironment):
             "valid_actions": [
                 {"action_type": "assess"},
                 *[
-                    {"action_type": "diagnose", "target": condition, "urgency": urgency}
+                    {"condition": condition, "urgency": urgency, "rationale": "clinical explanation"}
                     for condition in SAFE_CONDITIONS
                     for urgency in URGENCY_ORDER
                 ],
