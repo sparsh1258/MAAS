@@ -32,13 +32,19 @@ class EpisodeSample:
 
 def format_chat_prompt(system_prompt: str, user_prompt: str, response_format: str) -> str:
     return (
-        "<|system|>\n"
-        f"{system_prompt}\n\n"
-        "Return only JSON in this format:\n"
-        f"{response_format}\n"
-        "<|user|>\n"
+        "You are a maternal triage assistant.\n"
+        "Read the patient case carefully.\n"
+        "Return ONLY valid JSON.\n"
+        "Do not add markdown.\n"
+        "Do not add extra explanation outside JSON.\n\n"
+        "Required JSON format:\n"
+        f"{response_format}\n\n"
+        "Clinical rule:\n"
+        "- If danger signs are present, do not under-escalate.\n"
+        "- Choose the single best condition.\n"
+        "- Choose the safest urgency.\n\n"
+        "Patient case:\n"
         f"{user_prompt}\n"
-        "<|assistant|>\n"
     )
 
 
@@ -46,17 +52,23 @@ def collect_prompt_dataset(env: PrenatalEnvironment, user_ids: Iterable[int]) ->
     dataset: List[EpisodeSample] = []
     for user_id in user_ids:
         prompt_obs = env.reset(user_id)
+        easy_user_prompt = (
+            prompt_obs.user_prompt
+            + "\n\nImportant: respond with the safest correct diagnosis."
+            + "\nImportant: output only JSON."
+        )
         dataset.append(
             EpisodeSample(
                 user_id=user_id,
                 prompt=format_chat_prompt(
                     prompt_obs.system_prompt,
-                    prompt_obs.user_prompt,
+                    easy_user_prompt,
                     prompt_obs.response_format,
                 ),
             )
         )
     return dataset
+
 
 
 def rollout_batch(
@@ -123,10 +135,11 @@ def train(args):
     generation_kwargs = {
         "max_new_tokens": args.max_new_tokens,
         "do_sample": True,
-        "top_p": 0.9,
-        "temperature": 0.8,
+        "top_p": 0.8,
+        "temperature": 0.4,
         "pad_token_id": tokenizer.eos_token_id,
     }
+
 
     for epoch in range(args.epochs):
         for start in range(0, len(dataset), args.batch_size):
@@ -145,8 +158,8 @@ if __name__ == "__main__":
     parser.add_argument("--output-dir", default="./artifacts/niva-openenv-ppo")
     parser.add_argument("--user-ids", default="1")
     parser.add_argument("--epochs", type=int, default=1)
-    parser.add_argument("--batch-size", type=int, default=2)
+    parser.add_argument("--batch-size", type=int, default=1)
     parser.add_argument("--mini-batch-size", type=int, default=1)
     parser.add_argument("--learning-rate", type=float, default=1e-5)
-    parser.add_argument("--max-new-tokens", type=int, default=160)
+    parser.add_argument("--max-new-tokens", type=int, default=64)
     train(parser.parse_args())
