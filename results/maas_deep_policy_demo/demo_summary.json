@@ -1,0 +1,119 @@
+{
+  "checkpoint_path": "artifacts\\maas_deep_policy_demo_run\\maas_deep_policy.pt",
+  "history_path": "artifacts\\maas_deep_policy_demo_run\\training_history.json",
+  "curve_path": "artifacts\\maas_deep_policy_demo_run\\training_curve.png",
+  "final_epoch": {
+    "epoch": 6.0,
+    "train_loss": 0.02796567932647817,
+    "val_loss": 0.08078384151061375,
+    "train_condition_acc": 0.9963235294117647,
+    "val_condition_acc": 0.9791666666666666,
+    "train_urgency_acc": 1.0,
+    "val_urgency_acc": 1.0,
+    "lr": 0.0
+  },
+  "predictions": {
+    "1": {
+      "condition": "low_risk",
+      "urgency": "monitor_at_home",
+      "rationale": "Predicted low_risk with 0.96 confidence; urgency=monitor_at_home; danger_prob=0.08; supporting features: good_kicks, good_meals, good_sleep, no_flags, no_history; latent risks: intrahepatic_cholestasis=0.62, dehydration=0.45",
+      "confidence": 0.9600874781608582,
+      "danger_probability": 0.0828419104218483,
+      "latent_risks": {
+        "postpartum_hemorrhage": 0.4041,
+        "maternal_infection": 0.3699,
+        "dehydration": 0.4458,
+        "intrahepatic_cholestasis": 0.6204,
+        "placental_abruption": 0.4332,
+        "maternal_exhaustion": 0.2469,
+        "nutrition_deficit": 0.3317
+      }
+    },
+    "2": {
+      "condition": "preeclampsia",
+      "urgency": "go_to_hospital_today",
+      "rationale": "Predicted preeclampsia with 0.95 confidence; urgency=go_to_hospital_today; danger_prob=0.98; supporting features: bp_rising, dizziness, headache_swelling, high_bp, history_htn; latent risks: maternal_infection=0.64, maternal_exhaustion=0.55",
+      "confidence": 0.9521520137786865,
+      "danger_probability": 0.9816708564758301,
+      "latent_risks": {
+        "postpartum_hemorrhage": 0.5284,
+        "maternal_infection": 0.644,
+        "dehydration": 0.3852,
+        "intrahepatic_cholestasis": 0.5091,
+        "placental_abruption": 0.507,
+        "maternal_exhaustion": 0.5545,
+        "nutrition_deficit": 0.2898
+      }
+    },
+    "3": {
+      "condition": "fetal_distress",
+      "urgency": "go_to_hospital_today",
+      "rationale": "Predicted fetal_distress with 0.99 confidence; urgency=go_to_hospital_today; danger_prob=0.95; supporting features: danger_low_kicks, dizziness, late_pregnancy, low_kick_avg, maternal_strain; latent risks: maternal_infection=0.66, placental_abruption=0.50",
+      "confidence": 0.9897009134292603,
+      "danger_probability": 0.9542663097381592,
+      "latent_risks": {
+        "postpartum_hemorrhage": 0.2893,
+        "maternal_infection": 0.6634,
+        "dehydration": 0.4662,
+        "intrahepatic_cholestasis": 0.406,
+        "placental_abruption": 0.4961,
+        "maternal_exhaustion": 0.4692,
+        "nutrition_deficit": 0.3554
+      }
+    },
+    "4": {
+      "condition": "gestational_diabetes",
+      "urgency": "visit_phc_this_week",
+      "rationale": "Predicted gestational_diabetes with 0.98 confidence; urgency=visit_phc_this_week; danger_prob=0.03; supporting features: breathlessness, good_kicks, good_meals, high_meals, history_diabetes; latent risks: maternal_exhaustion=0.79, nutrition_deficit=0.55",
+      "confidence": 0.977266788482666,
+      "danger_probability": 0.03036254644393921,
+      "latent_risks": {
+        "postpartum_hemorrhage": 0.4294,
+        "maternal_infection": 0.3785,
+        "dehydration": 0.453,
+        "intrahepatic_cholestasis": 0.3575,
+        "placental_abruption": 0.2358,
+        "maternal_exhaustion": 0.7894,
+        "nutrition_deficit": 0.547
+      }
+    },
+    "5": {
+      "condition": "anemia",
+      "urgency": "visit_phc_this_week",
+      "rationale": "Predicted anemia with 0.95 confidence; urgency=visit_phc_this_week; danger_prob=0.01; supporting features: breathlessness, dizziness, good_kicks, low_energy, low_nutrition; latent risks: maternal_exhaustion=0.79, dehydration=0.60",
+      "confidence": 0.9490508437156677,
+      "danger_probability": 0.014931486919522285,
+      "latent_risks": {
+        "postpartum_hemorrhage": 0.4695,
+        "maternal_infection": 0.5345,
+        "dehydration": 0.6043,
+        "intrahepatic_cholestasis": 0.447,
+        "placental_abruption": 0.3939,
+        "maternal_exhaustion": 0.7906,
+        "nutrition_deficit": 0.5582
+      }
+    },
+    "6": {
+      "condition": "preterm_risk",
+      "urgency": "go_to_hospital_today",
+      "rationale": "Predicted preterm_risk with 0.90 confidence; urgency=go_to_hospital_today; danger_prob=0.98; supporting features: abdominal_pain, bleeding, dizziness, history_complication, late_pregnancy; latent risks: placental_abruption=0.70, postpartum_hemorrhage=0.65",
+      "confidence": 0.8981175422668457,
+      "danger_probability": 0.977936327457428,
+      "latent_risks": {
+        "postpartum_hemorrhage": 0.652,
+        "maternal_infection": 0.6172,
+        "dehydration": 0.5006,
+        "intrahepatic_cholestasis": 0.3981,
+        "placental_abruption": 0.6983,
+        "maternal_exhaustion": 0.6085,
+        "nutrition_deficit": 0.6437
+      }
+    }
+  },
+  "train_size": 544,
+  "val_size": 96,
+  "serving_checkpoint_path": "trained_models\\maas_deep_policy.pt",
+  "published_history_path": "results\\maas_deep_policy_demo\\training_history.json",
+  "published_curve_path": "results\\maas_deep_policy_demo\\training_curve.png",
+  "published_summary_path": "results\\maas_deep_policy_demo\\demo_summary.json"
+}
