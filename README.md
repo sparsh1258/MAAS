@@ -278,9 +278,9 @@ Current checked-in baseline summary from `baseline_report.md`:
 
 ### Training Curve
 
-![MAAS training curve](results/maas_deep_policy_demo/training_curve.png)
+![Niva RL Training- GRPO](<img width="751" height="202" alt="Screenshot 2026-04-26 140300" src="https://github.com/user-attachments/assets/99fe21e3-4cb3-42d7-bc7e-0bed29655e4b" />)
 
-Caption: training loss drops over epochs while validation condition/urgency accuracy remains high on the held-out demo split.
+![Baseline v/s GRPO Training](<img width="576" height="193" alt="Screenshot 2026-04-26 140326" src="https://github.com/user-attachments/assets/555571ea-d333-4dd5-b857-4a14e4a3437d" />)
 
 ## Running the Environment Locally
 
