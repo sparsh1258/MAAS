@@ -51,6 +51,6 @@ The current evidence does **not** claim that MAAS is already a clinically produc
 
 ## Submission Links
 
-- Hugging Face Space: [sparsh122/MATERNAAI](https://huggingface.co/spaces/sparsh122/MATERNAAI)
+- Hugging Face Space: [sparsh122/maas-openenv](https://huggingface.co/spaces/sparsh122/maas-openenv)
 - Slide deck: [OpenEnv Hackathon Deck](https://docs.google.com/presentation/d/1KzV0MxZYYA6PXXJ-nAcSRUn5staJkfQvEgHF1QVl5as/preview?pru=AAABnedodns*3ITAIB6zwg6GBoSPLOY7LQ&slide=id.g3e610e50443_9_233)
 - Main README: [`../README.md`](../README.md)
