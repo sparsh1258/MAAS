@@ -10,6 +10,7 @@ import random
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
+import torch
 
 from environment import ActionModel, MULTITURN_TRAJECTORIES, MultiTurnPrenatalEnvironment
 from train_grpo import (
@@ -82,6 +83,13 @@ TRAJECTORY_DIFFICULTY = {
     "traj_preeclampsia_fast": "hard",
 }
 DATASET_RECORDS_CACHE: list[dict[str, Any]] | None = None
+
+
+def _supports_bfloat16() -> bool:
+    if not torch.cuda.is_available():
+        return False
+    major, _minor = torch.cuda.get_device_capability()
+    return major >= 8
 
 
 def _action_to_model(action: dict[str, Any]) -> ActionModel:
@@ -595,6 +603,10 @@ def main(args) -> None:
         "num_completions_to_print": args.num_completions_to_print,
         "use_cpu": args.use_cpu,
     }
+    if not args.use_cpu:
+        use_bf16 = _supports_bfloat16()
+        config_kwargs["bf16"] = use_bf16
+        config_kwargs["fp16"] = not use_bf16
     config_signature = inspect.signature(GRPOConfig).parameters
     if "max_prompt_length" in config_signature:
         config_kwargs["max_prompt_length"] = args.max_prompt_length
