@@ -259,7 +259,10 @@ The repo includes checked-in evidence that MAAS was actually trained and evaluat
 - Baseline vs trained summary: [`results/baseline_vs_trained.json`](results/baseline_vs_trained.json)
 - Single-step GRPO summary: [`results/grpo_training_summary.json`](results/grpo_training_summary.json)
 - Single-step GRPO plot helper: [`results/plot_grpo_metrics.py`](results/plot_grpo_metrics.py)
-- Latest HF GRPO artifacts: [sparsh122/maas-grpo-qwen05b-fix2](https://huggingface.co/sparsh122/maas-grpo-qwen05b-fix2)
+- Latest HF GRPO artifacts (post-fix baseline): [sparsh122/maas-grpo-qwen05b-fix2](https://huggingface.co/sparsh122/maas-grpo-qwen05b-fix2)
+- **Hackathon GRPO run (this submission):** [sparsh122/maas-grpo-hackathon-final](https://huggingface.co/sparsh122/maas-grpo-hackathon-final)
+  - job: [69eddd79d2c8bd8662bcfb93](https://huggingface.co/jobs/sparsh122/69eddd79d2c8bd8662bcfb93)
+  - metrics: [`training_summary.json`](https://huggingface.co/sparsh122/maas-grpo-hackathon-final/blob/main/training_summary.json)
 - 1.5B run evidence (reward/quality charts + metrics):
   - [`results/final_1p5b_reward_chart.svg`](results/final_1p5b_reward_chart.svg)
   - [`results/final_1p5b_quality_chart.svg`](results/final_1p5b_quality_chart.svg)
@@ -278,6 +281,7 @@ Current checked-in baseline summary from `baseline_report.md`:
 
 ### Training Curve
 
+<<<<<<< HEAD
 ![Niva RL Training- GRPO]
 (<img width="751" height="202" alt="Screenshot 2026-04-26 140300" src="https://github.com/user-attachments/assets/99fe21e3-4cb3-42d7-bc7e-0bed29655e4b" />
 )
@@ -285,6 +289,11 @@ Current checked-in baseline summary from `baseline_report.md`:
 ![Baseline v/s GRPO Training]
 (<img width="576" height="193" alt="Screenshot 2026-04-26 140326" src="https://github.com/user-attachments/assets/555571ea-d333-4dd5-b857-4a14e4a3437d" />
 )
+=======
+![MAAS training curve](results/maas_deep_policy_demo/training_curve.png)
+
+Caption: training loss drops over epochs while validation condition/urgency accuracy remains high on the held-out demo split.
+>>>>>>> 64ed246 (README: link hackathon GRPO run artifacts)
 
 ## Running the Environment Locally
 
