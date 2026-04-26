@@ -1,11 +1,11 @@
 name: prenatal_health_openenv
-version: "3.0.0"
+version: "3.1.0"
 description: >
   MAAS is a multi-turn maternal-health triage environment for OpenEnv Theme 3.1.
-  The agent reasons across a three-day prenatal trajectory, receives only
-  partial information at first, can gather more evidence with request actions,
-  and is scored with deterministic safety-first reward logic plus competition-grade
-  synthetic scenario evaluation.
+  The agent reasons across a three-day prenatal trajectory, receives only partial
+  information at first, can gather more evidence with request actions, and is scored
+  with deterministic safety-first reward logic plus competition-grade synthetic
+  scenario evaluation.
 
 action_space:
   type: text_json
@@ -51,21 +51,6 @@ observation_space:
       description: >
         Structured partially observable maternal-health observation for the
         current visible day in the three-day episode.
-      required_fields:
-        - user_id
-        - weeks_pregnant
-        - trimester
-        - region
-        - regional_access_tier
-        - risk_flags
-        - bp_trend
-        - history_flags
-        - days_of_data
-        - symptom_cluster
-        - bp_systolic_latest
-        - bp_diastolic_latest
-        - composite_risk_score
-        - composite_risk_score
     text_observation:
       type: string
       description: >
@@ -86,27 +71,16 @@ observation_space:
 
 reward:
   description: >
-<<<<<<< HEAD
-    Reward is calculated inside the multi-turn environment. Information-gathering
-    actions have a small cost, intermediate PHC referrals are rewarded only when
-    clinically appropriate, and the final diagnosis reward composes condition,
-    urgency, safety, efficiency, and over-escalation logic.
-  range: [-0.25, 1.0]
-=======
     Reward is calculated inside the environment using a deterministic triage rubric
     plus competition upgrades. The final diagnosis reward includes condition + urgency
     alignment, danger-flag escalation bonuses, latent-risk consistency bonus, and a
     hard under-triage penalty.
   range: [0.0, 1.0]
->>>>>>> 2c74bbe (Upgrade MAAS to competition-grade offline RL env)
   notes:
     - request_bp_recheck: -0.05
     - request_kick_count: -0.05
     - advance_day: 0.0
     - refer_to_phc: +0.3 when PHC timing is appropriate, -0.2 when it is too slow
-<<<<<<< HEAD
-    - Final diagnosis: condition + urgency + safety + efficiency - over-escalation penalty
-=======
     - Danger bonus: +3.0 if DANGER flag present and agent escalates to hospital today with correct diagnosis
     - Latent risk bonus: +1.5 if clinically consistent latent risk is identified by the reward model and diagnosis aligns
     - Under-triage penalty: -8.0 if agent predicts low_risk when any DANGER flag is present
@@ -120,7 +94,7 @@ evaluation:
     - safety_rate
 
 environment_stats:
-  total_scenarios: 400
+  total_scenarios: 420
   conditions_covered: 6
   difficulty_levels: 4
   regional_variants: 4
@@ -155,13 +129,12 @@ tasks:
   - task_13_adversarial_noise
   - task_14_latent_cholestasis
   - task_15_expert_triage
->>>>>>> 2c74bbe (Upgrade MAAS to competition-grade offline RL env)
 
 training:
-  baseline_script: train_grpo_multiturn.py
-  notebook: niva_grpo_multiturn_training.ipynb
-  single_step_baseline_script: train_grpo.py
-  single_step_baseline_notebook: niva_grpo_training.ipynb
+  baseline_script: train_grpo.py
+  notebook: niva_grpo_training.ipynb
+  optional_script: train_grpo_multiturn.py
+  optional_notebook: niva_grpo_multiturn_training.ipynb
   trainer: Hugging Face TRL GRPO with optional Unsloth acceleration
   loop: >
     OpenEnv reset -> day-specific partially observable prompt -> multi-turn JSON
@@ -180,12 +153,9 @@ endpoints:
     method: GET
     path: /state
     returns: environment_state
-  health:
-    method: GET
-    path: /health
-    returns: service_status
 
 runtime:
   language: python
   entrypoint: uvicorn main:app --host 0.0.0.0 --port 7860
   port: 7860
+
