@@ -9,218 +9,280 @@ app_port: 7860
 
 # MAAS: Multi-Step Maternal Triage for OpenEnv Theme 3.1
 
-MAAS is an OpenEnv-compatible maternal-health environment where an agent must triage prenatal risk under partial observability, gather missing evidence across multiple days, and make the safest escalation decision. The project is framed as a professional workflow task rather than a one-shot classifier: the agent operates inside a multi-turn loop, pays a cost for information gathering, and is penalized for unsafe under-escalation.
-
-## Submission Links
-
-- Live Hugging Face Space: [sparsh122/MATERNAAI](https://huggingface.co/spaces/sparsh122/MATERNAAI)
-- Short writeup: [`results/mini_writeup.md`](results/mini_writeup.md)
-- Slide deck: [OpenEnv Hackathon Deck](https://docs.google.com/presentation/d/1KzV0MxZYYA6PXXJ-nAcSRUn5staJkfQvEgHF1QVl5as/preview?pru=AAABnedodns*3ITAIB6zwg6GBoSPLOY7LQ&slide=id.g3e610e50443_9_233)
-- Multi-turn notebook: [`niva_grpo_multiturn_training.ipynb`](niva_grpo_multiturn_training.ipynb)
-- Single-step notebook: [`niva_grpo_training.ipynb`](niva_grpo_training.ipynb)
-
-## What Judges Should Know
-
-- **Environment type:** multi-turn OpenEnv loop for maternal-health triage
-- **Core challenge:** reason over incomplete prenatal signals across a three-day trajectory
-- **Actions:** request evidence, advance the episode, refer to PHC, or diagnose
-- **Safety objective:** reward clinically appropriate urgency and strongly discourage missed danger cases
-- **Deployment surface:** FastAPI + Docker + `openenv.yaml` + OpenAI-compatible inference client
-- **Training evidence:** checked-in reward/loss curves, demo metrics, GRPO summaries, and benchmark reports
+MAAS is an OpenEnv-compatible maternal-care environment framed as a **professional workflow / world-modeling** task.
+An agent must reason over incomplete prenatal data, request missing signals, carry temporal belief state across multiple check-in days, and decide the safest final triage action.
 
 ## Quick Links
 
-- **Live OpenEnv API (Docker Space):** [https://huggingface.co/spaces/sparsh122/maas-openenv](https://huggingface.co/spaces/sparsh122/maas-openenv) - FastAPI on port 7860 with `/reset`, `/step`, `/state`, and demo UI at `/openenv-demo`
-- **Main Hugging Face Space:** [https://huggingface.co/spaces/sparsh122/MATERNAAI](https://huggingface.co/spaces/sparsh122/MATERNAAI)
+- **Live OpenEnv API (Docker Space):** [https://huggingface.co/spaces/sparsh122/maas-openenv](https://huggingface.co/spaces/sparsh122/maas-openenv) — FastAPI on port 7860; OpenEnv endpoints `/reset`, `/step`, `/state`; demo UI at `/openenv-demo`.
+- **Short writeup (mini-blog):** [`results/mini_writeup.md`](results/mini_writeup.md)
+- Hugging Face repo mirror: [https://huggingface.co/sparsh122/MAAS](https://huggingface.co/sparsh122/MAAS)
+- Latest HF GRPO artifacts: [https://huggingface.co/sparsh122/maas-grpo-qwen05b-fix2](https://huggingface.co/sparsh122/maas-grpo-qwen05b-fix2)
 - OpenEnv manifest: [`openenv.yaml`](openenv.yaml)
-- Judge-facing inference runner: [`inference.py`](inference.py)
-- API entrypoint: [`main.py`](main.py)
-- Multi-turn environment logic: [`environment.py`](environment.py)
-- Safety / reward logic: [`xai_reward_model.py`](xai_reward_model.py)
-- Multi-turn trainer: [`train_grpo_multiturn.py`](train_grpo_multiturn.py)
-- Single-step GRPO baseline: [`train_grpo.py`](train_grpo.py)
-- Multi-turn notebook: [`niva_grpo_multiturn_training.ipynb`](niva_grpo_multiturn_training.ipynb)
-- Single-step notebook: [`niva_grpo_training.ipynb`](niva_grpo_training.ipynb)
-- Benchmark summary: [`results/benchmark_summary.md`](results/benchmark_summary.md)
-- Demo script: [`results/demo_script.md`](results/demo_script.md)
-- Short writeup: [`results/mini_writeup.md`](results/mini_writeup.md)
-- Submission evidence bundle: [`results/submission_evidence.md`](results/submission_evidence.md)
-- Live Space: [sparsh122/MATERNAAI](https://huggingface.co/spaces/sparsh122/MATERNAAI)
-- Hugging Face code mirror: [sparsh122/MAAS](https://huggingface.co/sparsh122/MAAS)
-- Latest GRPO artifacts: [sparsh122/maas-grpo-qwen05b-fix2](https://huggingface.co/sparsh122/maas-grpo-qwen05b-fix2)
-- Slides: [OpenEnv Hackathon Deck](https://docs.google.com/presentation/d/1KzV0MxZYYA6PXXJ-nAcSRUn5staJkfQvEgHF1QVl5as/preview?pru=AAABnedodns*3ITAIB6zwg6GBoSPLOY7LQ&slide=id.g3e610e50443_9_233)
+- Primary training script: [`train_openenv_ppo.py`](train_openenv_ppo.py)
+- Colab-friendly PPO entrypoint: [`train_trl.py`](train_trl.py)
+- Optional GRPO / Unsloth path: [`train_grpo.py`](train_grpo.py)
+- Multi-turn GRPO path: [`train_grpo_multiturn.py`](train_grpo_multiturn.py)
+- PPO notebook: [`niva_training.ipynb`](niva_training.ipynb)
+- GRPO notebook: [`niva_grpo_training.ipynb`](niva_grpo_training.ipynb)
+- Multi-turn GRPO notebook: [`niva_grpo_multiturn_training.ipynb`](niva_grpo_multiturn_training.ipynb)
+- Space deployment files: [`Dockerfile`](Dockerfile), [`requirements-space.txt`](requirements-space.txt), [`.dockerignore`](.dockerignore)
+- Submission slides: [OpenEnv Hackathon Deck](https://docs.google.com/presentation/d/1KzV0MxZYYA6PXXJ-nAcSRUn5staJkfQvEgHF1QVl5as/preview?pru=AAABnedodns*3ITAIB6zwg6GBoSPLOY7LQ&slide=id.g3e610e50443_9_233)
+- Training curve: [`results/maas_deep_policy_demo/training_curve.png`](results/maas_deep_policy_demo/training_curve.png)
+- Training summary: [`results/maas_deep_policy_demo/demo_summary.json`](results/maas_deep_policy_demo/demo_summary.json)
+- Submission evidence summary: [`results/submission_evidence.md`](results/submission_evidence.md)
+- Baseline report: [`results/baseline_report.md`](results/baseline_report.md)
+- Baseline vs trained summary: [`results/baseline_vs_trained.json`](results/baseline_vs_trained.json)
 
-## Submission Checklist
+## Current Submission Status
 
-- public Hugging Face Space linked above
-- `openenv.yaml` plus runnable `/reset`, `/step`, `/state`, `/health` endpoints
-- checked-in PNG training evidence in `results/`
-- runnable RL scripts and notebooks
-- short writeup, slide deck, and judge-facing benchmark docs linked from this README
+- The environment itself is ready for review: partial observability, multi-step actions, temporal belief state, and deterministic safety-first reward logic are all implemented in-repo.
+- The latest post-fix Hugging Face GRPO job (`69ed2261d70108f37acdef0e`, created on April 26, 2026 at 01:51 IST) completed successfully and uploaded checkpoints, completion logs, and `training_summary.json` to [`sparsh122/maas-grpo-qwen05b-fix2`](https://huggingface.co/sparsh122/maas-grpo-qwen05b-fix2).
+- The earlier post-fix run [`sparsh122/maas-grpo-qwen05b-fix1`](https://huggingface.co/sparsh122/maas-grpo-qwen05b-fix1) proved the `-20` reward collapse was fixed and logged a non-zero-gradient step.
+- The current limitation is that the newest 3-epoch run still has a mean benchmark score of about `0.01`, with most steps returning `grad_norm = 0` and `reward_std = 0`, so the GRPO path is operational but not yet a strong proof of policy improvement.
+- The new multi-turn environment and multi-turn GRPO pipeline are now checked into the repo, but the first full multi-turn training run still needs to be executed and recorded as submission evidence.
+- Space deployment files are included in this repo, but the public Space should only be linked as the primary demo once the live app sync is finalized.
 
-## The OpenEnv Loop
+## Problem
 
-MAAS is built around a real multi-turn environment loop:
+Maternal triage in low-resource settings is often delayed because the right decision depends on:
 
-```text
-reset -> partially observable day-1 prompt -> agent action -> env.step
-     -> updated belief state / visible signals -> next action -> final diagnosis
-```
+- incomplete or noisy signals,
+- short time windows of recent check-ins,
+- latent complications that are not directly observable,
+- and urgent escalation decisions where under-escalation is costly.
 
-The environment exposes:
+MAAS turns that into an OpenEnv training problem. The goal is not just classification. The goal is to train an agent to **behave safely under uncertainty**.
 
-- `reset(trajectory_id=None)` to start a prenatal trajectory
-- `step(action)` to update state and receive reward
-- `state()` to inspect current environment state
-- HTTP endpoints: `POST /reset`, `POST /step`, `GET /state`, `GET /health`
+## Why This Fits Theme 3.1
 
-The agent does not receive the full clinical picture up front. It must decide whether to:
+This environment is designed around **world modeling / professional tasks**:
 
-- `request_bp_recheck`
-- `request_kick_count`
-- `advance_day`
-- `refer_to_phc`
-- `diagnose`
+- The agent sees only part of the clinically useful information at first.
+- It can choose to **request a BP recheck**, **request a kick count**, **advance to the next day**, **refer to PHC**, or **diagnose**.
+- Episodes unfold across a **three-day partially observable trajectory** instead of one static snapshot.
+- Reward is shaped by medical safety, urgency alignment, temporal evidence, and under-escalation penalties.
 
-That makes MAAS a professional workflow benchmark: the policy is evaluated not just on what it predicts, but on **when it asks for more evidence and when it escalates**.
-
-## Maternal-Health Safety Framing
-
-The reward is intentionally safety-first.
-
-- Danger flags are treated as high-priority evidence.
-- Information-gathering actions have a small cost, so the agent is encouraged to be efficient but not reckless.
-- `refer_to_phc` earns reward only when clinically appropriate.
-- Final diagnosis reward combines condition accuracy, urgency alignment, safety alignment, efficiency, and over-escalation logic.
-- Under-escalating a danger case is worse than asking for one more signal.
-
-This is the central design choice of MAAS: **unsafe confidence is expensive**.
+That makes MAAS closer to a professional triage workflow than a one-shot health classifier.
 
 ## Environment Design
 
-### Partial Observability
+### What the Agent Sees
 
-MAAS unfolds over a three-day prenatal trajectory.
+`reset(trajectory_id=None)` returns:
 
-- **Day 1:** basic vitals and limited visible signals
-- **Day 2:** symptoms become visible
-- **Day 3:** history flags and later-episode context are revealed
+- a structured `observation`,
+- an LLM-readable `text_observation`,
+- system and user prompts,
+- valid conditions and urgencies.
 
 The observation includes:
 
-- patient profile and pregnancy stage
-- current-day vitals and summaries
-- `available_signals`, `withheld_signals`, and `signal_mask`
-- temporal metadata such as `episode_day_index` and `belief_state`
+- patient profile and pregnancy stage,
+- current-day visible vitals and symptom summaries,
+- temporal metadata such as `episode_day_index` and `belief_state`,
+- `available_signals`, `withheld_signals`, and `signal_mask`.
 
-### Why It Fits Theme 3.1
+### What the Agent Can Do
 
-This is not a static medical classifier.
+The action schema is:
 
-- The agent reasons over hidden state.
-- Evidence arrives over time.
-- The decision policy is evaluated inside an environment.
-- The reward reflects professional triage behavior under uncertainty.
+```json
+{
+  "action_type": "request_bp_recheck | request_kick_count | advance_day | refer_to_phc | diagnose",
+  "target": "optional final diagnosis",
+  "urgency": "optional final urgency",
+  "rationale": "short explanation"
+}
+```
 
-That puts MAAS squarely in **world-modeling / professional agent workflow** territory.
+Current supported actions:
 
-## Deployment Readiness
+- `request_bp_recheck`: explicitly confirm the current day's blood pressure at a small information cost
+- `request_kick_count`: explicitly confirm the current day's kick count at a small information cost
+- `advance_day`: move from day 1 to day 2 or from day 2 to day 3
+- `refer_to_phc`: make an intermediate referral decision before a final diagnosis
+- `diagnose`: finish the episode with condition + urgency
 
-The repo is already packaged like an OpenEnv submission artifact.
+### Temporal Belief Updates
 
-- FastAPI runtime with `/reset`, `/step`, `/state`, `/health`
-- Docker deployment files: [`Dockerfile`](Dockerfile), [`requirements-space.txt`](requirements-space.txt), [`.dockerignore`](.dockerignore)
-- Parseable OpenEnv manifest in [`openenv.yaml`](openenv.yaml)
-- Judge-facing inference runner in [`inference.py`](inference.py)
+Episodes are not static. MAAS now carries evidence forward across a three-day prenatal trajectory:
 
-`inference.py` is submission-oriented:
+- `reset()` starts at day 1
+- `advance_day` reveals the next day’s observation
+- risk flags and belief state update as later-day evidence becomes visible
 
-- emits exact `[START]`, `[STEP]`, `[END]` stdout blocks
-- runs against an OpenAI-compatible API or local model path
-- logs real token log-prob trajectories to `stderr`
-- preserves judge-safe stdout formatting
+### Partial Observability
 
-## Training Paths
+MAAS withholds information by day:
 
-### Multi-Turn Path
+- day 1: basic vitals only
+- day 2: vitals plus symptom flags
+- day 3: full observation including history flags and late-episode context
 
-[`train_grpo_multiturn.py`](train_grpo_multiturn.py) is the main OpenEnv-style training path for the current benchmark. It trains against the three-day partially observable environment and compares multi-turn reward behavior against the single-step baseline.
+This forces the agent to reason under uncertainty instead of simple pattern matching.
 
-### Single-Step Baseline
+## Reward Logic
 
-[`train_grpo.py`](train_grpo.py) is the single-step GRPO baseline used for comparison and early pipeline validation.
+Reward is computed by the environment and returned by `step()` with `reward_components`.
 
-### PPO Legacy Path
+Key pieces:
 
-[`train_openenv_ppo.py`](train_openenv_ppo.py) and [`train_trl.py`](train_trl.py) document the earlier PPO wiring and show that the environment-model-reward loop was connected before the current GRPO packaging.
+- small information cost for `request_bp_recheck` and `request_kick_count`
+- neutral `advance_day`
+- intermediate reward for clinically appropriate `refer_to_phc`
+- final reward composed from condition accuracy, urgency alignment, safety, efficiency, and over-escalation penalty
+
+This is designed to teach the agent that **unsafe confidence is expensive**.
+
+## OpenEnv API
+
+MAAS follows the standard Gym-style surface:
+
+```python
+env.reset(trajectory_id="traj_preeclampsia_slow")
+env.step(action)
+env.state()
+```
+
+HTTP endpoints:
+
+- `POST /reset`
+- `POST /step`
+- `GET /state`
+- `GET /health`
+
+Example:
+
+```bash
+curl -X POST http://127.0.0.1:7860/reset \
+  -H "Content-Type: application/json" \
+  -d '{"trajectory_id": "traj_preeclampsia_slow"}'
+
+curl -X POST http://127.0.0.1:7860/step \
+  -H "Content-Type: application/json" \
+  -d '{"action_type":"advance_day","rationale":"Gather the next day of evidence before diagnosing"}'
+
+curl http://127.0.0.1:7860/state
+```
+
+## Training
+
+### Primary Training Path
+
+The main rerunnable script is [`train_openenv_ppo.py`](train_openenv_ppo.py).
+
+It trains directly against the current MAAS environment loop:
+
+```text
+reset -> prompt observation -> multi-step LLM actions -> env.step -> reward -> PPO update
+```
+
+Example:
+
+```bash
+python train_openenv_ppo.py \
+  --model-name Qwen/Qwen2.5-1.5B-Instruct \
+  --user-ids 1,2,3 \
+  --epochs 1 \
+  --batch-size 1 \
+  --mini-batch-size 1 \
+  --max-episode-steps 4
+```
+
+If your local `trl` build does not expose PPO classes anymore, use the GRPO path below or run the PPO script in a PPO-capable TRL environment on Colab / Hugging Face Jobs.
+
+### Colab-Friendly Entrypoint
+
+[`train_trl.py`](train_trl.py) re-exports the same PPO loop for notebook usage.
+
+### Notebooks
+
+- PPO workflow notebook: [`niva_training.ipynb`](niva_training.ipynb)
+- GRPO workflow notebook: [`niva_grpo_training.ipynb`](niva_grpo_training.ipynb)
+- Multi-turn GRPO workflow notebook: [`niva_grpo_multiturn_training.ipynb`](niva_grpo_multiturn_training.ipynb)
+
+### Optional GRPO / Unsloth Path
+
+[`train_grpo.py`](train_grpo.py) provides an optional TRL GRPO path with `--use-unsloth` support for hackathon GPU runs and Hugging Face Jobs.
+
+Example:
+
+```bash
+python train_grpo.py \
+  --model-name Qwen/Qwen2.5-1.5B-Instruct \
+  --epochs 1 \
+  --num-generations 2 \
+  --use-unsloth
+```
+
+To persist a Hugging Face Jobs run back to the Hub:
+
+```bash
+python train_grpo.py \
+  --model-name Qwen/Qwen2-0.5B-Instruct \
+  --epochs 1 \
+  --num-generations 2 \
+  --hub-model-id sparsh122/maas-grpo-qwen05b \
+  --push-to-hub
+```
+
+### Multi-Turn GRPO Path
+
+[`train_grpo_multiturn.py`](train_grpo_multiturn.py) trains against the new three-day partially observable trajectory environment.
+
+It:
+
+- builds conversation-style teacher rollouts from all 8 hardcoded trajectories
+- augments them with low-risk trap examples and day-1 emergency examples
+- saves `comparison_reward_curve.png`
+- saves `mixed_signals_before_after.txt` for `traj_mixed_signals_hard`
+
+Example:
+
+```bash
+python train_grpo_multiturn.py \
+  --model-name meta-llama/Llama-3.2-1B-Instruct \
+  --epochs 1 \
+  --num-generations 2 \
+  --use-unsloth
+```
 
 ## Training Evidence
 
-## Training Results
+The repo includes checked-in evidence that MAAS was actually trained and evaluated:
 
-![Niva RL Training](<img width="1500" height="403" alt="Screenshot_2026-04-26_140300" src="https://github.com/user-attachments/assets/7d393566-15b4-4957-b4e5-b92cf17d6341" />
-
-)
-
-![Baseline v/s GRPO Training](<img width="1152" height="385" alt="Screenshot_2026-04-26_140326" src="https://github.com/user-attachments/assets/5a2efc8e-7658-439d-b2b5-55c234162eb9" />
-
-)
-
-| Task | Baseline | After RL Training |
-|------|----------|-------------------|
-| task_1_easy | 0.33 | 0.99 |
-| task_2_medium | 0.01 | 0.99 |
-| task_3_hard | 0.01 | 0.99 |
-| **Average** | **0.33** | **0.99** |
-
-## HF Space
-
-https://huggingface.co/spaces/sparsh122/MATERNAAI
-
-### Checked-In PNG Evidence
-
-- Reward curve: [`results/grpo_reward_curve.png`](results/grpo_reward_curve.png)
-- Loss curve: [`results/grpo_loss_curve.png`](results/grpo_loss_curve.png)
-- Demo training curve: [`results/maas_deep_policy_demo/training_curve.png`](results/maas_deep_policy_demo/training_curve.png)
-- Additional graph generators:
-  - [`results/plot_grpo_metrics.py`](results/plot_grpo_metrics.py)
-  - [`results/make_deadline_graphs.py`](results/make_deadline_graphs.py)
-
-### Inline Plots
-
-The validator-required reward/loss PNGs are checked in above. The stronger post-fix GRPO evidence for the 1.5B run lives in:
-
-- [`results/final_1p5b_run_summary.md`](results/final_1p5b_run_summary.md)
-- [`results/final_1p5b_run_metrics.csv`](results/final_1p5b_run_metrics.csv)
-- [`results/final_1p5b_reward_chart.svg`](results/final_1p5b_reward_chart.svg)
-- [`results/final_1p5b_quality_chart.svg`](results/final_1p5b_quality_chart.svg)
-
-### Key Evidence Files
-
-- Benchmark summary: [`results/benchmark_summary.md`](results/benchmark_summary.md)
-- Submission evidence: [`results/submission_evidence.md`](results/submission_evidence.md)
+- Training curve image: [`results/maas_deep_policy_demo/training_curve.png`](results/maas_deep_policy_demo/training_curve.png)
+- Training history: [`results/maas_deep_policy_demo/training_history.json`](results/maas_deep_policy_demo/training_history.json)
+- Demo run summary: [`results/maas_deep_policy_demo/demo_summary.json`](results/maas_deep_policy_demo/demo_summary.json)
 - Baseline report: [`results/baseline_report.md`](results/baseline_report.md)
-- Baseline vs trained snapshot: [`results/baseline_vs_trained.json`](results/baseline_vs_trained.json)
+- Baseline vs trained summary: [`results/baseline_vs_trained.json`](results/baseline_vs_trained.json)
 - Single-step GRPO summary: [`results/grpo_training_summary.json`](results/grpo_training_summary.json)
-- 1.5B GRPO run summary: [`results/final_1p5b_run_summary.md`](results/final_1p5b_run_summary.md)
+- Single-step GRPO plot helper: [`results/plot_grpo_metrics.py`](results/plot_grpo_metrics.py)
+- Latest HF GRPO artifacts: [sparsh122/maas-grpo-qwen05b-fix2](https://huggingface.co/sparsh122/maas-grpo-qwen05b-fix2)
+- 1.5B run evidence (reward/quality charts + metrics):
+  - [`results/final_1p5b_reward_chart.svg`](results/final_1p5b_reward_chart.svg)
+  - [`results/final_1p5b_quality_chart.svg`](results/final_1p5b_quality_chart.svg)
+  - [`results/final_1p5b_run_metrics.csv`](results/final_1p5b_run_metrics.csv)
 
-### Honest Current Readout
+Current checked-in demo metrics from `demo_summary.json`:
 
-What is already proven:
+- validation condition accuracy: `0.9792`
+- validation urgency accuracy: `1.0000`
+- validation loss: `0.0808`
 
-- the OpenEnv environment is real and multi-turn
-- the safety-grounded reward function is implemented
-- inference and logging are judge-compatible
-- GRPO completed end-to-end runs and produced checked-in metrics/plots
-- the project is deployable via FastAPI + Docker
+Current checked-in baseline summary from `baseline_report.md`:
 
-What is not over-claimed:
+- average baseline benchmark score: `0.3367`
+- PPO stack connected and emitted reward logs before the small-model GPU run stopped
 
-- the newest GRPO runs are operational evidence, not final proof of a clinically strong policy
-- benchmark signals remain noisy
-- the strongest submission claim is the **environment + loop + safety framing + reproducible evidence**, not a finished clinical model
+### Training Curve
 
-## Run Locally
+![MAAS training curve](results/maas_deep_policy_demo/training_curve.png)
+
+Caption: training loss drops over epochs while validation condition/urgency accuracy remains high on the held-out demo split.
+
+## Running the Environment Locally
 
 ### Install
 
@@ -236,28 +298,38 @@ pip install -r requirements.txt
 uvicorn main:app --host 0.0.0.0 --port 7860
 ```
 
-Then open:
+Open:
 
 - app: [http://127.0.0.1:7860/](http://127.0.0.1:7860/)
 - health: [http://127.0.0.1:7860/health](http://127.0.0.1:7860/health)
 
-### Run Judge-Style Inference
+## Hugging Face Smoke Test
+
+To quickly compare a baseline model against the trained MAAS checkpoint through
+`huggingface_hub.InferenceClient`, use:
 
 ```bash
-export API_BASE_URL="https://api.openai.com/v1"
-export MODEL_NAME="gpt-4o"
-export HF_TOKEN="sk-..."
-python inference.py
+export HF_TOKEN="hf_..."
+python hf_diagnosis_smoke_test.py
 ```
 
-Or run locally:
+By default this runs the critical preeclampsia danger-case prompt against:
+
+- `meta-llama/Llama-3.2-1B-Instruct`
+- `sparsh122/maas-grpo-qwen05b-fix2`
+
+Useful variants:
 
 ```bash
-export LOCAL_MODEL_PATH="./artifacts/niva-grpo-multiturn"
-python inference.py
+python hf_diagnosis_smoke_test.py --model sparsh122/maas-grpo-qwen05b-fix2 --strict
+python hf_diagnosis_smoke_test.py --model Qwen/Qwen2-0.5B-Instruct
+python hf_diagnosis_smoke_test.py --obs-file custom_case.txt
 ```
 
-## Repository Layout
+If the Meta Llama baseline returns an access error, request access to the gated
+model on Hugging Face or swap in an open baseline with `--model`.
+
+## Repo Structure
 
 ```text
 MAAS/
@@ -266,22 +338,22 @@ MAAS/
 |-- openenv.yaml
 |-- main.py
 |-- inference.py
-|-- train_grpo.py
-|-- train_grpo_multiturn.py
 |-- train_openenv_ppo.py
-|-- niva_grpo_training.ipynb
-|-- niva_grpo_multiturn_training.ipynb
+|-- train_trl.py
+|-- train_grpo.py
+|-- niva_training.ipynb
 |-- results/
+|-- routers/
+|-- tasks/
 ```
 
-## Submission Framing
+## Why This Matters
 
-MAAS should be judged as a **multi-turn maternal triage environment with safety-aware reward shaping**, not as a generic healthcare dashboard.
+MAAS is meant to show a more realistic RL-for-agents setting:
 
-The strongest contribution is:
+- incomplete information,
+- temporal evidence,
+- safety-sensitive reward shaping,
+- and professional escalation behavior.
 
-1. a professional maternal-health workflow cast as OpenEnv
-2. a true multi-step partially observable loop
-3. deterministic safety-grounded reward logic
-4. runnable deployment and inference surfaces
-5. checked-in training and benchmark evidence
+The point is not just to say “the model predicted a label.” The point is to train and evaluate whether it learns when to ask for more information and when to escalate safely.
