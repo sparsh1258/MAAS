@@ -20,8 +20,10 @@ An agent must reason over incomplete prenatal data, request missing signals, car
 - Primary training script: [`train_openenv_ppo.py`](train_openenv_ppo.py)
 - Colab-friendly PPO entrypoint: [`train_trl.py`](train_trl.py)
 - Optional GRPO / Unsloth path: [`train_grpo.py`](train_grpo.py)
+- Multi-turn GRPO path: [`train_grpo_multiturn.py`](train_grpo_multiturn.py)
 - PPO notebook: [`niva_training.ipynb`](niva_training.ipynb)
 - GRPO notebook: [`niva_grpo_training.ipynb`](niva_grpo_training.ipynb)
+- Multi-turn GRPO notebook: [`niva_grpo_multiturn_training.ipynb`](niva_grpo_multiturn_training.ipynb)
 - Space deployment files: [`Dockerfile`](Dockerfile), [`requirements-space.txt`](requirements-space.txt), [`.dockerignore`](.dockerignore)
 - Submission slides: [OpenEnv Hackathon Deck](https://docs.google.com/presentation/d/1KzV0MxZYYA6PXXJ-nAcSRUn5staJkfQvEgHF1QVl5as/preview?pru=AAABnedodns*3ITAIB6zwg6GBoSPLOY7LQ&slide=id.g3e610e50443_9_233)
 - Training curve: [`results/maas_deep_policy_demo/training_curve.png`](results/maas_deep_policy_demo/training_curve.png)
@@ -36,6 +38,7 @@ An agent must reason over incomplete prenatal data, request missing signals, car
 - The latest post-fix Hugging Face GRPO job (`69ed2261d70108f37acdef0e`, created on April 26, 2026 at 01:51 IST) completed successfully and uploaded checkpoints, completion logs, and `training_summary.json` to [`sparsh122/maas-grpo-qwen05b-fix2`](https://huggingface.co/sparsh122/maas-grpo-qwen05b-fix2).
 - The earlier post-fix run [`sparsh122/maas-grpo-qwen05b-fix1`](https://huggingface.co/sparsh122/maas-grpo-qwen05b-fix1) proved the `-20` reward collapse was fixed and logged a non-zero-gradient step.
 - The current limitation is that the newest 3-epoch run still has a mean benchmark score of about `0.01`, with most steps returning `grad_norm = 0` and `reward_std = 0`, so the GRPO path is operational but not yet a strong proof of policy improvement.
+- The new multi-turn environment and multi-turn GRPO pipeline are now checked into the repo, but the first full multi-turn training run still needs to be executed and recorded as submission evidence.
 - Space deployment files are included in this repo, but the public Space should only be linked as the primary demo once the live app sync is finalized.
 
 ## Problem
@@ -54,8 +57,8 @@ MAAS turns that into an OpenEnv training problem. The goal is not just classific
 This environment is designed around **world modeling / professional tasks**:
 
 - The agent sees only part of the clinically useful information at first.
-- It can choose to **assess**, **request a hidden signal**, or **diagnose**.
-- Episodes unfold across multiple visible day slices instead of one static snapshot.
+- It can choose to **request a BP recheck**, **request a kick count**, **advance to the next day**, **refer to PHC**, or **diagnose**.
+- Episodes unfold across a **three-day partially observable trajectory** instead of one static snapshot.
 - Reward is shaped by medical safety, urgency alignment, temporal evidence, and under-escalation penalties.
 
 That makes MAAS closer to a professional triage workflow than a one-shot health classifier.
@@ -64,7 +67,7 @@ That makes MAAS closer to a professional triage workflow than a one-shot health 
 
 ### What the Agent Sees
 
-`reset(user_id)` returns:
+`reset(trajectory_id=None)` returns:
 
 - a structured `observation`,
 - an LLM-readable `text_observation`,
@@ -74,7 +77,7 @@ That makes MAAS closer to a professional triage workflow than a one-shot health 
 The observation includes:
 
 - patient profile and pregnancy stage,
-- visible vitals and symptom summaries,
+- current-day visible vitals and symptom summaries,
 - temporal metadata such as `episode_day_index` and `belief_state`,
 - `available_signals`, `withheld_signals`, and `signal_mask`.
 
@@ -84,9 +87,8 @@ The action schema is:
 
 ```json
 {
-  "action_type": "assess | request_signal | diagnose",
-  "signal_name": "optional hidden signal name",
-  "condition": "optional final diagnosis",
+  "action_type": "request_bp_recheck | request_kick_count | advance_day | refer_to_phc | diagnose",
+  "target": "optional final diagnosis",
   "urgency": "optional final urgency",
   "rationale": "short explanation"
 }
@@ -94,34 +96,40 @@ The action schema is:
 
 Current supported actions:
 
-- `assess`: summarize visible evidence and advance reasoning without ending the episode
-- `request_signal`: reveal one withheld clinical signal at a small cost
+- `request_bp_recheck`: explicitly confirm the current day's blood pressure at a small information cost
+- `request_kick_count`: explicitly confirm the current day's kick count at a small information cost
+- `advance_day`: move from day 1 to day 2 or from day 2 to day 3
+- `refer_to_phc`: make an intermediate referral decision before a final diagnosis
 - `diagnose`: finish the episode with condition + urgency
 
 ### Temporal Belief Updates
 
-Episodes are not static. MAAS now carries evidence forward across multiple check-in days:
+Episodes are not static. MAAS now carries evidence forward across a three-day prenatal trajectory:
 
-- `reset()` starts from the first visible day slice
-- `assess` can move the episode to the next visible day
-- `belief_state` accumulates counts such as high-BP days, low-kick days, and bleeding days
+- `reset()` starts at day 1
+- `advance_day` reveals the next day’s observation
+- risk flags and belief state update as later-day evidence becomes visible
 
 ### Partial Observability
 
-At the start of each episode, MAAS withholds 1-2 clinically useful signals. The agent must decide whether it has enough information already or should request another signal before diagnosing.
+MAAS withholds information by day:
+
+- day 1: basic vitals only
+- day 2: vitals plus symptom flags
+- day 3: full observation including history flags and late-episode context
+
+This forces the agent to reason under uncertainty instead of simple pattern matching.
 
 ## Reward Logic
 
-Reward is computed in [`xai_reward_model.py`](xai_reward_model.py) and returned by `step()` with `reward_components`.
+Reward is computed by the environment and returned by `step()` with `reward_components`.
 
 Key pieces:
 
-- class-weighted condition accuracy
-- urgency alignment
-- strong under-escalation penalty
-- extra danger-flag under-escalation penalty
-- small data-recency bonus
-- small request cost for `request_signal`
+- small information cost for `request_bp_recheck` and `request_kick_count`
+- neutral `advance_day`
+- intermediate reward for clinically appropriate `refer_to_phc`
+- final reward composed from condition accuracy, urgency alignment, safety, efficiency, and over-escalation penalty
 
 This is designed to teach the agent that **unsafe confidence is expensive**.
 
@@ -130,7 +138,7 @@ This is designed to teach the agent that **unsafe confidence is expensive**.
 MAAS follows the standard Gym-style surface:
 
 ```python
-env.reset(user_id=1)
+env.reset(trajectory_id="traj_preeclampsia_slow")
 env.step(action)
 env.state()
 ```
@@ -147,11 +155,11 @@ Example:
 ```bash
 curl -X POST http://127.0.0.1:7860/reset \
   -H "Content-Type: application/json" \
-  -d '{"user_id": 1}'
+  -d '{"trajectory_id": "traj_preeclampsia_slow"}'
 
 curl -X POST http://127.0.0.1:7860/step \
   -H "Content-Type: application/json" \
-  -d '{"action_type":"assess","rationale":"Summarize visible evidence first"}'
+  -d '{"action_type":"advance_day","rationale":"Gather the next day of evidence before diagnosing"}'
 
 curl http://127.0.0.1:7860/state
 ```
@@ -190,6 +198,7 @@ If your local `trl` build does not expose PPO classes anymore, use the GRPO path
 
 - PPO workflow notebook: [`niva_training.ipynb`](niva_training.ipynb)
 - GRPO workflow notebook: [`niva_grpo_training.ipynb`](niva_grpo_training.ipynb)
+- Multi-turn GRPO workflow notebook: [`niva_grpo_multiturn_training.ipynb`](niva_grpo_multiturn_training.ipynb)
 
 ### Optional GRPO / Unsloth Path
 
@@ -216,6 +225,27 @@ python train_grpo.py \
   --push-to-hub
 ```
 
+### Multi-Turn GRPO Path
+
+[`train_grpo_multiturn.py`](train_grpo_multiturn.py) trains against the new three-day partially observable trajectory environment.
+
+It:
+
+- builds conversation-style teacher rollouts from all 8 hardcoded trajectories
+- augments them with low-risk trap examples and day-1 emergency examples
+- saves `comparison_reward_curve.png`
+- saves `mixed_signals_before_after.txt` for `traj_mixed_signals_hard`
+
+Example:
+
+```bash
+python train_grpo_multiturn.py \
+  --model-name meta-llama/Llama-3.2-1B-Instruct \
+  --epochs 1 \
+  --num-generations 2 \
+  --use-unsloth
+```
+
 ## Training Evidence
 
 The repo includes checked-in evidence that MAAS was actually trained and evaluated:
@@ -225,6 +255,8 @@ The repo includes checked-in evidence that MAAS was actually trained and evaluat
 - Demo run summary: [`results/maas_deep_policy_demo/demo_summary.json`](results/maas_deep_policy_demo/demo_summary.json)
 - Baseline report: [`results/baseline_report.md`](results/baseline_report.md)
 - Baseline vs trained summary: [`results/baseline_vs_trained.json`](results/baseline_vs_trained.json)
+- Single-step GRPO summary: [`results/grpo_training_summary.json`](results/grpo_training_summary.json)
+- Single-step GRPO plot helper: [`results/plot_grpo_metrics.py`](results/plot_grpo_metrics.py)
 - Latest HF GRPO artifacts: [sparsh122/maas-grpo-qwen05b-fix2](https://huggingface.co/sparsh122/maas-grpo-qwen05b-fix2)
 
 Current checked-in demo metrics from `demo_summary.json`:

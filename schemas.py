@@ -86,6 +86,7 @@ class DiagnosisResponse(BaseModel):
 
 class ResetRequest(BaseModel):
     user_id: Optional[int] = None
+    trajectory_id: Optional[str] = None
     task_id: Optional[str] = None
     difficulty: Optional[str] = None
 

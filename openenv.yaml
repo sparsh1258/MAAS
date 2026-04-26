@@ -1,11 +1,10 @@
 name: prenatal_health_openenv
-version: "2.1.0"
+version: "3.0.0"
 description: >
-  MAAS is a multi-step maternal-health triage environment for OpenEnv Theme 3.1.
-  The agent receives a partially observed patient state, can request hidden
-  signals, reasons over multiple visible check-in days, and is scored with
-  deterministic safety-first reward logic grounded in maternal-health features
-  and latent complication risks.
+  MAAS is a multi-turn maternal-health triage environment for OpenEnv Theme 3.1.
+  The agent reasons across a three-day prenatal trajectory, receives only
+  partial information at first, can gather more evidence with request actions,
+  and is scored with deterministic safety-first reward logic.
 
 action_space:
   type: text_json
@@ -16,14 +15,12 @@ action_space:
     action_type:
       type: string
       enum:
-        - assess
-        - request_signal
+        - request_bp_recheck
+        - request_kick_count
+        - advance_day
+        - refer_to_phc
         - diagnose
-    signal_name:
-      type: string
-      nullable: true
-      description: Hidden signal name to reveal when action_type=request_signal.
-    condition:
+    target:
       type: string
       nullable: true
       enum:
@@ -33,7 +30,7 @@ action_space:
         - preterm_risk
         - fetal_distress
         - low_risk
-      description: Final diagnosis when action_type=diagnose, otherwise null.
+      description: Final diagnosis label when action_type=diagnose, otherwise null.
     urgency:
       type: string
       nullable: true
@@ -51,14 +48,13 @@ observation_space:
     observation:
       type: object
       description: >
-        Structured maternal-health observation with belief_state,
-        available_signals, withheld_signals, signal_mask, and temporal episode
-        metadata.
+        Structured partially observable maternal-health observation for the
+        current visible day in the three-day episode.
     text_observation:
       type: string
       description: >
-        LLM-readable summary of patient profile, visible day slice, temporal
-        belief state, visible vitals, and currently hidden signals.
+        LLM-readable summary of the current day, visible vitals, danger flags,
+        and any still-hidden information.
     system_prompt:
       type: string
     user_prompt:
@@ -74,32 +70,28 @@ observation_space:
 
 reward:
   description: >
-    Reward is calculated by xai_reward_model.py. The reward model uses
-    featurize(), latent_risk_scores(), infer_reference_condition(), and
-    choose_urgency() to derive a reference condition/urgency, applies
-    class-weighted safety scoring, charges a small cost for request_signal, and
-    strongly penalizes dangerous under-escalation.
-  range: [-45.0, 25.0]
+    Reward is calculated inside the multi-turn environment. Information-gathering
+    actions have a small cost, intermediate PHC referrals are rewarded only when
+    clinically appropriate, and the final diagnosis reward composes condition,
+    urgency, safety, efficiency, and over-escalation logic.
+  range: [0.0, 1.0]
   notes:
-    - Correct condition: +12 scaled by class weight
-    - Wrong condition: -6 scaled by class weight
-    - Correct urgency: +6 scaled by class weight
-    - Over-escalation: -2
-    - Under-escalation: at least -12 and up to -25 based on severity
-    - Danger-flag under-escalation override: additional -10
-    - request_signal action: -0.25
-    - assess action: neutral reward while the episode continues
-    - More recent data: +1 to +2
+    - request_bp_recheck: -0.05
+    - request_kick_count: -0.05
+    - advance_day: 0.0
+    - refer_to_phc: +0.3 when PHC timing is appropriate, -0.2 when it is too slow
+    - Final diagnosis: condition + urgency + safety + efficiency - over-escalation penalty
+    - Final reward is normalized to the [0.0, 1.0] range
 
 training:
-  baseline_script: train_openenv_ppo.py
-  notebook: niva_training.ipynb
-  optional_script: train_grpo.py
-  trainer: Hugging Face TRL PPO / GRPO with optional Unsloth acceleration
+  baseline_script: train_grpo.py
+  notebook: niva_grpo_training.ipynb
+  optional_script: train_grpo_multiturn.py
+  optional_notebook: niva_grpo_multiturn_training.ipynb
+  trainer: Hugging Face TRL GRPO with optional Unsloth acceleration
   loop: >
-    OpenEnv reset -> prompt observation -> multi-step LLM JSON actions
-    (assess/request_signal/diagnose) -> environment step -> deterministic reward
-    -> PPO or GRPO update.
+    OpenEnv reset -> day-specific partially observable prompt -> multi-turn JSON
+    action -> environment step -> cumulative trajectory reward -> GRPO update.
 
 endpoints:
   reset:

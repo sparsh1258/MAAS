@@ -7,8 +7,10 @@ This file collects the main artifacts a reviewer needs for the OpenEnv hackathon
 - Primary multi-step PPO loop: [`../train_openenv_ppo.py`](../train_openenv_ppo.py)
 - Colab-friendly PPO entrypoint: [`../train_trl.py`](../train_trl.py)
 - Optional GRPO / Unsloth path: [`../train_grpo.py`](../train_grpo.py)
+- Multi-turn GRPO path: [`../train_grpo_multiturn.py`](../train_grpo_multiturn.py)
 - PPO notebook: [`../niva_training.ipynb`](../niva_training.ipynb)
 - GRPO notebook: [`../niva_grpo_training.ipynb`](../niva_grpo_training.ipynb)
+- Multi-turn GRPO notebook: [`../niva_grpo_multiturn_training.ipynb`](../niva_grpo_multiturn_training.ipynb)
 
 ## Environment + Manifest
 
@@ -24,6 +26,8 @@ This file collects the main artifacts a reviewer needs for the OpenEnv hackathon
 - Demo summary: [`maas_deep_policy_demo/demo_summary.json`](maas_deep_policy_demo/demo_summary.json)
 - Baseline report: [`baseline_report.md`](baseline_report.md)
 - Baseline vs trained summary: [`baseline_vs_trained.json`](baseline_vs_trained.json)
+- Single-step GRPO summary: [`grpo_training_summary.json`](grpo_training_summary.json)
+- Single-step GRPO plotting helper: [`plot_grpo_metrics.py`](plot_grpo_metrics.py)
 
 ## Hugging Face Artifacts
 
@@ -69,11 +73,13 @@ From the latest post-fix HF GRPO run (`69ed2261d70108f37acdef0e`):
 
 ## What Changed in the Environment
 
-- Partial observability with withheld signals
-- Multi-step actions: `assess`, `request_signal`, `diagnose`
-- Temporal belief-state updates across visible check-in days
-- Class-weighted safety reward with explicit `reward_components`
-- Looped inference path in [`../inference.py`](../inference.py)
+- Three-day partially observable prenatal trajectories via `MultiTurnPrenatalEnvironment`
+- Information-gathering actions: `request_bp_recheck`, `request_kick_count`, `advance_day`
+- Intermediate referral action: `refer_to_phc`
+- Final safety-aware diagnosis action with condition + urgency
+- Eight hardcoded synthetic trajectories spanning preeclampsia, fetal distress, anemia, preterm risk, diabetes noise, low-risk reassurance, and mixed-signal cases
+- New multiturn benchmark tasks exported through `MULTITURN_TASKS`
+- Multi-turn GRPO training pipeline and notebook checked into the repo
 
 ## Presentation Material
 
@@ -81,6 +87,7 @@ From the latest post-fix HF GRPO run (`69ed2261d70108f37acdef0e`):
 
 ## Judge-Facing Interpretation
 
-- The strongest submission evidence today is the environment design itself: professional workflow structure, temporal state, hidden information, and deterministic safety-grounded reward shaping.
+- The strongest submission evidence today is the environment design itself: professional workflow structure, temporal state, hidden information, information-gathering actions, and deterministic safety-grounded reward shaping.
 - The checked-in PPO artifacts already show that MAAS is not just a static app; it has an actual trainable loop with recorded metrics and benchmark summaries.
-- The post-fix HF GRPO runs are useful evidence of cloud-training readiness, but they should be framed as an improving training pipeline rather than a final breakthrough result.
+- The successful single-step GRPO run and checked-in `grpo_training_summary.json` show that the GRPO pipeline completed end to end.
+- The new multi-turn pipeline is now implemented in-repo and ready for a judge or teammate to run from Colab using the dedicated notebook.

@@ -6,11 +6,9 @@ from html import escape
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, HTMLResponse
-from sqlalchemy.orm import Session
 
-from database import Base, SessionLocal, engine
-from environment import ActionModel, PrenatalEnvironment, PromptObservation, StepResult
-from models import Checkin3Day, DailyCheckin, UserProfile
+from database import Base, engine
+from environment import ActionModel, MultiTurnPrenatalEnvironment, PromptObservation, StepResult
 from schemas import ResetRequest
 
 Base.metadata.create_all(bind=engine)
@@ -19,7 +17,7 @@ PREVIEW_FILE = BASE_DIR / "preview.html"
 MAP_DATA_FILE = BASE_DIR / "india.json"
 TRAINING_GRAPH_FILE = BASE_DIR / "results" / "maas_deep_policy_demo" / "training_curve.png"
 TRAINING_SUMMARY_FILE = BASE_DIR / "results" / "maas_deep_policy_demo" / "demo_summary.json"
-openenv_env = PrenatalEnvironment()
+openenv_env = MultiTurnPrenatalEnvironment()
 
 app = FastAPI(
     title='Prenatal Health Monitor API',
@@ -167,77 +165,11 @@ def training_report():
         """
     )
 
-
-def _ensure_demo_user(db: Session) -> int:
-    user = db.query(UserProfile).order_by(UserProfile.id.asc()).first()
-    if user:
-        return user.id
-
-    demo_user = UserProfile(
-        name="Demo User",
-        age=26,
-        height_cm=158,
-        weight_kg=55,
-        region="Punjab",
-        weeks_pregnant=30,
-        history_diabetes=False,
-        history_hypertension=False,
-        history_preeclampsia=False,
-        history_prev_comp=False,
-    )
-    db.add(demo_user)
-    db.commit()
-    db.refresh(demo_user)
-
-    daily = DailyCheckin(
-        user_id=demo_user.id,
-        weeks_pregnant_at_checkin=30,
-        bp_systolic=118,
-        bp_diastolic=76,
-        kick_count=8,
-        kick_count_normal=True,
-        symptom_headache=False,
-        symptom_blurred_vision=False,
-        symptom_swelling=False,
-        symptom_abdominal_pain=False,
-        symptom_bleeding=False,
-        symptom_dizziness=False,
-        meals_count=3,
-        water_litres=2.0,
-        sleep_hours=7.0,
-        notes="Auto-generated demo data",
-    )
-    trend = Checkin3Day(
-        user_id=demo_user.id,
-        weeks_pregnant_at_checkin=30,
-        weight_kg=55,
-        energy_level=6,
-        breathlessness=2,
-        notes="Auto-generated demo trend",
-    )
-    db.add(daily)
-    db.add(trend)
-    db.commit()
-    return demo_user.id
-
-
-def _resolve_user_id(request: ResetRequest) -> int:
-    if request.user_id is not None:
-        return request.user_id
-
-    db = SessionLocal()
-    try:
-        return _ensure_demo_user(db)
-    finally:
-        db.close()
-
-
 @app.post("/reset", response_model=PromptObservation, tags=["OpenEnv"])
 def reset_environment(request: ResetRequest | None = None):
     payload = request or ResetRequest()
-    user_id = _resolve_user_id(payload)
     try:
-        return openenv_env.reset(user_id=user_id)
+        return openenv_env.reset(trajectory_id=payload.trajectory_id)
     except ValueError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
 
