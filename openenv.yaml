@@ -74,20 +74,19 @@ reward:
     actions have a small cost, intermediate PHC referrals are rewarded only when
     clinically appropriate, and the final diagnosis reward composes condition,
     urgency, safety, efficiency, and over-escalation logic.
-  range: [0.0, 1.0]
+  range: [-0.25, 1.0]
   notes:
     - request_bp_recheck: -0.05
     - request_kick_count: -0.05
     - advance_day: 0.0
     - refer_to_phc: +0.3 when PHC timing is appropriate, -0.2 when it is too slow
     - Final diagnosis: condition + urgency + safety + efficiency - over-escalation penalty
-    - Final reward is normalized to the [0.0, 1.0] range
 
 training:
-  baseline_script: train_grpo.py
-  notebook: niva_grpo_training.ipynb
-  optional_script: train_grpo_multiturn.py
-  optional_notebook: niva_grpo_multiturn_training.ipynb
+  baseline_script: train_grpo_multiturn.py
+  notebook: niva_grpo_multiturn_training.ipynb
+  single_step_baseline_script: train_grpo.py
+  single_step_baseline_notebook: niva_grpo_training.ipynb
   trainer: Hugging Face TRL GRPO with optional Unsloth acceleration
   loop: >
     OpenEnv reset -> day-specific partially observable prompt -> multi-turn JSON
@@ -106,6 +105,10 @@ endpoints:
     method: GET
     path: /state
     returns: environment_state
+  health:
+    method: GET
+    path: /health
+    returns: service_status
 
 runtime:
   language: python

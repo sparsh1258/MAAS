@@ -2,6 +2,11 @@
 
 This file collects the main artifacts a reviewer needs for the OpenEnv hackathon submission.
 
+## Judge-Facing Docs
+
+- Benchmark summary: [`benchmark_summary.md`](benchmark_summary.md)
+- Demo script: [`demo_script.md`](demo_script.md)
+
 ## Training Scripts
 
 - Primary multi-step PPO loop: [`../train_openenv_ppo.py`](../train_openenv_ppo.py)

@@ -35,6 +35,11 @@ PARSE_MODE_REWARD = {
     "keyword": -0.2,
     "invalid": -0.5,
 }
+ACTION_MATCH_REWARD = 1.5
+SAFE_ESCALATION_BONUS = 0.75
+CORRECT_TARGET_REWARD = 1.25
+CORRECT_URGENCY_REWARD = 1.25
+PARTIAL_DIAGNOSIS_REWARD = 0.5
 
 DAY_MESSAGE_ORDERS: list[tuple[str, ...]] = [
     (
@@ -131,22 +136,83 @@ def _ordered_day_message(env: MultiTurnPrenatalEnvironment, order_index: int) ->
     return "\n".join(lines)
 
 
+def _has_danger_flags(observation) -> bool:
+    return any(str(flag).startswith("DANGER") for flag in (observation.risk_flags or []))
+
+
+def _has_high_bp(observation) -> bool:
+    return "HIGH_BP" in (observation.risk_flags or []) or observation.bp_trend == "rising"
+
+
+def _has_low_kicks(env: MultiTurnPrenatalEnvironment) -> bool:
+    day_state = env._current_day_state()
+    return (
+        "DANGER_LOW_KICKS" in (env.last_observation.risk_flags if env.last_observation else [])
+        or day_state.kick_count < 6
+    )
+
+
 def _teacher_policy_action(env: MultiTurnPrenatalEnvironment) -> dict[str, Any]:
     observation = env.last_observation or env._build_observation()
-    if any(flag.startswith("DANGER") for flag in observation.risk_flags):
+    if _has_danger_flags(observation):
         return {
             "action_type": "diagnose",
             "target": env.current_trajectory.target_condition,
             "urgency": "go_to_hospital_today",
             "rationale": "Danger flags are visible, so immediate hospital escalation is required.",
         }
-    if env.current_day < 3:
+
+    if env.current_day == 1:
+        if _has_high_bp(observation) and env.current_day not in env.bp_rechecks:
+            return {
+                "action_type": "request_bp_recheck",
+                "target": None,
+                "urgency": None,
+                "rationale": "Borderline or rising blood pressure should be confirmed before escalating.",
+            }
+        if _has_low_kicks(env) and env.current_day not in env.kick_requests:
+            return {
+                "action_type": "request_kick_count",
+                "target": None,
+                "urgency": None,
+                "rationale": "Low fetal movement should be rechecked before a final triage decision.",
+            }
         return {
             "action_type": "advance_day",
             "target": None,
             "urgency": None,
-            "rationale": "No danger flag is visible yet, so gather the next day of evidence.",
+            "rationale": "No immediate danger is visible yet, so gather the next day of evidence.",
         }
+
+    if env.current_day == 2:
+        if _has_high_bp(observation) and env.current_day not in env.bp_rechecks:
+            return {
+                "action_type": "request_bp_recheck",
+                "target": None,
+                "urgency": None,
+                "rationale": "Day-2 blood pressure trend should be confirmed before the final diagnosis.",
+            }
+        if _has_low_kicks(env) and env.current_day not in env.kick_requests:
+            return {
+                "action_type": "request_kick_count",
+                "target": None,
+                "urgency": None,
+                "rationale": "Day-2 fetal movement still looks concerning, so confirm the kick count.",
+            }
+        if observation.risk_flags:
+            return {
+                "action_type": "refer_to_phc",
+                "target": None,
+                "urgency": "visit_phc_this_week",
+                "rationale": "Persistent non-danger risk on day 2 warrants PHC escalation while gathering final context.",
+            }
+        return {
+            "action_type": "advance_day",
+            "target": None,
+            "urgency": None,
+            "rationale": "Day 3 is needed to resolve the remaining uncertainty safely.",
+        }
+
     return {
         "action_type": "diagnose",
         "target": env.current_trajectory.target_condition,
@@ -193,47 +259,37 @@ def _episode_return_from(record: dict[str, Any], step_index: int) -> float:
 
 
 def _build_base_records() -> list[dict[str, Any]]:
-    final_step_records: list[dict[str, Any]] = []
-    canonical_first_step_records: list[dict[str, Any]] = []
+    turn_records: list[dict[str, Any]] = []
 
     for trajectory_id in MULTITURN_TRAJECTORIES:
         for order_index in range(3):
             episode = _rollout_teacher_episode(trajectory_id, order_index)
-            last_step_index = len(episode["turn_records"]) - 1
-            final_turn = episode["turn_records"][last_step_index]
-            final_step_records.append(
-                {
+            for step_index, turn in enumerate(episode["turn_records"]):
+                turn_record = {
                     "record_type": "episode",
-                    "task_id": f"{trajectory_id}_variant_{order_index + 1}_final",
+                    "task_id": f"{trajectory_id}_variant_{order_index + 1}_step_{step_index + 1}",
                     "trajectory_id": trajectory_id,
                     "difficulty": episode["difficulty"],
                     "conversation": episode["conversation"],
-                    "prompt": final_turn["prompt"],
-                    "teacher_action": final_turn["teacher_action"],
-                    "teacher_return": _episode_return_from(episode, last_step_index),
+                    "prompt": turn["prompt"],
+                    "teacher_action": turn["teacher_action"],
+                    "teacher_return": _episode_return_from(episode, step_index),
                     "order_index": order_index,
-                    "step_index": last_step_index,
+                    "step_index": step_index,
                 }
-            )
+                turn_records.append(turn_record)
 
-            if order_index == 0:
-                first_turn = episode["turn_records"][0]
-                canonical_first_step_records.append(
-                    {
-                        "record_type": "episode",
-                        "task_id": f"{trajectory_id}_variant_1_opening",
-                        "trajectory_id": trajectory_id,
-                        "difficulty": episode["difficulty"],
-                        "conversation": episode["conversation"],
-                        "prompt": first_turn["prompt"],
-                        "teacher_action": first_turn["teacher_action"],
-                        "teacher_return": _episode_return_from(episode, 0),
-                        "order_index": order_index,
-                        "step_index": 0,
-                    }
-                )
+                # Hard cases and intermediate evidence-gathering actions get extra weight.
+                if episode["difficulty"] == "hard":
+                    turn_records.append(dict(turn_record))
+                if turn["teacher_action"]["action_type"] in {
+                    "request_bp_recheck",
+                    "request_kick_count",
+                    "refer_to_phc",
+                }:
+                    turn_records.append(dict(turn_record))
 
-    return final_step_records + canonical_first_step_records
+    return turn_records
 
 
 def _build_trap_examples() -> list[dict[str, Any]]:
@@ -359,6 +415,48 @@ def _synthetic_reward(record: dict[str, Any], action: ActionModel) -> float:
     return 0.0
 
 
+def _structured_match_reward(
+    action: ActionModel,
+    expected_action: dict[str, Any],
+    episode_return: float,
+    current_record_type: str,
+    current_record: dict[str, Any] | None,
+) -> float:
+    reward = 0.0
+    expected_type = expected_action.get("action_type")
+    predicted_target = action.condition or action.target
+    expected_target = expected_action.get("target")
+    expected_urgency = expected_action.get("urgency")
+    danger_case = current_record_type == "episode" and current_record is not None and (
+        TRAJECTORY_DIFFICULTY.get(current_record.get("trajectory_id", ""), "medium") == "hard"
+    )
+
+    if action.action_type == expected_type:
+        reward += ACTION_MATCH_REWARD
+
+    if expected_type == "diagnose":
+        if predicted_target == expected_target:
+            reward += CORRECT_TARGET_REWARD
+        elif predicted_target in {"preeclampsia", "fetal_distress"} and expected_urgency == "go_to_hospital_today":
+            reward += PARTIAL_DIAGNOSIS_REWARD
+
+        if action.urgency == expected_urgency:
+            reward += CORRECT_URGENCY_REWARD
+        elif action.urgency == "go_to_hospital_today" and expected_urgency == "go_to_hospital_today":
+            reward += SAFE_ESCALATION_BONUS
+
+        if danger_case and action.urgency == "go_to_hospital_today":
+            reward += SAFE_ESCALATION_BONUS
+    else:
+        if expected_type == "refer_to_phc" and action.action_type == "diagnose" and action.urgency == "go_to_hospital_today":
+            reward += SAFE_ESCALATION_BONUS
+        if expected_type in {"request_bp_recheck", "request_kick_count"} and action.action_type == "advance_day":
+            reward -= 0.5
+
+    reward += max(0.0, float(episode_return)) * 2.0
+    return reward
+
+
 def multiturn_reward_fn(
     prompts,
     completions,
@@ -426,6 +524,13 @@ def multiturn_reward_fn(
             (episode_return * BASELINE_REWARD_SCALE)
             - 2.0
             + PARSE_MODE_REWARD[parse_mode]
+            + _structured_match_reward(
+                action,
+                expected_action,
+                episode_return,
+                current_record_type,
+                current_record,
+            )
             + (0.5 if exact_match else 0.0)
         )
         rewards.append(round(float(scaled_reward), 4))
