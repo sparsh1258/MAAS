@@ -21,6 +21,7 @@ import os
 import re
 import statistics
 import sys
+import torch
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -337,6 +338,12 @@ def load_unsloth_model(model_name: str, max_seq_length: int, load_in_4bit: bool)
         use_gradient_checkpointing="unsloth",
         random_state=3407,
     )
+    if torch.cuda.is_available():
+        major, _minor = torch.cuda.get_device_capability()
+        if major < 8:
+            for parameter in model.parameters():
+                if parameter.requires_grad and parameter.is_floating_point():
+                    parameter.data = parameter.data.to(torch.float16)
     return model, tokenizer
 
 
