@@ -170,7 +170,8 @@ def _coerce_action_scalar(value: Any, valid_labels: tuple[str, ...] | None = Non
 
 
 def _normalize_action_payload(payload: dict[str, Any]) -> ActionModel:
-    # The OpenEnv `ActionModel` in this repo uses `target` for the condition label.
+    # Keep `condition` and `target` in sync: env `step()` uses `condition or target`;
+    # GRPO prompts use `condition` while multiturn helpers use `target`.
     condition = _coerce_action_scalar(payload.get("condition") or payload.get("target"), VALID_CONDITIONS)
     urgency = _coerce_action_scalar(payload.get("urgency"), VALID_URGENCIES)
     action_type = payload.get("action_type")
@@ -187,6 +188,7 @@ def _normalize_action_payload(payload: dict[str, Any]) -> ActionModel:
         action_type = "diagnose" if (condition or urgency) else "assess"
     return ActionModel(
         action_type=action_type or "diagnose",
+        condition=condition,
         target=condition,
         urgency=urgency,
     )
@@ -224,6 +226,7 @@ def _parse_completion_action(raw_text: str) -> tuple[ActionModel, str]:
         return (
             ActionModel(
                 action_type="diagnose",
+                condition=keyword_target,
                 target=keyword_target,
                 urgency=keyword_urgency,
             ),
@@ -234,12 +237,13 @@ def _parse_completion_action(raw_text: str) -> tuple[ActionModel, str]:
 
 
 def _benchmark_reward(task: dict, action: ActionModel) -> tuple[float, float]:
+    condition_label = action.target or action.condition
     grade_result = task["grade"](
         {
-            "condition": action.target,
+            "condition": condition_label,
             "urgency": action.urgency,
             "rationale": "",
-            "target": action.target,
+            "target": condition_label,
         }
     )
     benchmark_score = float(grade_result.get("score", 0.0))
@@ -248,14 +252,27 @@ def _benchmark_reward(task: dict, action: ActionModel) -> tuple[float, float]:
 
 
 def _safety_reward(task: dict, action: ActionModel) -> float:
+    """
+    Escalation-only shaping from `calculate_reward` components.
+
+    Using the full `breakdown.reward` here conflicts with per-task `grade()` rubrics
+    (e.g. task_3_hard accepts fetal_distress + hospital while `infer_reference_condition`
+    prioritizes preeclampsia), which flattens GRPO group variance and mis-trains the policy.
+    """
     if action.target not in VALID_CONDITIONS or action.urgency not in VALID_URGENCIES:
         return INVALID_SAFETY_PENALTY
     breakdown = calculate_reward(action.target, action.urgency, task["observation"])
-    return float(breakdown.reward) * SAFETY_REWARD_WEIGHT
+    components = breakdown.reward_components
+    penalties = float(components.get("under_escalation_penalty", 0.0)) + float(
+        components.get("danger_override_penalty", 0.0)
+    )
+    return penalties * SAFETY_REWARD_WEIGHT
 
 
 def reward_fn(prompts, completions, task_id, log_extra=None, log_metric=None, **kwargs):
     task_lookup = {task["id"]: task for task in TASKS}
+    trainer_state = kwargs.get("trainer_state")
+    global_step = getattr(trainer_state, "global_step", None) if trainer_state is not None else None
     rewards: list[float] = []
     parse_modes: list[str] = []
     predicted_conditions: list[str] = []
@@ -263,6 +280,11 @@ def reward_fn(prompts, completions, task_id, log_extra=None, log_metric=None, **
     benchmark_scores: list[float] = []
     safety_rewards: list[float] = []
 
+    if len(completions) != len(task_id):
+        raise ValueError(
+            f"GRPO reward_fn length mismatch: len(completions)={len(completions)} "
+            f"!= len(task_id)={len(task_id)}. Check TRL/dataset repeat of non-signature columns."
+        )
     for completion, current_task_id in zip(completions, task_id):
         task = task_lookup[current_task_id]
         raw_text = _completion_text(completion)
@@ -280,7 +302,7 @@ def reward_fn(prompts, completions, task_id, log_extra=None, log_metric=None, **
 
         rewards.append(round(float(total_reward), 4))
         parse_modes.append(parse_mode)
-        predicted_conditions.append(action.target or "")
+        predicted_conditions.append((action.target or action.condition) or "")
         predicted_urgencies.append(action.urgency or "")
         benchmark_scores.append(round(benchmark_score, 4))
         safety_rewards.append(round(safety_reward, 4))
@@ -297,6 +319,20 @@ def reward_fn(prompts, completions, task_id, log_extra=None, log_metric=None, **
         log_metric("maas/mean_reward", sum(rewards) / total)
         log_metric("maas/mean_benchmark_score", sum(benchmark_scores) / total)
         log_metric("maas/mean_safety_reward", sum(safety_rewards) / total)
+        if global_step is not None:
+            log_metric("maas/global_step", float(global_step))
+        if len(rewards) > 1:
+            log_metric(
+                "maas/reward_std_batch",
+                float(statistics.pstdev(float(r) for r in rewards)),
+            )
+            log_metric(
+                "maas/benchmark_std_batch",
+                float(statistics.pstdev(float(s) for s in benchmark_scores)),
+            )
+        else:
+            log_metric("maas/reward_std_batch", 0.0)
+            log_metric("maas/benchmark_std_batch", 0.0)
         log_metric("maas/exact_json_rate", sum(mode == "exact" for mode in parse_modes) / total)
         log_metric(
             "maas/structured_output_rate",
@@ -373,9 +409,32 @@ def load_unsloth_model(model_name: str, max_seq_length: int, load_in_4bit: bool)
     return model, tokenizer
 
 
+def _enrich_log_history_for_plotting(log_history: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Stable keys on the same step index as TRL `log_history` entries (`step` / optimizer step)."""
+    out: list[dict[str, Any]] = []
+    for entry in log_history:
+        row = dict(entry)
+        if row.get("step") is not None and "global_step" not in row:
+            row["global_step"] = row["step"]
+        # Aliases so downstream plots do not mix `reward` vs `maas/mean_reward` vs HF callback names.
+        if "reward_mean" not in row:
+            row["reward_mean"] = row.get("reward", row.get("rewards/reward_fn/mean", row.get("maas/mean_reward")))
+        if "reward_std" not in row:
+            row["reward_std"] = row.get("rewards/reward_fn/std")
+        if "benchmark_mean" not in row:
+            row["benchmark_mean"] = row.get("maas/mean_benchmark_score")
+        if "reward_std_batch" not in row:
+            row["reward_std_batch"] = row.get("maas/reward_std_batch")
+        if "benchmark_std_batch" not in row:
+            row["benchmark_std_batch"] = row.get("maas/benchmark_std_batch")
+        out.append(row)
+    return out
+
+
 def save_training_artifacts(output_dir: str, args, train_result, trainer, dataset_size: int) -> None:
     output_path = Path(output_dir)
     output_path.mkdir(parents=True, exist_ok=True)
+    raw_history = list(trainer.state.log_history)
     summary = {
         "created_at_utc": datetime.now(timezone.utc).isoformat(),
         "model_name": args.model_name,
@@ -393,7 +452,17 @@ def save_training_artifacts(output_dir: str, args, train_result, trainer, datase
         "log_completions": args.log_completions,
         "probe_steps": getattr(args, "probe_steps", 0),
         "train_metrics": getattr(train_result, "metrics", {}),
-        "log_history": trainer.state.log_history,
+        "log_history": raw_history,
+        "log_history_plotting": _enrich_log_history_for_plotting(raw_history),
+        "plotting_metric_keys": {
+            "step_axis": ["step", "global_step"],
+            "reward_mean": ["reward_mean", "reward", "maas/mean_reward", "rewards/reward_fn/mean"],
+            "reward_std": ["reward_std", "rewards/reward_fn/std"],
+            "reward_std_within_batch": ["reward_std_batch", "maas/reward_std_batch"],
+            "grad_norm": ["grad_norm"],
+            "benchmark_mean": ["benchmark_mean", "maas/mean_benchmark_score"],
+            "benchmark_std_within_batch": ["benchmark_std_batch", "maas/benchmark_std_batch"],
+        },
     }
     (output_path / "training_summary.json").write_text(
         json.dumps(summary, indent=2),
