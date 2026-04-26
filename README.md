@@ -158,7 +158,11 @@ The repo is already packaged like an OpenEnv submission artifact.
 
 ## Training Results
 
-![Training Curves](results/niva_final_graphs.png)
+![GRPO Reward Trend](results/final_1p5b_reward_chart.svg)
+
+![GRPO Quality Trend](results/final_1p5b_quality_chart.svg)
+
+![Deep Policy Training Curves](results/maas_deep_policy_demo/training_curve.png)
 
 | Task | Baseline | After RL Training |
 |------|----------|-------------------|
