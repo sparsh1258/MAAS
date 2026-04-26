@@ -297,6 +297,32 @@ Open:
 - app: [http://127.0.0.1:7860/](http://127.0.0.1:7860/)
 - health: [http://127.0.0.1:7860/health](http://127.0.0.1:7860/health)
 
+## Hugging Face Smoke Test
+
+To quickly compare a baseline model against the trained MAAS checkpoint through
+`huggingface_hub.InferenceClient`, use:
+
+```bash
+export HF_TOKEN="hf_..."
+python hf_diagnosis_smoke_test.py
+```
+
+By default this runs the critical preeclampsia danger-case prompt against:
+
+- `meta-llama/Llama-3.2-1B-Instruct`
+- `sparsh122/maas-grpo-qwen05b-fix2`
+
+Useful variants:
+
+```bash
+python hf_diagnosis_smoke_test.py --model sparsh122/maas-grpo-qwen05b-fix2 --strict
+python hf_diagnosis_smoke_test.py --model Qwen/Qwen2-0.5B-Instruct
+python hf_diagnosis_smoke_test.py --obs-file custom_case.txt
+```
+
+If the Meta Llama baseline returns an access error, request access to the gated
+model on Hugging Face or swap in an open baseline with `--model`.
+
 ## Repo Structure
 
 ```text

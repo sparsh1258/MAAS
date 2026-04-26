@@ -1,0 +1,120 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="420" viewBox="0 0 900 420">
+<style>text{font-family:Arial,Helvetica,sans-serif;fill:#1f2937} .grid{stroke:#e5e7eb;stroke-width:1} .axis{stroke:#374151;stroke-width:1.5} .legend{font-size:12px} .title{font-size:20px;font-weight:bold} .label{font-size:13px} .tick{font-size:11px}</style>
+<text x="450.0" y="28" text-anchor="middle" class="title">Final 1.5B Output Quality Signals</text>
+<rect x="0" y="0" width="900" height="420" fill="white"/>
+<line x1="70" y1="360.0" x2="870" y2="360.0" class="grid"/>
+<text x="60" y="364.0" text-anchor="end" class="tick">-11.62</text>
+<line x1="70" y1="298.0" x2="870" y2="298.0" class="grid"/>
+<text x="60" y="302.0" text-anchor="end" class="tick">-8.90</text>
+<line x1="70" y1="236.0" x2="870" y2="236.0" class="grid"/>
+<text x="60" y="240.0" text-anchor="end" class="tick">-6.19</text>
+<line x1="70" y1="174.0" x2="870" y2="174.0" class="grid"/>
+<text x="60" y="178.0" text-anchor="end" class="tick">-3.47</text>
+<line x1="70" y1="112.0" x2="870" y2="112.0" class="grid"/>
+<text x="60" y="116.0" text-anchor="end" class="tick">-0.76</text>
+<line x1="70" y1="50.0" x2="870" y2="50.0" class="grid"/>
+<text x="60" y="54.0" text-anchor="end" class="tick">1.95</text>
+<line x1="70.0" y1="50" x2="70.0" y2="360" class="grid"/>
+<text x="70.0" y="378" text-anchor="middle" class="tick">1</text>
+<line x1="117.1" y1="50" x2="117.1" y2="360" class="grid"/>
+<text x="117.1" y="378" text-anchor="middle" class="tick">2</text>
+<line x1="164.1" y1="50" x2="164.1" y2="360" class="grid"/>
+<text x="164.1" y="378" text-anchor="middle" class="tick">3</text>
+<line x1="211.2" y1="50" x2="211.2" y2="360" class="grid"/>
+<text x="211.2" y="378" text-anchor="middle" class="tick">4</text>
+<line x1="258.2" y1="50" x2="258.2" y2="360" class="grid"/>
+<text x="258.2" y="378" text-anchor="middle" class="tick">5</text>
+<line x1="305.3" y1="50" x2="305.3" y2="360" class="grid"/>
+<text x="305.3" y="378" text-anchor="middle" class="tick">6</text>
+<line x1="352.4" y1="50" x2="352.4" y2="360" class="grid"/>
+<text x="352.4" y="378" text-anchor="middle" class="tick">7</text>
+<line x1="399.4" y1="50" x2="399.4" y2="360" class="grid"/>
+<text x="399.4" y="378" text-anchor="middle" class="tick">8</text>
+<line x1="446.5" y1="50" x2="446.5" y2="360" class="grid"/>
+<text x="446.5" y="378" text-anchor="middle" class="tick">9</text>
+<line x1="493.5" y1="50" x2="493.5" y2="360" class="grid"/>
+<text x="493.5" y="378" text-anchor="middle" class="tick">10</text>
+<line x1="540.6" y1="50" x2="540.6" y2="360" class="grid"/>
+<text x="540.6" y="378" text-anchor="middle" class="tick">11</text>
+<line x1="587.6" y1="50" x2="587.6" y2="360" class="grid"/>
+<text x="587.6" y="378" text-anchor="middle" class="tick">12</text>
+<line x1="634.7" y1="50" x2="634.7" y2="360" class="grid"/>
+<text x="634.7" y="378" text-anchor="middle" class="tick">13</text>
+<line x1="681.8" y1="50" x2="681.8" y2="360" class="grid"/>
+<text x="681.8" y="378" text-anchor="middle" class="tick">14</text>
+<line x1="728.8" y1="50" x2="728.8" y2="360" class="grid"/>
+<text x="728.8" y="378" text-anchor="middle" class="tick">15</text>
+<line x1="775.9" y1="50" x2="775.9" y2="360" class="grid"/>
+<text x="775.9" y="378" text-anchor="middle" class="tick">16</text>
+<line x1="822.9" y1="50" x2="822.9" y2="360" class="grid"/>
+<text x="822.9" y="378" text-anchor="middle" class="tick">17</text>
+<line x1="870.0" y1="50" x2="870.0" y2="360" class="grid"/>
+<text x="870.0" y="378" text-anchor="middle" class="tick">18</text>
+<line x1="70" y1="360" x2="870" y2="360" class="axis"/>
+<line x1="70" y1="50" x2="70" y2="360" class="axis"/>
+<text x="450.0" y="402" text-anchor="middle" class="label">Training Step</text>
+<text x="20" y="210.0" text-anchor="middle" transform="rotate(-90 20 210.0)" class="label">Score / Rate</text>
+<polyline fill="none" stroke="#2563eb" stroke-width="3" points="70.0,93.8 117.1,91.7 164.1,91.2 211.2,94.4 258.2,94.4 305.3,90.9 352.4,93.1 399.4,94.4 446.5,91.1 493.5,93.1 540.6,94.4 587.6,88.8 634.7,94.4 681.8,93.3 728.8,94.4 775.9,94.4 822.9,88.8 870.0,93.3"/>
+<circle cx="70.0" cy="93.8" r="3.5" fill="#2563eb"/>
+<circle cx="117.1" cy="91.7" r="3.5" fill="#2563eb"/>
+<circle cx="164.1" cy="91.2" r="3.5" fill="#2563eb"/>
+<circle cx="211.2" cy="94.4" r="3.5" fill="#2563eb"/>
+<circle cx="258.2" cy="94.4" r="3.5" fill="#2563eb"/>
+<circle cx="305.3" cy="90.9" r="3.5" fill="#2563eb"/>
+<circle cx="352.4" cy="93.1" r="3.5" fill="#2563eb"/>
+<circle cx="399.4" cy="94.4" r="3.5" fill="#2563eb"/>
+<circle cx="446.5" cy="91.1" r="3.5" fill="#2563eb"/>
+<circle cx="493.5" cy="93.1" r="3.5" fill="#2563eb"/>
+<circle cx="540.6" cy="94.4" r="3.5" fill="#2563eb"/>
+<circle cx="587.6" cy="88.8" r="3.5" fill="#2563eb"/>
+<circle cx="634.7" cy="94.4" r="3.5" fill="#2563eb"/>
+<circle cx="681.8" cy="93.3" r="3.5" fill="#2563eb"/>
+<circle cx="728.8" cy="94.4" r="3.5" fill="#2563eb"/>
+<circle cx="775.9" cy="94.4" r="3.5" fill="#2563eb"/>
+<circle cx="822.9" cy="88.8" r="3.5" fill="#2563eb"/>
+<circle cx="870.0" cy="93.3" r="3.5" fill="#2563eb"/>
+<line x1="680" y1="55" x2="702" y2="55" stroke="#2563eb" stroke-width="3"/>
+<text x="710" y="59" class="legend">Benchmark Score</text>
+<polyline fill="none" stroke="#7c3aed" stroke-width="3" points="70.0,251.8 117.1,133.6 164.1,106.0 211.2,168.8 258.2,338.6 305.3,106.0 352.4,151.8 399.4,128.9 446.5,168.8 493.5,166.2 540.6,128.9 587.6,148.8 634.7,128.9 681.8,128.9 728.8,158.3 775.9,251.8 822.9,71.4 870.0,116.4"/>
+<circle cx="70.0" cy="251.8" r="3.5" fill="#7c3aed"/>
+<circle cx="117.1" cy="133.6" r="3.5" fill="#7c3aed"/>
+<circle cx="164.1" cy="106.0" r="3.5" fill="#7c3aed"/>
+<circle cx="211.2" cy="168.8" r="3.5" fill="#7c3aed"/>
+<circle cx="258.2" cy="338.6" r="3.5" fill="#7c3aed"/>
+<circle cx="305.3" cy="106.0" r="3.5" fill="#7c3aed"/>
+<circle cx="352.4" cy="151.8" r="3.5" fill="#7c3aed"/>
+<circle cx="399.4" cy="128.9" r="3.5" fill="#7c3aed"/>
+<circle cx="446.5" cy="168.8" r="3.5" fill="#7c3aed"/>
+<circle cx="493.5" cy="166.2" r="3.5" fill="#7c3aed"/>
+<circle cx="540.6" cy="128.9" r="3.5" fill="#7c3aed"/>
+<circle cx="587.6" cy="148.8" r="3.5" fill="#7c3aed"/>
+<circle cx="634.7" cy="128.9" r="3.5" fill="#7c3aed"/>
+<circle cx="681.8" cy="128.9" r="3.5" fill="#7c3aed"/>
+<circle cx="728.8" cy="158.3" r="3.5" fill="#7c3aed"/>
+<circle cx="775.9" cy="251.8" r="3.5" fill="#7c3aed"/>
+<circle cx="822.9" cy="71.4" r="3.5" fill="#7c3aed"/>
+<circle cx="870.0" cy="116.4" r="3.5" fill="#7c3aed"/>
+<line x1="680" y1="75" x2="702" y2="75" stroke="#7c3aed" stroke-width="3"/>
+<text x="710" y="79" class="legend">Safety Reward</text>
+<polyline fill="none" stroke="#ea580c" stroke-width="3" points="70.0,77.5 117.1,83.2 164.1,77.5 211.2,83.2 258.2,77.5 305.3,83.2 352.4,77.5 399.4,71.8 446.5,83.2 493.5,77.5 540.6,77.5 587.6,77.5 634.7,77.5 681.8,77.5 728.8,77.5 775.9,83.2 822.9,77.5 870.0,77.5"/>
+<circle cx="70.0" cy="77.5" r="3.5" fill="#ea580c"/>
+<circle cx="117.1" cy="83.2" r="3.5" fill="#ea580c"/>
+<circle cx="164.1" cy="77.5" r="3.5" fill="#ea580c"/>
+<circle cx="211.2" cy="83.2" r="3.5" fill="#ea580c"/>
+<circle cx="258.2" cy="77.5" r="3.5" fill="#ea580c"/>
+<circle cx="305.3" cy="83.2" r="3.5" fill="#ea580c"/>
+<circle cx="352.4" cy="77.5" r="3.5" fill="#ea580c"/>
+<circle cx="399.4" cy="71.8" r="3.5" fill="#ea580c"/>
+<circle cx="446.5" cy="83.2" r="3.5" fill="#ea580c"/>
+<circle cx="493.5" cy="77.5" r="3.5" fill="#ea580c"/>
+<circle cx="540.6" cy="77.5" r="3.5" fill="#ea580c"/>
+<circle cx="587.6" cy="77.5" r="3.5" fill="#ea580c"/>
+<circle cx="634.7" cy="77.5" r="3.5" fill="#ea580c"/>
+<circle cx="681.8" cy="77.5" r="3.5" fill="#ea580c"/>
+<circle cx="728.8" cy="77.5" r="3.5" fill="#ea580c"/>
+<circle cx="775.9" cy="83.2" r="3.5" fill="#ea580c"/>
+<circle cx="822.9" cy="77.5" r="3.5" fill="#ea580c"/>
+<circle cx="870.0" cy="77.5" r="3.5" fill="#ea580c"/>
+<line x1="680" y1="95" x2="702" y2="95" stroke="#ea580c" stroke-width="3"/>
+<text x="710" y="99" class="legend">Exact JSON Rate</text>
+</svg>

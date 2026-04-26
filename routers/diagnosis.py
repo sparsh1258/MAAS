@@ -1,6 +1,7 @@
 import json
 from html import escape
 from pathlib import Path
+from typing import Any
 
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import HTMLResponse
@@ -8,7 +9,6 @@ from sqlalchemy.orm import Session
 
 from database import SessionLocal
 from environment import ActionModel, PrenatalEnvironment
-from maas_deep_policy import predict_for_user_id
 from models import DailyCheckin
 from xai_reward_model import calculate_reward, choose_urgency, featurize, infer_reference_condition
 from schemas import DiagnosisResponse
@@ -16,6 +16,26 @@ from schemas import DiagnosisResponse
 router = APIRouter(prefix="/diagnosis", tags=["Diagnosis"])
 env = PrenatalEnvironment()
 DEFAULT_CHECKPOINT = Path("trained_models/maas_deep_policy.pt")
+
+
+def _load_learned_prediction(user_id: int) -> dict[str, Any] | None:
+    if not DEFAULT_CHECKPOINT.exists():
+        return None
+
+    try:
+        # Keep Space startup lightweight unless a learned checkpoint is present.
+        from maas_deep_policy import predict_for_user_id
+    except Exception:
+        return None
+
+    try:
+        return predict_for_user_id(
+            user_id=user_id,
+            checkpoint_path=DEFAULT_CHECKPOINT,
+            db_path="prenatal.db",
+        )
+    except Exception:
+        return None
 
 
 def _render_diagnosis_html(
@@ -71,16 +91,7 @@ def diagnose_user(user_id: int, request: Request):
     observation = prompt.observation
     features = featurize(observation)
     reference_condition = infer_reference_condition(observation)
-    learned_prediction = None
-    if DEFAULT_CHECKPOINT.exists():
-        try:
-            learned_prediction = predict_for_user_id(
-                user_id=user_id,
-                checkpoint_path=DEFAULT_CHECKPOINT,
-                db_path="prenatal.db",
-            )
-        except Exception:
-            learned_prediction = None
+    learned_prediction = _load_learned_prediction(user_id)
 
     predicted_condition = reference_condition
     urgency = choose_urgency(reference_condition, features)
