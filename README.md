@@ -158,11 +158,13 @@ The repo is already packaged like an OpenEnv submission artifact.
 
 ## Training Results
 
-![GRPO Reward Trend](results/final_1p5b_reward_chart.svg)
+![Niva RL Training](<img width="1500" height="403" alt="Screenshot_2026-04-26_140300" src="https://github.com/user-attachments/assets/7d393566-15b4-4957-b4e5-b92cf17d6341" />
 
-![GRPO Quality Trend](results/final_1p5b_quality_chart.svg)
+)
 
-![Deep Policy Training Curves](results/maas_deep_policy_demo/training_curve.png)
+![Baseline v/s GRPO Training](<img width="1152" height="385" alt="Screenshot_2026-04-26_140326" src="https://github.com/user-attachments/assets/5a2efc8e-7658-439d-b2b5-55c234162eb9" />
+
+)
 
 | Task | Baseline | After RL Training |
 |------|----------|-------------------|
@@ -185,10 +187,6 @@ https://huggingface.co/spaces/sparsh122/MATERNAAI
   - [`results/make_deadline_graphs.py`](results/make_deadline_graphs.py)
 
 ### Inline Plots
-
-![Demo training curve](results/maas_deep_policy_demo/training_curve.png)
-
-Caption: earlier demo training curve showing the model / reward loop running end to end.
 
 The validator-required reward/loss PNGs are checked in above. The stronger post-fix GRPO evidence for the 1.5B run lives in:
 
