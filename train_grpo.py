@@ -85,8 +85,20 @@ def build_prompt(task: dict) -> list[dict[str, str]]:
         "Be safety-first, reason from observed evidence only, and return exactly one JSON object. "
         "Do not include markdown fences or any text outside the JSON."
     )
+    prompt_fn = task.get("prompt")
+    if callable(prompt_fn):
+        task_text = prompt_fn()
+    else:
+        # Fallback for competition tasks that only provide observation+description.
+        obs = task.get("observation", {})
+        task_text = (
+            f"Task: {task.get('id','unknown')} ({task.get('difficulty','unknown')})\n"
+            f"{task.get('description','')}\n\n"
+            "Observation (JSON):\n"
+            f"{json.dumps(obs, indent=2, ensure_ascii=False)}"
+        )
     user_prompt = (
-        f"{task['prompt']()}\n\n"
+        f"{task_text}\n\n"
         "This GRPO benchmark scores only the final diagnosis action.\n"
         "Use action_type='diagnose' and keep signal_name set to null.\n"
         "If the observation contains DANGER_ flags, do not under-escalate urgency.\n"
@@ -108,6 +120,26 @@ def build_dataset_records() -> list[dict[str, Any]]:
         }
         for task in TASKS
     ]
+
+
+def _default_grade(task: dict, action: ActionModel) -> dict[str, Any]:
+    """
+    Fallback grader for tasks that don't ship a `grade()` function.
+    """
+    expected_condition = task.get("expected_condition")
+    expected_urgency = task.get("expected_urgency")
+    if expected_condition not in VALID_CONDITIONS or expected_urgency not in VALID_URGENCIES:
+        return {"score": 0.0, "reason": "task_missing_expected_labels"}
+    got_condition = action.target or action.condition
+    got_urgency = action.urgency
+    score = 1.0 if (got_condition == expected_condition and got_urgency == expected_urgency) else 0.0
+    return {
+        "score": score,
+        "expected_condition": expected_condition,
+        "expected_urgency": expected_urgency,
+        "got_condition": got_condition,
+        "got_urgency": got_urgency,
+    }
 
 
 def _extract_text_blob(value: Any) -> str:
@@ -238,14 +270,18 @@ def _parse_completion_action(raw_text: str) -> tuple[ActionModel, str]:
 
 def _benchmark_reward(task: dict, action: ActionModel) -> tuple[float, float]:
     condition_label = action.target or action.condition
-    grade_result = task["grade"](
-        {
-            "condition": condition_label,
-            "urgency": action.urgency,
-            "rationale": "",
-            "target": condition_label,
-        }
-    )
+    grade_fn = task.get("grade")
+    if callable(grade_fn):
+        grade_result = grade_fn(
+            {
+                "condition": condition_label,
+                "urgency": action.urgency,
+                "rationale": "",
+                "target": condition_label,
+            }
+        )
+    else:
+        grade_result = _default_grade(task, action)
     benchmark_score = float(grade_result.get("score", 0.0))
     reward = (benchmark_score * BENCHMARK_REWARD_SCALE) + BENCHMARK_REWARD_OFFSET
     return benchmark_score, reward
