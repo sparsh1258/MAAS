@@ -472,8 +472,194 @@ const state = {
   tasks: [],
   analytics: {},
   selectedPatientId: null,
-  indiaGeoJson: null
+  indiaGeoJson: null,
+  demoMode: false
 };
+
+const DEMO_COORDINATOR_TOKEN = 'demo-coordinator-token';
+const DEMO_CREDENTIALS = {
+  email: 'coordinator@niva.local',
+  password: 'care123'
+};
+
+const demoStore = {
+  patients: [
+    {
+      patient_id: 101,
+      patient_name: 'Rani Devi',
+      region: 'Uttar Pradesh',
+      predicted_condition_label: 'Preeclampsia risk',
+      condition_flags: ['HIGH_BP', 'HEADACHE'],
+      effective_urgency: 'go_to_hospital_today',
+      last_checkin_at: '2026-04-26T08:10:00+05:30',
+      ai_summary: 'Persistent high blood pressure with headache needs same-day escalation and transport coordination.',
+      notes: 'ASHA worker reported severe headache and swelling in feet.',
+      profile: { name: 'Rani Devi', region: 'Uttar Pradesh', weeks_pregnant: 34 },
+      summary: { effective_urgency: 'go_to_hospital_today', condition_flags: ['HIGH_BP', 'HEADACHE'] },
+      tasks: [
+        { id: 9001, title: 'Arrange transport to district hospital', task_type: 'transport', status: 'open', due_at: '2026-04-26T12:00:00+05:30', priority: 'critical' },
+        { id: 9002, title: 'Call family to confirm referral', task_type: 'family_call', status: 'open', due_at: '2026-04-26T13:00:00+05:30', priority: 'high' }
+      ]
+    },
+    {
+      patient_id: 102,
+      patient_name: 'Sita Kumari',
+      region: 'Bihar',
+      predicted_condition_label: 'Fetal distress watch',
+      condition_flags: ['LOW_KICKS'],
+      effective_urgency: 'visit_phc_this_week',
+      last_checkin_at: '2026-04-26T09:00:00+05:30',
+      ai_summary: 'Reduced fetal movement needs PHC evaluation and repeat kick-count counselling within 24 hours.',
+      notes: 'Family says kick counts have been low since yesterday evening.',
+      profile: { name: 'Sita Kumari', region: 'Bihar', weeks_pregnant: 31 },
+      summary: { effective_urgency: 'visit_phc_this_week', condition_flags: ['LOW_KICKS'] },
+      tasks: [
+        { id: 9003, title: 'Schedule PHC follow-up visit', task_type: 'phc_visit', status: 'in_progress', due_at: '2026-04-27T10:00:00+05:30', priority: 'high' }
+      ]
+    },
+    {
+      patient_id: 103,
+      patient_name: 'Meena Sharma',
+      region: 'Punjab',
+      predicted_condition_label: 'Anemia prevention',
+      condition_flags: ['LOW_MEALS', 'LOW_ENERGY'],
+      effective_urgency: 'monitor_at_home',
+      last_checkin_at: '2026-04-26T07:35:00+05:30',
+      ai_summary: 'Nutrition and iron-adherence follow-up is needed, but no same-day escalation signals are visible.',
+      notes: '',
+      profile: { name: 'Meena Sharma', region: 'Punjab', weeks_pregnant: 24 },
+      summary: { effective_urgency: 'monitor_at_home', condition_flags: ['LOW_MEALS', 'LOW_ENERGY'] },
+      tasks: [
+        { id: 9004, title: 'Book follow-up nutrition call', task_type: 'follow_up', status: 'open', due_at: '2026-04-28T16:00:00+05:30', priority: 'routine' }
+      ]
+    }
+  ],
+  analytics: {
+    national: {
+      red_states: 1,
+      orange_states: 1,
+      yellow_states: 1,
+      green_states: 0,
+      same_day_cases: 1,
+      states_with_data: 3,
+      recommended_focus: 'Prioritise hospital transport readiness in Uttar Pradesh and fetal-movement surveillance in Bihar.',
+      minister_briefing: 'Today’s demo snapshot shows one same-day hospital escalation cluster and one PHC-watch cluster requiring close follow-up.',
+      ministry_actions: [
+        'Deploy same-day referral transport for high blood-pressure cases in Uttar Pradesh.',
+        'Push PHC follow-up for low-kick-count patients in Bihar within 24 hours.',
+        'Expand anaemia counselling and iron adherence support in Punjab.'
+      ],
+      top_risk_drivers: ['Blood-pressure escalation', 'Fetal movement surveillance', 'Nutrition and iron adherence']
+    },
+    india_map: {
+      states: [
+        { state: 'Uttar Pradesh', short: 'UP', x: 192, y: 180, patient_count: 1, critical_count: 1, watch_count: 0, risk_band: 'red', risk_band_label: 'Red alert', recommended_action: 'Move the patient to hospital today and keep transport on standby.' },
+        { state: 'Bihar', short: 'BR', x: 242, y: 174, patient_count: 1, critical_count: 0, watch_count: 1, risk_band: 'orange', risk_band_label: 'Orange watch', recommended_action: 'Book PHC assessment and repeat kick-count follow-up.' },
+        { state: 'Punjab', short: 'PB', x: 122, y: 122, patient_count: 1, critical_count: 0, watch_count: 0, risk_band: 'yellow', risk_band_label: 'Yellow monitor', recommended_action: 'Keep nutrition, iron, and fatigue monitoring active.' }
+      ]
+    },
+    state_groups: [
+      {
+        state: 'Uttar Pradesh',
+        top_condition: 'Preeclampsia risk',
+        risk_band: 'red',
+        patient_count: 1,
+        critical_count: 1,
+        watch_count: 0,
+        recent_escalations: 1,
+        dominant_flags: ['HIGH_BP', 'HEADACHE'],
+        recommended_action: 'Coordinate same-day referral and confirm hospital transport.',
+        prevention_methods: ['Blood pressure recheck protocol', 'Family counselling on danger signs', 'Transport coordination'],
+        selected: false
+      },
+      {
+        state: 'Bihar',
+        top_condition: 'Fetal distress watch',
+        risk_band: 'orange',
+        patient_count: 1,
+        critical_count: 0,
+        watch_count: 1,
+        recent_escalations: 1,
+        dominant_flags: ['LOW_KICKS'],
+        recommended_action: 'Ensure PHC review and recheck fetal movement within 24 hours.',
+        prevention_methods: ['Kick-count counselling', 'PHC visit scheduling', 'Follow-up family call'],
+        selected: false
+      },
+      {
+        state: 'Punjab',
+        top_condition: 'Anemia prevention',
+        risk_band: 'yellow',
+        patient_count: 1,
+        critical_count: 0,
+        watch_count: 0,
+        recent_escalations: 0,
+        dominant_flags: ['LOW_MEALS', 'LOW_ENERGY'],
+        recommended_action: 'Keep nutrition support and iron-adherence reminders active.',
+        prevention_methods: ['Iron counselling', 'Diet follow-up', 'Energy tracking'],
+        selected: false
+      }
+    ]
+  }
+};
+
+function cloneData(value){
+  return JSON.parse(JSON.stringify(value));
+}
+
+function getDemoPatient(patientId){
+  return demoStore.patients.find(patient => patient.patient_id === Number(patientId)) || null;
+}
+
+function buildDemoDashboardPayload(){
+  const region = document.getElementById('filter-region')?.value || '';
+  const status = document.getElementById('filter-status')?.value || '';
+  const patients = demoStore.patients.filter(patient => !region || patient.region === region);
+
+  const queue = patients.map(patient => {
+    const openTasks = patient.tasks.filter(task => task.status !== 'completed');
+    const nextTask = openTasks[0];
+    return {
+      patient_id: patient.patient_id,
+      patient_name: patient.patient_name,
+      region: patient.region,
+      predicted_condition_label: patient.predicted_condition_label,
+      condition_flags: patient.condition_flags,
+      effective_urgency: patient.effective_urgency,
+      last_checkin_at: patient.last_checkin_at,
+      next_task_title: nextTask ? nextTask.title : 'No pending tasks',
+      open_task_count: openTasks.length
+    };
+  });
+
+  const allTasks = patients.flatMap(patient => patient.tasks.map(task => ({ ...task, patient_id: patient.patient_id })));
+  const filteredTasks = status ? allTasks.filter(task => task.status === status) : allTasks;
+  const regions = [...new Set(demoStore.patients.map(patient => patient.region))];
+  const summary = {
+    critical_today: queue.filter(item => item.effective_urgency === 'go_to_hospital_today').length
+  };
+  const analytics = cloneData(demoStore.analytics);
+  analytics.state_groups = analytics.state_groups
+    .filter(group => !region || group.state === region)
+    .map(group => ({ ...group, selected: !!region && group.state === region }));
+  analytics.india_map.states = analytics.india_map.states
+    .filter(item => !region || item.state === region)
+    .map(item => ({ ...item, selected: !!region && item.state === region }));
+
+  return {
+    queue,
+    tasks: filteredTasks,
+    analytics,
+    regions,
+    summary
+  };
+}
+
+function enableDemoMode(){
+  state.demoMode = true;
+  state.token = DEMO_COORDINATOR_TOKEN;
+  localStorage.setItem('niva_coordinator_token', DEMO_COORDINATOR_TOKEN);
+  document.getElementById('viewer-line').textContent = 'Demo Coordinator · Offline mode';
+}
 
 const INDIA_MAP_ALIASES = {
   'Dadra and Nagar Haveli': 'Dadra and Nagar Haveli and Daman and Diu',
@@ -580,22 +766,31 @@ async function safeFetch(path, options={}){
 }
 
 async function login(){
+  const email = document.getElementById('login-email').value.trim();
+  const password = document.getElementById('login-password').value;
   try{
     const payload = await safeFetch('/auth/login', {
       method:'POST',
       headers:{'Content-Type':'application/json'},
       body: JSON.stringify({
-        email: document.getElementById('login-email').value.trim(),
-        password: document.getElementById('login-password').value,
+        email,
+        password,
         role:'coordinator'
       })
     });
+    state.demoMode = false;
     state.token = payload.access_token;
     localStorage.setItem('niva_coordinator_token', state.token);
     document.getElementById('viewer-line').textContent = `${payload.user.display_name} · Coordinator`;
     showApp();
     await loadDashboard();
   }catch(error){
+    if(email === DEMO_CREDENTIALS.email && password === DEMO_CREDENTIALS.password){
+      enableDemoMode();
+      showApp();
+      await loadDashboard();
+      return;
+    }
     showLogin(error.message);
   }
 }
@@ -605,11 +800,18 @@ async function bootstrap(){
     showLogin();
     return;
   }
+  if(state.token === DEMO_COORDINATOR_TOKEN){
+    enableDemoMode();
+    showApp();
+    await loadDashboard();
+    return;
+  }
   try{
     const me = await safeFetch('/auth/me', {headers: authHeaders()});
     if(me.role !== 'coordinator'){
       throw new Error('This login is not a coordinator account.');
     }
+    state.demoMode = false;
     document.getElementById('viewer-line').textContent = `${me.display_name} · Coordinator`;
     showApp();
     await loadDashboard();
@@ -994,6 +1196,18 @@ function renderTasks(tasks){
 }
 
 async function loadDashboard(){
+  if(state.demoMode){
+    const payload = buildDemoDashboardPayload();
+    state.queue = payload.queue || [];
+    state.tasks = payload.tasks || [];
+    state.analytics = payload.analytics || {};
+    renderStats(payload.summary || {}, state.analytics?.national || {});
+    renderRegions(payload.regions || []);
+    await renderAnalytics(state.analytics);
+    renderQueue(state.queue);
+    renderTasks(state.tasks);
+    return;
+  }
   const payload = await safeFetch(`/coordinator/dashboard${buildParams()}`, {headers: authHeaders()});
   state.queue = payload.queue || [];
   state.tasks = payload.tasks || [];
@@ -1007,6 +1221,11 @@ async function loadDashboard(){
 
 async function openPatient(patientId){
   state.selectedPatientId = patientId;
+  if(state.demoMode){
+    const detail = getDemoPatient(patientId);
+    if(detail) renderDrawer(detail);
+    return;
+  }
   const detail = await safeFetch(`/coordinator/patients/${patientId}`, {headers: authHeaders()});
   renderDrawer(detail);
 }
@@ -1147,6 +1366,22 @@ async function createCustomTask(){
 
 async function createTask(payload){
   if(!state.selectedPatientId) return;
+  if(state.demoMode){
+    const patient = getDemoPatient(state.selectedPatientId);
+    if(!patient) return;
+    patient.tasks.push({
+      id: Date.now(),
+      task_type: payload.task_type,
+      title: payload.title,
+      details: payload.details,
+      priority: payload.priority,
+      status: 'open',
+      due_at: null
+    });
+    await loadDashboard();
+    await openPatient(state.selectedPatientId);
+    return;
+  }
   await safeFetch(`/coordinator/patients/${state.selectedPatientId}/tasks`, {
     method:'POST',
     headers: authHeaders(),
@@ -1157,6 +1392,13 @@ async function createTask(payload){
 }
 
 async function updateTask(taskId, payload){
+  if(state.demoMode){
+    demoStore.patients.forEach(patient => {
+      const task = patient.tasks.find(item => String(item.id) === String(taskId));
+      if(task) Object.assign(task, payload);
+    });
+    return;
+  }
   await safeFetch(`/coordinator/tasks/${taskId}`, {
     method:'PATCH',
     headers: authHeaders(),
@@ -1172,6 +1414,7 @@ function closeDrawer(){
 function logout(){
   localStorage.removeItem('niva_coordinator_token');
   state.token = '';
+  state.demoMode = false;
   closeDrawer();
   showLogin();
 }
