@@ -184,4 +184,10 @@ def step_environment(action: ActionModel):
 
 @app.get("/state", tags=["OpenEnv"])
 def environment_state():
-    return openenv_env.state()
+    try:
+        return openenv_env.state()
+    except RuntimeError as exc:
+        return {
+            "status": "idle",
+            "detail": str(exc),
+        }
