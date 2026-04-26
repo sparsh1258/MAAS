@@ -4,7 +4,8 @@ description: >
   MAAS is a multi-turn maternal-health triage environment for OpenEnv Theme 3.1.
   The agent reasons across a three-day prenatal trajectory, receives only
   partial information at first, can gather more evidence with request actions,
-  and is scored with deterministic safety-first reward logic.
+  and is scored with deterministic safety-first reward logic plus competition-grade
+  synthetic scenario evaluation.
 
 action_space:
   type: text_json
@@ -50,6 +51,21 @@ observation_space:
       description: >
         Structured partially observable maternal-health observation for the
         current visible day in the three-day episode.
+      required_fields:
+        - user_id
+        - weeks_pregnant
+        - trimester
+        - region
+        - regional_access_tier
+        - risk_flags
+        - bp_trend
+        - history_flags
+        - days_of_data
+        - symptom_cluster
+        - bp_systolic_latest
+        - bp_diastolic_latest
+        - composite_risk_score
+        - composite_risk_score
     text_observation:
       type: string
       description: >
@@ -70,17 +86,76 @@ observation_space:
 
 reward:
   description: >
+<<<<<<< HEAD
     Reward is calculated inside the multi-turn environment. Information-gathering
     actions have a small cost, intermediate PHC referrals are rewarded only when
     clinically appropriate, and the final diagnosis reward composes condition,
     urgency, safety, efficiency, and over-escalation logic.
   range: [-0.25, 1.0]
+=======
+    Reward is calculated inside the environment using a deterministic triage rubric
+    plus competition upgrades. The final diagnosis reward includes condition + urgency
+    alignment, danger-flag escalation bonuses, latent-risk consistency bonus, and a
+    hard under-triage penalty.
+  range: [0.0, 1.0]
+>>>>>>> 2c74bbe (Upgrade MAAS to competition-grade offline RL env)
   notes:
     - request_bp_recheck: -0.05
     - request_kick_count: -0.05
     - advance_day: 0.0
     - refer_to_phc: +0.3 when PHC timing is appropriate, -0.2 when it is too slow
+<<<<<<< HEAD
     - Final diagnosis: condition + urgency + safety + efficiency - over-escalation penalty
+=======
+    - Danger bonus: +3.0 if DANGER flag present and agent escalates to hospital today with correct diagnosis
+    - Latent risk bonus: +1.5 if clinically consistent latent risk is identified by the reward model and diagnosis aligns
+    - Under-triage penalty: -8.0 if agent predicts low_risk when any DANGER flag is present
+    - Normalization: (reward + 15) / 32 clipped to [0.0, 1.0]
+
+evaluation:
+  benchmark_method: batch_evaluate
+  metrics:
+    - mean_reward
+    - accuracy
+    - safety_rate
+
+environment_stats:
+  total_scenarios: 400
+  conditions_covered: 6
+  difficulty_levels: 4
+  regional_variants: 4
+
+latent_risks:
+  - postpartum_hemorrhage
+  - maternal_infection
+  - dehydration
+  - intrahepatic_cholestasis
+  - placental_abruption
+  - maternal_exhaustion
+  - nutrition_deficit
+  - cholestasis
+  - ectopic_residual_risk
+  - maternal_sepsis
+  - deep_vein_thrombosis
+  - peripartum_cardiomyopathy
+
+tasks:
+  - task_1_easy
+  - task_2_medium
+  - task_3_hard
+  - task_4_anemia_severe
+  - task_5_preterm_early
+  - task_6_mixed_signals
+  - task_7_fetal_distress_silent
+  - task_8_rural_access
+  - task_9_hellp_proxy
+  - task_10_gestational_htn
+  - task_11_nutrition_collapse
+  - task_12_multiparous_risk
+  - task_13_adversarial_noise
+  - task_14_latent_cholestasis
+  - task_15_expert_triage
+>>>>>>> 2c74bbe (Upgrade MAAS to competition-grade offline RL env)
 
 training:
   baseline_script: train_grpo_multiturn.py

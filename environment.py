@@ -9,6 +9,7 @@ from pydantic import Field
 
 from database import SessionLocal
 from models import Checkin3Day, DailyCheckin, UserProfile
+from environment_scenarios import SCENARIO_REGISTRY
 from xai_reward_model import (
     SAFE_CONDITIONS,
     URGENCY_ORDER,
@@ -51,6 +52,7 @@ EPISODE_HIDEABLE_SIGNALS = [
     "latest_blood_pressure",
     "latest_kick_count",
     "latest_symptoms",
+    "symptom_cluster",
     "bp_trend",
     "avg_kick_count",
     "avg_meals",
@@ -70,6 +72,7 @@ class Observation(BaseModel):
     weeks_pregnant: int
     trimester: int
     region: str
+    regional_access_tier: str = "semi_urban"
     risk_flags: List[str]
     bp_trend: str
     avg_kick_count: Optional[float]
@@ -78,6 +81,10 @@ class Observation(BaseModel):
     latest_weight_kg: Optional[float]
     latest_energy: Optional[int]
     latest_breathlessness: Optional[int]
+    symptom_cluster: List[str] = Field(default_factory=list)
+    bp_systolic_latest: Optional[int] = None
+    bp_diastolic_latest: Optional[int] = None
+    composite_risk_score: float = 0.0
     history_flags: List[str]
     days_of_data: int
     masked_signals: List[str] = []
@@ -203,6 +210,9 @@ def _load_recent_data(user_id: int, days: int = 3):
 def _build_observation(user: UserProfile, daily: list, checkin3: Optional[Checkin3Day]) -> Observation:
     risk_flags: List[str] = []
     history_flags: List[str] = []
+    symptom_cluster: List[str] = []
+    bp_systolic_latest: Optional[int] = None
+    bp_diastolic_latest: Optional[int] = None
 
     if user.history_diabetes:
         history_flags.append("family_diabetes")
@@ -215,22 +225,32 @@ def _build_observation(user: UserProfile, daily: list, checkin3: Optional[Checki
 
     if daily:
         latest = daily[0]
+        bp_systolic_latest = latest.bp_systolic
+        bp_diastolic_latest = latest.bp_diastolic
         if latest.bp_systolic >= 160 or latest.bp_diastolic >= 110:
             risk_flags.append("DANGER_BP_CRITICAL")
         elif latest.bp_systolic >= 140 or latest.bp_diastolic >= 90:
             risk_flags.append("HIGH_BP")
+        if latest.symptom_headache:
+            symptom_cluster.append("headache")
+        if latest.symptom_swelling:
+            symptom_cluster.append("swelling")
         if latest.symptom_bleeding:
             risk_flags.append("DANGER_BLEEDING")
+            symptom_cluster.append("bleeding")
         if latest.symptom_blurred_vision and latest.symptom_headache:
             risk_flags.append("DANGER_VISION_HEADACHE")
+            symptom_cluster.append("blurred_vision")
         if latest.kick_count is not None and latest.kick_count < 3:
             risk_flags.append("DANGER_LOW_KICKS")
         if latest.symptom_swelling and latest.symptom_headache:
             risk_flags.append("HIGH_PREECLAMPSIA_SIGNAL")
         if latest.symptom_dizziness:
             risk_flags.append("DIZZINESS_SIGNAL")
+            symptom_cluster.append("dizziness")
         if latest.symptom_abdominal_pain:
             risk_flags.append("ABDOMINAL_PAIN_SIGNAL")
+            symptom_cluster.append("abdominal_pain")
 
     bp_trend = "stable"
     if len(daily) >= 2:
@@ -250,6 +270,48 @@ def _build_observation(user: UserProfile, daily: list, checkin3: Optional[Checki
         risk_flags.append("LOW_NUTRITION")
     if avg_kicks is not None and avg_kicks < 6:
         risk_flags.append("LOW_KICK_AVG")
+
+    # New derived risk flags requested.
+    if len(symptom_cluster) >= 3:
+        risk_flags.append("SYMPTOM_CLUSTER_HIGH")
+
+    # Rapid weight gain proxy (no baseline available: use a conservative proxy).
+    if checkin3 and checkin3.weight_kg >= 75 and ("HIGH_BP" in risk_flags or "DANGER_BP_CRITICAL" in risk_flags):
+        risk_flags.append("RAPID_WEIGHT_GAIN")
+
+    # Severe anemia proxy: breathlessness ≥8 + energy ≤2 + low meals.
+    if checkin3 and checkin3.breathlessness >= 8 and checkin3.energy_level <= 2 and avg_meals <= 1.5:
+        risk_flags.append("SEVERE_ANEMIA_PROXY")
+
+    # Maternal exhaustion: sleep < 4 + energy ≤ 3
+    if avg_sleep < 4 and checkin3 and checkin3.energy_level <= 3:
+        risk_flags.append("MATERNAL_EXHAUSTION")
+
+    # Preterm contraction proxy: weeks < 37 + abdominal pain
+    if user.weeks_pregnant < 37 and "abdominal_pain" in symptom_cluster:
+        risk_flags.append("PRETERM_CONTRACTION_PROXY")
+
+    # Regional access tier: derive from free-form region string.
+    region_l = (user.region or "").lower()
+    if "urban" in region_l:
+        regional_access_tier = "urban"
+    elif "rural" in region_l or "tribal" in region_l:
+        regional_access_tier = "rural"
+    else:
+        regional_access_tier = "semi_urban"
+
+    # Composite 0..1 score from flags (kept simple and deterministic).
+    composite_risk_score = 0.0
+    for f in set(risk_flags):
+        if f.startswith("DANGER_"):
+            composite_risk_score += 0.22
+        elif f.startswith("HIGH_") or f.startswith("WARN_"):
+            composite_risk_score += 0.10
+        elif f.endswith("_PROXY") or f.endswith("_HIGH") or f.endswith("_SIGNAL"):
+            composite_risk_score += 0.12
+        else:
+            composite_risk_score += 0.06
+    composite_risk_score = min(1.0, max(0.0, composite_risk_score))
     masked_signals = []
     danger_present = any(f.startswith("DANGER") for f in risk_flags)
     if not danger_present:
@@ -267,7 +329,9 @@ def _build_observation(user: UserProfile, daily: list, checkin3: Optional[Checki
         weeks_pregnant=user.weeks_pregnant,
         trimester=user.trimester,
         region=user.region,
+        regional_access_tier=regional_access_tier,
         risk_flags=sorted(set(risk_flags)),
+        composite_risk_score=composite_risk_score,
         bp_trend=bp_trend,
         avg_kick_count=avg_kicks,
         avg_meals=avg_meals,
@@ -275,6 +339,9 @@ def _build_observation(user: UserProfile, daily: list, checkin3: Optional[Checki
         latest_weight_kg=checkin3.weight_kg if checkin3 else None,
         latest_energy=checkin3.energy_level if checkin3 else None,
         latest_breathlessness=checkin3.breathlessness if checkin3 else None,
+        symptom_cluster=sorted(set(symptom_cluster)),
+        bp_systolic_latest=bp_systolic_latest,
+        bp_diastolic_latest=bp_diastolic_latest,
         history_flags=history_flags,
         days_of_data=len(daily),
         masked_signals=masked_signals,
@@ -345,6 +412,11 @@ def _mask_observation(observation: Observation, withheld_signals: List[str]) -> 
         masked.latest_energy = None
     if not signal_mask["latest_breathlessness"]:
         masked.latest_breathlessness = None
+    if not signal_mask.get("symptom_cluster", True) or not signal_mask.get("latest_symptoms", True):
+        masked.symptom_cluster = []
+    if not signal_mask.get("latest_blood_pressure", True):
+        masked.bp_systolic_latest = None
+        masked.bp_diastolic_latest = None
 
     masked.signal_mask = signal_mask
     masked.withheld_signals = sorted(withheld_signals)
@@ -971,6 +1043,7 @@ class MultiTurnPrenatalEnvironment(OpenEnvEnvironment):
 
     def __init__(self) -> None:
         self.current_trajectory: Optional[PatientTrajectory] = None
+        self._scenario_id: Optional[str] = None
         self.current_day: int = 1
         self.cumulative_reward: float = 0.0
         self.step_count: int = 0
@@ -987,10 +1060,13 @@ class MultiTurnPrenatalEnvironment(OpenEnvEnvironment):
 
     def reset(self, trajectory_id: Optional[str] = None) -> PromptObservation:
         chosen_id = trajectory_id or self._random_trajectory_id()
+        if str(chosen_id).startswith("env_"):
+            return self.load_scenario(str(chosen_id))
         if chosen_id not in MULTITURN_TRAJECTORIES:
             raise ValueError(f"Unknown trajectory_id: {chosen_id}")
 
         self.current_trajectory = MULTITURN_TRAJECTORIES[chosen_id]
+        self._scenario_id = None
         self.current_day = 1
         self.cumulative_reward = 0.0
         self.step_count = 0
@@ -1001,6 +1077,91 @@ class MultiTurnPrenatalEnvironment(OpenEnvEnvironment):
         prompt = self._build_prompt()
         self.last_prompt = prompt
         return prompt
+
+    def load_scenario(self, scenario_id: str) -> PromptObservation:
+        """
+        Offline load of a synthetic patient scenario from `environment_scenarios.py`.
+        """
+        scenario = next((s for s in SCENARIO_REGISTRY if s["scenario_id"] == scenario_id), None)
+        if scenario is None:
+            raise ValueError(f"Unknown scenario_id: {scenario_id}")
+
+        obs = Observation.model_validate(scenario["observation"])
+        symptoms = {name: True for name in (obs.symptom_cluster or [])}
+        day = TrajectoryDay(
+            bp_systolic=obs.bp_systolic_latest or 120,
+            bp_diastolic=obs.bp_diastolic_latest or 80,
+            kick_count=int(obs.avg_kick_count or 8),
+            symptoms=symptoms,
+            meals_count=int(round(obs.avg_meals or 3.0)),
+            energy_level=int(obs.latest_energy or 6),
+            sleep_hours=float(obs.avg_sleep or 7.0),
+        )
+        self.current_trajectory = PatientTrajectory(
+            trajectory_id=scenario_id,
+            region=obs.region,
+            weeks_pregnant=obs.weeks_pregnant,
+            trimester=obs.trimester,
+            history_flags=list(obs.history_flags or []),
+            days=[day],
+            target_condition=str(scenario["true_condition"]),
+            target_urgency=str(scenario["true_urgency"]),
+        )
+        self._scenario_id = scenario_id
+        self.current_day = 1
+        self.cumulative_reward = 0.0
+        self.step_count = 0
+        self.done = False
+        self.step_logs = []
+        self.bp_rechecks = set()
+        self.kick_requests = set()
+        prompt = self._build_prompt()
+        self.last_prompt = prompt
+        return prompt
+
+    def batch_evaluate(self, n: int = 50) -> dict[str, float]:
+        """
+        Offline benchmark over SCENARIO_REGISTRY.
+
+        Returns {"mean_reward", "accuracy", "safety_rate"} where safety_rate is
+        the fraction of DANGER scenarios escalated to hospital today.
+        """
+        from rl_risk_model import RL_RISK_MODEL
+
+        if n <= 0:
+            return {"mean_reward": 0.0, "accuracy": 0.0, "safety_rate": 0.0}
+        rng = random.Random(42)
+        sample = [rng.choice(SCENARIO_REGISTRY) for _ in range(n)]
+
+        total = 0.0
+        correct = 0
+        danger_total = 0
+        danger_safe = 0
+        for sc in sample:
+            obs = Observation.model_validate(sc["observation"])
+            pr = RL_RISK_MODEL.predict(obs)
+            breakdown = calculate_reward(pr.condition, pr.urgency, obs)
+            reward = self._normalize_reward_openenv(
+                raw_reward=breakdown.reward,
+                observation=obs,
+                predicted_condition=pr.condition,
+                predicted_urgency=pr.urgency,
+                latent_risks=breakdown.latent_risks,
+            )
+            total += reward
+            if pr.condition == sc["true_condition"]:
+                correct += 1
+            danger = any(f.startswith("DANGER_") for f in (obs.risk_flags or []))
+            if danger:
+                danger_total += 1
+                if pr.urgency == "go_to_hospital_today":
+                    danger_safe += 1
+
+        return {
+            "mean_reward": float(total / n),
+            "accuracy": float(correct / n),
+            "safety_rate": float(danger_safe / danger_total) if danger_total else 1.0,
+        }
 
     def _current_day_state(self) -> TrajectoryDay:
         if self.current_trajectory is None:
@@ -1053,12 +1214,37 @@ class MultiTurnPrenatalEnvironment(OpenEnvEnvironment):
             flags.append("ABDOMINAL_PAIN_SIGNAL")
         if symptoms.get("dizziness"):
             flags.append("DIZZINESS_SIGNAL")
+        if symptoms.get("vomiting"):
+            flags.append("VOMITING_SIGNAL")
+        cluster_count = sum(
+            1
+            for k in (
+                "headache",
+                "swelling",
+                "dizziness",
+                "bleeding",
+                "cramps",
+                "abdominal_pain",
+                "blurred_vision",
+                "vomiting",
+            )
+            if symptoms.get(k)
+        )
+        if cluster_count >= 3:
+            flags.append("SYMPTOM_CLUSTER_HIGH")
         if self.current_day >= 2 and self._bp_trend() == "rising":
             flags.append("BP_RISING_TREND")
         if self.current_day == 3:
             avg_meals = self._avg_meals()
             if avg_meals is not None and avg_meals < 2:
                 flags.append("LOW_NUTRITION")
+            avg_sleep = self._avg_sleep() or 0.0
+            if avg_sleep < 4.0 and day.energy_level <= 3:
+                flags.append("MATERNAL_EXHAUSTION")
+            if day.energy_level <= 2 and (8 if day.symptoms.get("breathlessness") else 0) >= 8 and (avg_meals or 3.0) <= 1.5:
+                flags.append("SEVERE_ANEMIA_PROXY")
+        if self.current_trajectory and self.current_trajectory.weeks_pregnant < 37 and symptoms.get("cramps"):
+            flags.append("PRETERM_CONTRACTION_PROXY")
         return flags
 
     def _avg_kicks(self) -> Optional[float]:
@@ -1083,12 +1269,36 @@ class MultiTurnPrenatalEnvironment(OpenEnvEnvironment):
         if self.current_trajectory is None:
             raise RuntimeError("No active trajectory. Call reset() first.")
         day = self._current_day_state()
+        flags = self._risk_flags()
+        composite_risk_score = 0.0
+        for f in set(flags):
+            if f.startswith("DANGER_"):
+                composite_risk_score += 0.22
+            elif f.startswith("HIGH_") or f.startswith("WARN_"):
+                composite_risk_score += 0.10
+            elif f.endswith("_PROXY") or f.endswith("_HIGH") or f.endswith("_SIGNAL"):
+                composite_risk_score += 0.12
+            else:
+                composite_risk_score += 0.06
+        composite_risk_score = min(1.0, max(0.0, composite_risk_score))
+        region_l = (self.current_trajectory.region or "").lower()
+        if "urban" in region_l:
+            access_tier = "urban"
+        elif "rural" in region_l or "tribal" in region_l:
+            access_tier = "rural"
+        else:
+            access_tier = "semi_urban"
+        visible_symptoms = self._visible_symptoms()
+        symptom_cluster = sorted([k for k, v in visible_symptoms.items() if v and k != "cramps"])
+        if visible_symptoms.get("cramps") and "abdominal_pain" not in symptom_cluster:
+            symptom_cluster.append("abdominal_pain")
         observation = Observation(
             user_id=0,
             weeks_pregnant=self.current_trajectory.weeks_pregnant,
             trimester=self.current_trajectory.trimester,
             region=self.current_trajectory.region,
-            risk_flags=self._risk_flags(),
+            regional_access_tier=access_tier,
+            risk_flags=flags,
             bp_trend=self._bp_trend(),
             avg_kick_count=self._avg_kicks(),
             avg_meals=self._avg_meals(),
@@ -1096,13 +1306,17 @@ class MultiTurnPrenatalEnvironment(OpenEnvEnvironment):
             latest_weight_kg=None,
             latest_energy=day.energy_level if self.current_day == 3 else None,
             latest_breathlessness=8 if day.symptoms.get("breathlessness") and self.current_day == 3 else None,
+            symptom_cluster=symptom_cluster,
+            bp_systolic_latest=day.bp_systolic,
+            bp_diastolic_latest=day.bp_diastolic,
+            composite_risk_score=composite_risk_score,
             history_flags=self._visible_history(),
             days_of_data=self.current_day,
             episode_day_index=self.current_day,
             total_episode_days=len(self.current_trajectory.days),
             belief_state={
                 "visible_day_count": float(self.current_day),
-                "danger_flag_count": float(sum(1 for flag in self._risk_flags() if flag.startswith("DANGER"))),
+                "danger_flag_count": float(sum(1 for flag in flags if flag.startswith("DANGER"))),
             },
             available_signals=self._available_signal_names(),
             withheld_signals=self._withheld_signal_names(),
@@ -1239,48 +1453,61 @@ class MultiTurnPrenatalEnvironment(OpenEnvEnvironment):
         self.step_logs.append(step_log)
         return step_log
 
-    def _normalize_final_reward(self, raw_reward: float) -> float:
-        normalized = (raw_reward + 1.3) / 3.3
-        return max(0.0, min(1.0, normalized))
+    def _normalize_reward_openenv(
+        self,
+        *,
+        raw_reward: float,
+        observation: Observation,
+        predicted_condition: str,
+        predicted_urgency: str,
+        latent_risks: dict,
+    ) -> float:
+        """
+        Reward upgrades + OpenEnv normalization per competition spec.
+
+        Normalize final reward to [0.0, 1.0] using (reward + 15) / 32.
+        """
+        reward = float(raw_reward)
+        danger_present = any(flag.startswith("DANGER_") for flag in (observation.risk_flags or []))
+        reference_condition = infer_reference_condition(observation)
+
+        # +3 bonus if agent catches danger with correct hospital urgency.
+        if danger_present and predicted_condition == reference_condition and predicted_urgency == "go_to_hospital_today":
+            reward += 3.0
+        # +1.5 bonus for clinically consistent latent risks.
+        if latent_risks and predicted_condition == reference_condition:
+            if any((isinstance(v, (int, float)) and float(v) >= 0.5) for v in latent_risks.values()):
+                reward += 1.5
+        # -8 hard penalty for low_risk under danger.
+        if danger_present and predicted_condition == "low_risk":
+            reward -= 8.0
+
+        normalized = (reward + 15.0) / 32.0
+        return float(max(0.0, min(1.0, normalized)))
 
     def _final_reward_components(self, condition: str, urgency: str) -> dict[str, Any]:
-        if self.current_trajectory is None:
-            raise RuntimeError("No active trajectory.")
-        condition_score = 1.0 if condition == self.current_trajectory.target_condition else 0.0
-        urgency_score = 0.5 if urgency == self.current_trajectory.target_urgency else 0.0
-        danger_present = self._danger_present()
-        if danger_present and urgency == "go_to_hospital_today":
-            safety_score = 0.3
-        elif danger_present and urgency != "go_to_hospital_today":
-            safety_score = -1.0
-        else:
-            safety_score = 0.0
-        efficiency_bonus = (
-            0.2
-            if condition_score == 1.0 and urgency_score == 0.5 and self.current_day <= 2
-            else 0.0
+        # Use global deterministic reward model, then upgrade + normalize.
+        prompt = self.last_prompt or self._build_prompt()
+        obs = prompt.observation
+        breakdown = calculate_reward(condition, urgency, obs)
+        normalized = self._normalize_reward_openenv(
+            raw_reward=breakdown.reward,
+            observation=obs,
+            predicted_condition=condition,
+            predicted_urgency=urgency,
+            latent_risks=breakdown.latent_risks,
         )
-        over_escalation_penalty = (
-            -0.3
-            if self.current_trajectory.target_condition == "low_risk" and urgency == "go_to_hospital_today"
-            else 0.0
+        comps: dict[str, Any] = dict(breakdown.reward_components)
+        comps.update(
+            {
+                "raw_reward": breakdown.reward,
+                "total_reward": normalized,
+                "reference_condition": breakdown.reference_condition,
+                "reference_urgency": breakdown.reference_urgency,
+                "latent_risks": breakdown.latent_risks,
+            }
         )
-        raw_reward = (
-            condition_score
-            + urgency_score
-            + safety_score
-            + efficiency_bonus
-            + over_escalation_penalty
-        )
-        return {
-            "condition_score": condition_score,
-            "urgency_score": urgency_score,
-            "safety_score": safety_score,
-            "efficiency_bonus": efficiency_bonus,
-            "over_escalation_penalty": over_escalation_penalty,
-            "raw_reward": raw_reward,
-            "total_reward": self._normalize_final_reward(raw_reward),
-        }
+        return comps
 
     def step(self, action: ActionModel | dict[str, Any]) -> StepResult:
         if self.done:
