@@ -59,88 +59,19 @@ VALID_URGENCIES = (
     "visit_phc_this_week",
     "go_to_hospital_today",
 )
-PROMPT_VARIANTS = (
-    "standard",
-    "safety_checklist",
-    "dominant_signal",
-    "brief_chart",
-)
 PARSE_MODE_REWARD = {
     "exact": 2.0,
     "recovered": 0.75,
     "keyword": -2.0,
     "invalid": -4.0,
 }
-BENCHMARK_REWARD_SCALE = 24.0
-BENCHMARK_REWARD_OFFSET = -6.0
-DIFFICULTY_MULTIPLIER = {
-    "easy": 1.0,
-    "medium": 1.1,
-    "hard": 1.25,
-}
+BENCHMARK_REWARD_SCALE = 20.0
+BENCHMARK_REWARD_OFFSET = -5.0
 SAFETY_REWARD_WEIGHT = 0.35
 INVALID_SAFETY_PENALTY = -1.5
-INVALID_FIELD_PENALTY = -1.5
-NON_DIAGNOSE_PENALTY = -5.0
-REPEATED_PAIR_PENALTY = -2.0
 
 
-def _danger_flags(observation: Any) -> list[str]:
-    return [flag for flag in (observation.risk_flags or []) if flag.startswith("DANGER")]
-
-
-def _observation_snapshot(task: dict[str, Any]) -> str:
-    observation = task["observation"]
-    history_flags = observation.history_flags or ["None"]
-    risk_flags = observation.risk_flags or ["None"]
-    danger_flags = _danger_flags(observation) or ["None"]
-    return (
-        f"Case: {task['name']} ({task['difficulty']})\n"
-        f"Weeks pregnant: {observation.weeks_pregnant} (trimester {observation.trimester})\n"
-        f"Region: {observation.region}\n"
-        f"Risk flags: {', '.join(risk_flags)}\n"
-        f"Danger flags: {', '.join(danger_flags)}\n"
-        f"BP trend: {observation.bp_trend}\n"
-        f"Kick count: {observation.avg_kick_count}\n"
-        f"Meals/day: {observation.avg_meals}\n"
-        f"Sleep hours: {observation.avg_sleep}\n"
-        f"Energy: {observation.latest_energy}/10\n"
-        f"Breathlessness: {observation.latest_breathlessness}/10\n"
-        f"History: {', '.join(history_flags)}\n"
-        f"Days of data: {observation.days_of_data}"
-    )
-
-
-def _variant_instructions(prompt_variant: str) -> str:
-    if prompt_variant == "safety_checklist":
-        return (
-            "Checklist before choosing labels:\n"
-            "1. If any DANGER_ flag is present, only choose hospital urgency.\n"
-            "2. Pick the single dominant condition, not every possible condition.\n"
-            "3. History flags raise suspicion, but active danger signals outweigh history.\n"
-            "4. If the case is reassuring with no danger signals, avoid over-escalation.\n"
-        )
-    if prompt_variant == "dominant_signal":
-        return (
-            "Focus on the dominant signal first:\n"
-            "- critical BP or strong preeclampsia symptoms -> preeclampsia\n"
-            "- very low kicks -> fetal_distress\n"
-            "- bleeding with abdominal pain -> preterm_risk\n"
-            "- metabolic strain with diabetes history -> gestational_diabetes\n"
-            "- poor nutrition with dizziness / fatigue -> anemia\n"
-            "- reassuring pattern with no active warning signs -> low_risk\n"
-        )
-    if prompt_variant == "brief_chart":
-        return (
-            "Write the answer as if you are closing a short triage chart note: "
-            "one diagnosis, one urgency, one sentence rationale, exact JSON only.\n"
-        )
-    return (
-        "Be clinically decisive and safety-first. Choose one primary condition and one urgency only.\n"
-    )
-
-
-def build_prompt(task: dict[str, Any], prompt_variant: str) -> list[dict[str, str]]:
+def build_prompt(task: dict) -> list[dict[str, str]]:
     schema = {
         "action_type": "diagnose",
         "signal_name": None,
@@ -154,18 +85,10 @@ def build_prompt(task: dict[str, Any], prompt_variant: str) -> list[dict[str, st
         "Do not include markdown fences or any text outside the JSON."
     )
     user_prompt = (
+        f"{task['prompt']()}\n\n"
         "This GRPO benchmark scores only the final diagnosis action.\n"
         "Use action_type='diagnose' and keep signal_name set to null.\n"
         "If the observation contains DANGER_ flags, do not under-escalate urgency.\n"
-        f"{_variant_instructions(prompt_variant)}\n"
-        "Observation snapshot:\n"
-        f"{_observation_snapshot(task)}\n\n"
-        "Original task prompt:\n"
-        f"{task['prompt']()}\n\n"
-        "Required reasoning style:\n"
-        "- prioritize active danger flags over background history\n"
-        "- avoid choosing low_risk when danger flags or strong acute symptoms are present\n"
-        "- avoid hospital escalation for clearly reassuring cases with no warning flags\n\n"
         "Return exactly this JSON schema:\n"
         f"{json.dumps(schema, indent=2)}"
     )
@@ -176,19 +99,14 @@ def build_prompt(task: dict[str, Any], prompt_variant: str) -> list[dict[str, st
 
 
 def build_dataset_records() -> list[dict[str, Any]]:
-    records: list[dict[str, Any]] = []
-    for task in TASKS:
-        for prompt_variant in PROMPT_VARIANTS:
-            records.append(
-                {
-                    "task_id": task["id"],
-                    "task_name": task["name"],
-                    "difficulty": task["difficulty"],
-                    "prompt_variant": prompt_variant,
-                    "prompt": build_prompt(task, prompt_variant),
-                }
-            )
-    return records
+    return [
+        {
+            "task_id": task["id"],
+            "difficulty": task["difficulty"],
+            "prompt": build_prompt(task),
+        }
+        for task in TASKS
+    ]
 
 
 def _extract_text_blob(value: Any) -> str:
@@ -234,24 +152,16 @@ def _first_label_match(raw_text: str, labels: tuple[str, ...]) -> str | None:
 
 
 def _normalize_action_payload(payload: dict[str, Any]) -> ActionModel:
+    # The OpenEnv `ActionModel` in this repo uses `target` for the condition label.
     condition = payload.get("condition") or payload.get("target")
     urgency = payload.get("urgency")
-    signal_name = payload.get("signal_name")
     action_type = payload.get("action_type")
-    if action_type not in {"assess", "request_signal", "diagnose"}:
-        if signal_name:
-            action_type = "request_signal"
-        elif condition or urgency:
-            action_type = "diagnose"
-        else:
-            action_type = None
+    if action_type not in {"assess", "diagnose"}:
+        action_type = "diagnose" if (condition or urgency) else "assess"
     return ActionModel(
-        condition=condition,
+        action_type=action_type or "diagnose",
+        target=condition,
         urgency=urgency,
-        rationale=payload.get("rationale"),
-        action_type=action_type,
-        signal_name=signal_name,
-        target=payload.get("target"),
     )
 
 
@@ -281,158 +191,72 @@ def _parse_completion_action(raw_text: str) -> tuple[ActionModel, str]:
     if candidate is not None:
         return _normalize_action_payload(candidate), parse_mode
 
-    keyword_action = ActionModel(
-        condition=_first_label_match(raw_text, VALID_CONDITIONS),
-        urgency=_first_label_match(raw_text, VALID_URGENCIES),
-        rationale="Keyword-recovered action from non-JSON completion.",
-    )
-    if keyword_action.condition or keyword_action.urgency:
-        keyword_action.action_type = "diagnose"
-        return keyword_action, "keyword"
+    keyword_target = _first_label_match(raw_text, VALID_CONDITIONS)
+    keyword_urgency = _first_label_match(raw_text, VALID_URGENCIES)
+    if keyword_target or keyword_urgency:
+        return (
+            ActionModel(
+                action_type="diagnose",
+                target=keyword_target,
+                urgency=keyword_urgency,
+            ),
+            "keyword",
+        )
 
-    return ActionModel(rationale="Unparseable completion."), "invalid"
+    return ActionModel(action_type="assess"), "invalid"
 
 
-def _benchmark_reward(task: dict[str, Any], action: ActionModel) -> tuple[float, float]:
+def _benchmark_reward(task: dict, action: ActionModel) -> tuple[float, float]:
     grade_result = task["grade"](
         {
-            "condition": action.condition,
+            "condition": action.target,
             "urgency": action.urgency,
-            "rationale": action.rationale,
-            "target": action.condition,
+            "rationale": "",
+            "target": action.target,
         }
     )
     benchmark_score = float(grade_result.get("score", 0.0))
-    difficulty_multiplier = DIFFICULTY_MULTIPLIER.get(task["difficulty"], 1.0)
-    reward = ((benchmark_score * BENCHMARK_REWARD_SCALE) + BENCHMARK_REWARD_OFFSET) * difficulty_multiplier
+    reward = (benchmark_score * BENCHMARK_REWARD_SCALE) + BENCHMARK_REWARD_OFFSET
     return benchmark_score, reward
 
 
 def _safety_reward(task: dict, action: ActionModel) -> float:
-    if action.condition not in VALID_CONDITIONS or action.urgency not in VALID_URGENCIES:
+    if action.target not in VALID_CONDITIONS or action.urgency not in VALID_URGENCIES:
         return INVALID_SAFETY_PENALTY
-    breakdown = calculate_reward(action.condition, action.urgency, task["observation"])
+    breakdown = calculate_reward(action.target, action.urgency, task["observation"])
     return float(breakdown.reward) * SAFETY_REWARD_WEIGHT
-
-
-def _field_reward(action: ActionModel) -> float:
-    reward = 0.0
-    reward += 0.75 if action.condition in VALID_CONDITIONS else INVALID_FIELD_PENALTY
-    reward += 0.75 if action.urgency in VALID_URGENCIES else INVALID_FIELD_PENALTY
-    return reward
-
-
-def _clinical_alignment_reward(task: dict[str, Any], action: ActionModel) -> float:
-    observation = task["observation"]
-    risk_flags = set(observation.risk_flags or [])
-    history_flags = set(observation.history_flags or [])
-    reward = 0.0
-
-    if any(flag.startswith("DANGER") for flag in risk_flags):
-        if action.urgency == "go_to_hospital_today":
-            reward += 3.0
-        elif action.urgency in VALID_URGENCIES:
-            reward -= 8.0
-        if action.condition == "low_risk":
-            reward -= 6.0
-
-    reassuring_case = (
-        not risk_flags
-        and observation.avg_kick_count is not None
-        and observation.avg_kick_count >= 8
-        and (observation.avg_meals or 0) >= 3
-        and (observation.avg_sleep or 0) >= 7
-        and (observation.latest_energy or 0) >= 6
-    )
-    if reassuring_case:
-        if action.condition == "low_risk" and action.urgency == "monitor_at_home":
-            reward += 2.5
-        elif action.urgency in {"visit_phc_this_week", "go_to_hospital_today"}:
-            reward -= 1.5
-
-    if "DANGER_BP_CRITICAL" in risk_flags or "HIGH_PREECLAMPSIA_SIGNAL" in risk_flags:
-        if action.condition == "preeclampsia":
-            reward += 1.5
-    if "DANGER_LOW_KICKS" in risk_flags or ((observation.avg_kick_count or 99) < 4):
-        if action.condition == "fetal_distress":
-            reward += 1.5
-    if "DANGER_BLEEDING" in risk_flags or "ABDOMINAL_PAIN_SIGNAL" in risk_flags:
-        if action.condition == "preterm_risk":
-            reward += 1.5
-    if "family_diabetes" in history_flags and (observation.avg_meals or 0) > 3.5:
-        if action.condition == "gestational_diabetes":
-            reward += 1.0
-    if "LOW_NUTRITION" in risk_flags or (observation.avg_meals or 99) < 2:
-        if action.condition == "anemia":
-            reward += 1.0
-
-    return reward
 
 
 def reward_fn(prompts, completions, task_id, log_extra=None, log_metric=None, **kwargs):
     task_lookup = {task["id"]: task for task in TASKS}
-    raw_entries: list[tuple[dict[str, Any], ActionModel, str, float, float, float, float]] = []
-
-    for completion, current_task_id in zip(completions, task_id):
-        task = task_lookup[current_task_id]
-        raw_text = _completion_text(completion)
-        action, parse_mode = _parse_completion_action(raw_text)
-        benchmark_score, benchmark_reward = _benchmark_reward(task, action)
-        try:
-            safety_reward = _safety_reward(task, action)
-        except Exception:
-            safety_reward = INVALID_SAFETY_PENALTY
-        clinical_alignment_reward = _clinical_alignment_reward(task, action)
-        raw_entries.append(
-            (
-                task,
-                action,
-                parse_mode,
-                benchmark_score,
-                benchmark_reward,
-                safety_reward,
-                clinical_alignment_reward,
-            )
-        )
-
-    pair_counts: dict[tuple[str, str], int] = {}
-    for _, action, _, _, _, _, _ in raw_entries:
-        pair_key = (action.condition or "", action.urgency or "")
-        pair_counts[pair_key] = pair_counts.get(pair_key, 0) + 1
-
     rewards: list[float] = []
     parse_modes: list[str] = []
     predicted_conditions: list[str] = []
     predicted_urgencies: list[str] = []
     benchmark_scores: list[float] = []
     safety_rewards: list[float] = []
-    clinical_rewards: list[float] = []
-    repetition_penalties: list[float] = []
 
-    for task, action, parse_mode, benchmark_score, benchmark_reward, safety_reward, clinical_alignment_reward in raw_entries:
-        action_reward = 0.75 if action.action_type == "diagnose" else NON_DIAGNOSE_PENALTY
+    for completion, current_task_id in zip(completions, task_id):
+        task = task_lookup[current_task_id]
+        raw_text = _completion_text(completion)
+        action, parse_mode = _parse_completion_action(raw_text)
+
+        benchmark_score, benchmark_reward = _benchmark_reward(task, action)
+        try:
+            safety_reward = _safety_reward(task, action)
+        except Exception:
+            safety_reward = INVALID_SAFETY_PENALTY
+
+        action_reward = 0.5 if action.action_type == "diagnose" else (-4.0 if action.action_type else 0.0)
         format_reward = PARSE_MODE_REWARD[parse_mode]
-        field_reward = _field_reward(action)
-        pair_key = (action.condition or "", action.urgency or "")
-        repetition_penalty = REPEATED_PAIR_PENALTY if pair_counts.get(pair_key, 0) > 1 and pair_key != ("", "") else 0.0
-        total_reward = (
-            benchmark_reward
-            + safety_reward
-            + clinical_alignment_reward
-            + format_reward
-            + action_reward
-            + field_reward
-            + repetition_penalty
-        )
+        total_reward = benchmark_reward + safety_reward + format_reward + action_reward
 
         rewards.append(round(float(total_reward), 4))
         parse_modes.append(parse_mode)
-        predicted_conditions.append(action.condition or "")
+        predicted_conditions.append(action.target or "")
         predicted_urgencies.append(action.urgency or "")
         benchmark_scores.append(round(benchmark_score, 4))
         safety_rewards.append(round(safety_reward, 4))
-        clinical_rewards.append(round(clinical_alignment_reward, 4))
-        repetition_penalties.append(round(repetition_penalty, 4))
 
     if callable(log_extra):
         log_extra("maas_parse_mode", parse_modes)
@@ -446,15 +270,11 @@ def reward_fn(prompts, completions, task_id, log_extra=None, log_metric=None, **
         log_metric("maas/mean_reward", sum(rewards) / total)
         log_metric("maas/mean_benchmark_score", sum(benchmark_scores) / total)
         log_metric("maas/mean_safety_reward", sum(safety_rewards) / total)
-        log_metric("maas/mean_clinical_alignment_reward", sum(clinical_rewards) / total)
-        log_metric("maas/mean_repetition_penalty", sum(repetition_penalties) / total)
         log_metric("maas/exact_json_rate", sum(mode == "exact" for mode in parse_modes) / total)
         log_metric(
             "maas/structured_output_rate",
             sum(mode in {"exact", "recovered", "keyword"} for mode in parse_modes) / total,
         )
-        unique_pairs = len({(condition, urgency) for condition, urgency in zip(predicted_conditions, predicted_urgencies)})
-        log_metric("maas/unique_prediction_pair_rate", unique_pairs / total)
     if rewards:
         floats = [float(r) for r in rewards]
         mean = statistics.fmean(floats)
