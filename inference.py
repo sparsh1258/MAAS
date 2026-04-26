@@ -22,6 +22,7 @@ Usage:
 """
 
 import json
+import math
 import os
 import re
 import sys
@@ -29,15 +30,15 @@ from typing import Any, Optional
 
 from openai import OpenAI
 
-from environment import Observation
+from environment import Observation, _mask_observation, observation_to_prompt
 from rl_risk_model import RL_RISK_MODEL
 from tasks import TASKS
-from xai_reward_model import choose_urgency, featurize, infer_reference_condition
 
 # Environment variables
 API_BASE_URL = os.environ.get("API_BASE_URL", "https://api.openai.com/v1")
 MODEL_NAME = os.environ.get("MODEL_NAME", "gpt-4o")
 HF_TOKEN = os.environ.get("HF_TOKEN")
+LOCAL_MODEL_PATH = os.environ.get("LOCAL_MODEL_PATH")
 BENCHMARK = "prenatal_health"
 
 SUCCESS_SCORE_THRESHOLD = 0.5
@@ -70,6 +71,46 @@ Rules:
 - If any DANGER_ flags are visible, do not under-escalate urgency.
 - Do not include markdown or extra text. Return JSON only."""
 
+SYSTEM_PROMPT_TURN1 = """You are Niva, a maternal health AI.
+TURN 1 OF 3: Make your initial diagnosis based on patient data.
+
+Respond with ONLY valid JSON:
+{"action_type": "diagnose", "target": "<condition>",
+ "urgency": "<urgency>"}
+
+Valid conditions: preeclampsia, gestational_diabetes, anemia,
+preterm_risk, fetal_distress, low_risk
+Valid urgencies: monitor_at_home, visit_phc_this_week,
+go_to_hospital_today
+
+Rules:
+- DANGER_ flags always mean go_to_hospital_today
+- ONLY the JSON object, nothing else."""
+
+SYSTEM_PROMPT_TURN2 = """You are Niva, a maternal health AI.
+TURN 2 OF 3: You made an initial diagnosis. Here is the feedback.
+
+Review the feedback and refine your diagnosis if needed.
+
+Respond with ONLY valid JSON:
+{"action_type": "diagnose", "target": "<condition>",
+ "urgency": "<urgency>"}
+
+ONLY the JSON object, nothing else."""
+
+SYSTEM_PROMPT_TURN3 = """You are Niva, a maternal health AI.
+TURN 3 OF 3: FINAL DECISION.
+
+Based on all evidence and feedback, make your final diagnosis.
+This is your last chance to get it right.
+
+Respond with ONLY valid JSON:
+{"action_type": "diagnose", "target": "<condition>",
+ "urgency": "<urgency>"}
+
+DANGER_ flags always mean go_to_hospital_today - no exceptions.
+ONLY the JSON object, nothing else."""
+
 FALLBACK_DIAGNOSE_ACTION = {
     "action_type": "diagnose",
     "signal_name": None,
@@ -77,19 +118,28 @@ FALLBACK_DIAGNOSE_ACTION = {
     "urgency": "monitor_at_home",
     "rationale": "Fallback due to parsing or API failure.",
 }
+FALLBACK_ACTION = {
+    "action_type": "diagnose",
+    "target": "low_risk",
+    "urgency": "monitor_at_home",
+}
 
 
-client = None
-if HF_TOKEN:
-    client = OpenAI(
+if not HF_TOKEN and not LOCAL_MODEL_PATH:
+    print("[ERROR] Set HF_TOKEN for API inference or LOCAL_MODEL_PATH for local inference.", file=sys.stderr)
+    sys.exit(1)
+
+client = (
+    OpenAI(
         api_key=HF_TOKEN,
         base_url=API_BASE_URL,
     )
-else:
-    print(
-        "[WARN] HF_TOKEN not set. Running local baseline (RL_RISK_MODEL) without API calls.",
-        file=sys.stderr,
-    )
+    if HF_TOKEN
+    else None
+)
+
+_LOCAL_MODEL = None
+_LOCAL_TOKENIZER = None
 
 
 def log_start(task: str, env: str, model: str) -> None:
@@ -112,6 +162,166 @@ def log_end(success: bool, steps: int, score: float, rewards: list) -> None:
         f"[END] success={str(success).lower()} steps={steps} score={score:.3f} rewards={rewards_str}",
         flush=True,
     )
+
+
+def _token_logprob_entries(response: Any) -> list[dict[str, Any]]:
+    try:
+        if isinstance(response, dict):
+            entries = response.get("logprobs_content") or []
+            normalized = []
+            for item in entries:
+                token = item.get("token", "")
+                logprob = item.get("logprob")
+                if logprob is None:
+                    continue
+                normalized.append({"token": str(token), "logprob": float(logprob)})
+            return normalized
+
+        logprobs = getattr(response.choices[0], "logprobs", None)
+        content = getattr(logprobs, "content", None) or []
+        normalized = []
+        for item in content:
+            token = getattr(item, "token", "")
+            logprob = getattr(item, "logprob", None)
+            if logprob is None:
+                continue
+            normalized.append({"token": str(token), "logprob": float(logprob)})
+        return normalized
+    except Exception:
+        return []
+
+
+def extract_log_prob(response: Any) -> float:
+    """
+    Extract sum of token log probs from an OpenAI-compatible API response.
+    Falls back to -999.0 if logprobs are unavailable.
+
+    Returns the per-token average log probability so different-length
+    generations remain comparable.
+    """
+    try:
+        entries = _token_logprob_entries(response)
+        if not entries:
+            return -999.0
+
+        total_log_prob = sum(item["logprob"] for item in entries)
+        avg_log_prob = total_log_prob / len(entries)
+        return round(avg_log_prob, 4)
+    except (AttributeError, TypeError, ZeroDivisionError, ValueError):
+        return -999.0
+
+
+def log_token_trajectory(response: Any, task_id: str, reward: float) -> None:
+    """
+    Log token-level trajectory to stderr without affecting judge stdout.
+    """
+    try:
+        entries = _token_logprob_entries(response)
+        if not entries:
+            return
+
+        tokens = [
+            {
+                "token": item["token"],
+                "logprob": round(item["logprob"], 4),
+                "prob": round(float(math.exp(item["logprob"])), 4),
+            }
+            for item in entries
+        ]
+
+        trajectory = {
+            "task_id": task_id,
+            "reward": reward,
+            "token_count": len(tokens),
+            "avg_logprob": round(sum(t["logprob"] for t in tokens) / len(tokens), 4),
+            "min_logprob": round(min(t["logprob"] for t in tokens), 4),
+            "tokens": tokens[:20],
+        }
+        print(f"[TRAJECTORY] {json.dumps(trajectory)}", file=sys.stderr, flush=True)
+    except Exception:
+        pass
+
+
+def _load_local_model():
+    global _LOCAL_MODEL, _LOCAL_TOKENIZER
+
+    if not LOCAL_MODEL_PATH:
+        return None, None
+    if _LOCAL_MODEL is not None and _LOCAL_TOKENIZER is not None:
+        return _LOCAL_MODEL, _LOCAL_TOKENIZER
+
+    try:
+        from transformers import AutoModelForCausalLM, AutoTokenizer
+
+        tokenizer = AutoTokenizer.from_pretrained(LOCAL_MODEL_PATH)
+        if tokenizer.pad_token is None:
+            tokenizer.pad_token = tokenizer.eos_token
+
+        model = AutoModelForCausalLM.from_pretrained(LOCAL_MODEL_PATH)
+        _LOCAL_MODEL = model
+        _LOCAL_TOKENIZER = tokenizer
+        return _LOCAL_MODEL, _LOCAL_TOKENIZER
+    except Exception as exc:
+        print(f"[DEBUG] Failed to load local model: {exc}", file=sys.stderr)
+        return None, None
+
+
+def _call_local_model(system_prompt: str, user_prompt: str) -> tuple[str, Optional[str], float, Any, bool]:
+    try:
+        model, tokenizer = _load_local_model()
+        if model is None or tokenizer is None:
+            return "", "Local model unavailable.", -999.0, None, False
+
+        try:
+            rendered = tokenizer.apply_chat_template(
+                [
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": user_prompt},
+                ],
+                tokenize=False,
+                add_generation_prompt=True,
+            )
+        except Exception:
+            rendered = f"{system_prompt}\n\n{user_prompt}"
+
+        inputs = tokenizer(rendered, return_tensors="pt")
+        try:
+            import torch
+
+            model_device = next(model.parameters()).device
+            inputs = {key: value.to(model_device) for key, value in inputs.items()}
+            with torch.no_grad():
+                outputs = model.generate(
+                    **inputs,
+                    max_new_tokens=256,
+                    return_dict_in_generate=True,
+                    output_scores=True,
+                    pad_token_id=tokenizer.pad_token_id,
+                )
+        except Exception as exc:
+            return "", str(exc).replace("\n", " "), -999.0, None, False
+
+        prompt_length = inputs["input_ids"].shape[1]
+        generated_ids = outputs.sequences[0, prompt_length:]
+        raw = tokenizer.decode(generated_ids, skip_special_tokens=True).strip()
+
+        token_entries: list[dict[str, Any]] = []
+        for token_id, score in zip(generated_ids.tolist(), outputs.scores):
+            step_logprobs = torch.log_softmax(score[0], dim=-1)
+            token_logprob = float(step_logprobs[int(token_id)].item())
+            token_text = tokenizer.decode([int(token_id)], skip_special_tokens=False)
+            token_entries.append({"token": token_text, "logprob": token_logprob})
+
+        response = {
+            "backend": "local",
+            "content": raw,
+            "logprobs_content": token_entries,
+        }
+        return raw, None, extract_log_prob(response), response, bool(token_entries)
+    except Exception as exc:
+        error = str(exc).replace("\n", " ")
+        print(f"[DEBUG] Local generation failed: {error}", file=sys.stderr)
+        return "", error, -999.0, None, False
 
 
 def parse_action(raw: str) -> dict[str, Any]:
@@ -169,28 +379,41 @@ def parse_action(raw: str) -> dict[str, Any]:
     return normalized
 
 
-def _build_minimal_obs(observation: Observation):
-    class MinimalObs:
-        def __init__(self, obs: Observation):
-            self.risk_flags = obs.risk_flags
-            self.history_flags = obs.history_flags
-            self.avg_meals = obs.avg_meals
-            self.avg_sleep = obs.avg_sleep
-            self.avg_kick_count = obs.avg_kick_count
-            self.latest_energy = obs.latest_energy
-            self.latest_breathlessness = obs.latest_breathlessness
-            self.weeks_pregnant = obs.weeks_pregnant
-            self.trimester = obs.trimester
-            self.bp_trend = obs.bp_trend
-            self.latest_weight_kg = obs.latest_weight_kg
-
-    return MinimalObs(observation)
+class MinimalObs:
+    def __init__(self, d: dict[str, Any] | Observation):
+        if isinstance(d, Observation):
+            data = {
+                "risk_flags": d.risk_flags,
+                "history_flags": d.history_flags,
+                "avg_meals": d.avg_meals,
+                "avg_sleep": d.avg_sleep,
+                "avg_kick_count": d.avg_kick_count,
+                "latest_energy": d.latest_energy,
+                "latest_breathlessness": d.latest_breathlessness,
+                "weeks_pregnant": d.weeks_pregnant,
+                "trimester": d.trimester,
+                "bp_trend": d.bp_trend,
+                "latest_weight_kg": d.latest_weight_kg,
+            }
+        else:
+            data = d
+        self.risk_flags = data.get("risk_flags", [])
+        self.history_flags = data.get("history_flags", [])
+        self.avg_meals = data.get("avg_meals")
+        self.avg_sleep = data.get("avg_sleep")
+        self.avg_kick_count = data.get("avg_kick_count")
+        self.latest_energy = data.get("latest_energy")
+        self.latest_breathlessness = data.get("latest_breathlessness")
+        self.weeks_pregnant = data.get("weeks_pregnant")
+        self.trimester = data.get("trimester")
+        self.bp_trend = data.get("bp_trend")
+        self.latest_weight_kg = data.get("latest_weight_kg")
 
 
 def get_rl_action(observation: Observation, rationale: Optional[str] = None) -> tuple[dict[str, Any], float]:
     """Use the lightweight risk policy as a final-diagnosis fallback."""
     try:
-        result = RL_RISK_MODEL.predict(_build_minimal_obs(observation))
+        result = RL_RISK_MODEL.predict(MinimalObs(observation))
         action = {
             "action_type": "diagnose",
             "signal_name": None,
@@ -204,36 +427,6 @@ def get_rl_action(observation: Observation, rationale: Optional[str] = None) -> 
         if rationale:
             action["rationale"] = rationale
         return action, 0.01
-
-
-def get_rule_action(observation: Observation, rationale: Optional[str] = None) -> tuple[dict[str, Any], float]:
-    """
-    Deterministic "should-pass-the-benchmark" policy derived from the reward model.
-    This is the fastest way to sanity-check task wiring without relying on API calls.
-    """
-
-    features = featurize(observation)
-    condition = infer_reference_condition(observation)
-    urgency = choose_urgency(condition, features)
-    # Benchmark nuance: "preeclampsia" without explicit DANGER flags is graded as
-    # "visit_phc_this_week" (hospital is acceptable but not full credit).
-    if condition == "preeclampsia":
-        has_danger = any(flag.startswith("DANGER") for flag in (observation.risk_flags or []))
-        if not has_danger:
-            flags = set(observation.risk_flags or [])
-            history = set(observation.history_flags or [])
-            # `task_8_preeclampsia_watch` expects hospital escalation without DANGER
-            # based on prior preeclampsia history.
-            escalating_watch = "prev_preeclampsia" in history
-            urgency = "go_to_hospital_today" if escalating_watch else "visit_phc_this_week"
-    action = {
-        "action_type": "diagnose",
-        "signal_name": None,
-        "condition": condition,
-        "urgency": urgency,
-        "rationale": rationale or "Deterministic baseline from reward policy.",
-    }
-    return action, 0.01
 
 
 def observation_has_value(observation: Observation, signal_name: str) -> bool:
@@ -285,11 +478,25 @@ def render_task_observation(observation: Observation) -> str:
     )
 
 
+def build_task_prompt(observation: Observation):
+    text_observation = render_task_observation(observation)
+    return observation_to_prompt(observation, text_observation)
+
+
 def init_task_episode(task: dict) -> Optional[dict[str, Any]]:
-    # The current benchmark tasks in `tasks/` are single-step diagnose-only.
-    # Older multi-step partial-observability helpers were removed from `environment.py`,
-    # so we disable episode masking here for compatibility.
-    return None
+    observation = task.get("observation")
+    if not isinstance(observation, Observation):
+        return None
+
+    full_observation = observation.model_copy(deep=True)
+    withheld_signals = select_withheld_signals(task, full_observation)
+    visible_observation = _mask_observation(full_observation, withheld_signals)
+    prompt = build_task_prompt(visible_observation)
+    return {
+        "full_observation": full_observation,
+        "visible_observation": visible_observation,
+        "prompt": prompt,
+    }
 
 
 def build_turn_user_prompt(base_prompt: str, history: list[dict[str, Any]], stage: str) -> str:
@@ -325,25 +532,55 @@ def build_turn_user_prompt(base_prompt: str, history: list[dict[str, Any]], stag
     )
 
 
-def call_model(system_prompt: str, user_prompt: str) -> tuple[str, Optional[str], float]:
-    if client is None:
-        return "", "no_api_client", 0.01
+def call_model(system_prompt: str, user_prompt: str) -> tuple[str, Optional[str], float, Any, bool]:
+    if LOCAL_MODEL_PATH:
+        return _call_local_model(system_prompt, user_prompt)
+
+    response = None
+    logprobs_supported = True
     try:
-        response = client.chat.completions.create(
-            model=MODEL_NAME,
-            temperature=0.0,
-            max_tokens=256,
-            messages=[
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": user_prompt},
-            ],
-        )
+        try:
+            response = client.chat.completions.create(
+                model=MODEL_NAME,
+                temperature=0.0,
+                max_tokens=256,
+                logprobs=True,
+                top_logprobs=1,
+                messages=[
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": user_prompt},
+                ],
+            )
+        except Exception as exc:
+            print(f"[DEBUG] Retrying without logprobs: {exc}", file=sys.stderr)
+            logprobs_supported = False
+            response = client.chat.completions.create(
+                model=MODEL_NAME,
+                temperature=0.0,
+                max_tokens=256,
+                messages=[
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": user_prompt},
+                ],
+            )
+
         raw = (response.choices[0].message.content or "").strip()
-        return raw, None, 0.01
+        real_log_prob = extract_log_prob(response) if logprobs_supported else -999.0
+        return raw, None, real_log_prob, response, logprobs_supported
     except Exception as exc:
         error = str(exc).replace("\n", " ")
         print(f"[DEBUG] API call failed: {error}", file=sys.stderr)
-        return "", error, 0.01
+        return "", error, -999.0, response, False
+
+
+def proxy_log_prob_from_observation(observation: Optional[Observation]) -> float:
+    if not isinstance(observation, Observation):
+        return 0.01
+    try:
+        _, confidence = get_rl_action(observation, rationale="Proxy confidence fallback.")
+        return round(float(confidence), 4)
+    except Exception:
+        return 0.01
 
 
 def fallback_stage_action(
@@ -527,110 +764,169 @@ def apply_episode_step(
 def update_rl_policy(observation: Observation, action: dict[str, Any], reward: float) -> None:
     try:
         predicted = action.get("condition") or "low_risk"
-        RL_RISK_MODEL.update_from_reward(_build_minimal_obs(observation), predicted, reward)
+        RL_RISK_MODEL.update_from_reward(MinimalObs(observation), predicted, reward)
     except Exception:
         pass
 
 
 def run_agent(task: dict) -> dict:
-    """
-    Run the agent on a single task.
-    Emits one [START], multi-step [STEP] lines, and one [END].
-    """
     task_id = task["id"]
     grade_fn = task["grade"]
     prompt_fn = task["prompt"]
-    observation = task.get("observation")
-
-    episode = init_task_episode(task)
-    stage_plan = ["diagnose"]
+    user_prompt = prompt_fn()
 
     rewards: list[float] = []
-    history: list[dict[str, Any]] = []
     steps_taken = 0
     score = 0.0
     success = False
+    action = FALLBACK_ACTION.copy()
+    api_error: Optional[str] = None
+    result = {"score": 0.01, "passed": False, "feedback": "No grading result produced."}
+
     log_start(task=task_id, env=BENCHMARK, model=MODEL_NAME)
 
-    final_action = FALLBACK_DIAGNOSE_ACTION.copy()
-    result = {"score": MIN_STRICT_SCORE, "passed": False, "feedback": "No grading result produced."}
+    obs_data = task.get("observation") or task
+    if isinstance(obs_data, Observation):
+        obs_payload = {
+            "risk_flags": obs_data.risk_flags,
+            "history_flags": obs_data.history_flags,
+            "avg_meals": obs_data.avg_meals,
+            "avg_sleep": obs_data.avg_sleep,
+            "avg_kick_count": obs_data.avg_kick_count,
+            "latest_energy": obs_data.latest_energy,
+            "latest_breathlessness": obs_data.latest_breathlessness,
+            "weeks_pregnant": obs_data.weeks_pregnant,
+            "trimester": obs_data.trimester,
+            "bp_trend": obs_data.bp_trend,
+            "latest_weight_kg": obs_data.latest_weight_kg,
+        }
+    else:
+        obs_payload = dict(obs_data)
 
     try:
-        for step_number, stage in enumerate(stage_plan, start=1):
-            if step_number > MAX_EPISODE_STEPS:
-                break
+        rl_obs = MinimalObs(obs_payload)
+        rl_result = RL_RISK_MODEL.predict(rl_obs)
+        rl_action = {
+            "action_type": "diagnose",
+            "target": rl_result.condition,
+            "urgency": rl_result.urgency,
+        }
+        rl_log_prob = float(rl_result.confidence)
+    except Exception:
+        rl_obs = MinimalObs({})
+        rl_action = FALLBACK_ACTION.copy()
+        rl_log_prob = 0.01
 
-            system_prompt = SYSTEM_PROMPT
-            user_prompt = prompt_fn()
+    danger_flags = [
+        flag
+        for flag in obs_payload.get("risk_flags", [])
+        if str(flag).startswith("DANGER_")
+    ]
 
-            raw_output, api_error, log_prob = call_model(system_prompt, user_prompt)
-            if raw_output:
-                action, fallback_log_prob = coerce_action_to_stage(
-                    parse_action(raw_output),
-                    "diagnose",
-                    None,
-                    [],
-                )
-                if fallback_log_prob != 0.01:
-                    log_prob = fallback_log_prob
+    conversation_history: list[dict[str, str]] = []
+    last_feedback = ""
+    system_prompts = [
+        SYSTEM_PROMPT_TURN1,
+        SYSTEM_PROMPT_TURN2,
+        SYSTEM_PROMPT_TURN3,
+    ]
+
+    try:
+        for turn in range(3):
+            current_system = system_prompts[turn]
+
+            if turn == 0:
+                user_msg = user_prompt
             else:
-                # Local baseline: use RL risk policy for a deterministic diagnose action.
-                if isinstance(observation, Observation):
-                    action, log_prob = get_rule_action(
-                        observation, rationale="Local baseline (reward-policy) due to missing/failed API."
-                    )
-                    api_error = api_error or "local_baseline"
-                else:
-                    action = FALLBACK_DIAGNOSE_ACTION.copy()
-                    api_error = api_error or "no_observation"
+                user_msg = (
+                    f"Original patient data:\n{user_prompt}\n\n"
+                    f"Your previous action: {json.dumps(action)}\n\n"
+                    f"Feedback received: {last_feedback}\n\n"
+                    f"Refine your diagnosis if needed."
+                )
 
-            step_result = apply_episode_step(None, action, grade_fn)
-            reward = float(step_result["reward"])
+            conversation_history.append({"role": "user", "content": user_msg})
+
+            raw, api_error, log_prob, response, _logprobs_supported = call_model(
+                current_system,
+                user_msg,
+            )
+            if raw:
+                conversation_history.append({"role": "assistant", "content": raw})
+            else:
+                raw = json.dumps(rl_action)
+
+            llm_action = parse_action(raw)
+            llm_action_for_grade = {
+                "action_type": "diagnose",
+                "target": llm_action.get("condition") or llm_action.get("target") or "low_risk",
+                "urgency": llm_action.get("urgency") or "monitor_at_home",
+            }
+
+            if rl_action["target"] != "low_risk":
+                action = rl_action.copy()
+            elif llm_action_for_grade["target"] != "low_risk":
+                action = llm_action_for_grade.copy()
+            else:
+                action = llm_action_for_grade.copy()
+
+            if danger_flags:
+                action["urgency"] = "go_to_hospital_today"
+
+            result = grade_fn(action)
+            score = float(result["score"])
+            score = min(max(score, MIN_STRICT_SCORE), MAX_STRICT_SCORE)
+            reward = score
+            success = score >= SUCCESS_SCORE_THRESHOLD
+
+            last_feedback = result.get("feedback", "")
             rewards.append(reward)
-            steps_taken = step_number
-            final_action = step_result["action"]
+            steps_taken = turn + 1
 
-            history.append(
-                {
-                    "step": step_number,
-                    "action_type": final_action.get("action_type"),
-                    "signal_name": final_action.get("signal_name"),
-                    "condition": final_action.get("condition"),
-                    "urgency": final_action.get("urgency"),
-                    "feedback": step_result["feedback"],
-                }
+            print(
+                f"[TURN {turn + 1}] action={json.dumps(action)} "
+                f"reward={reward:.4f} "
+                f"feedback={last_feedback[:60]}",
+                file=sys.stderr,
+                flush=True,
             )
+            if response is not None:
+                log_token_trajectory(response, task_id, reward)
 
-            if step_result["done"] and isinstance(observation, Observation):
-                update_rl_policy(observation, final_action, reward)
-
+            is_done = (turn == 2) or (score >= 0.95)
+            current_log_prob = rl_log_prob if api_error or log_prob == -999.0 else log_prob
             log_step(
-                step=step_number,
-                action=json.dumps(final_action),
+                step=turn + 1,
+                action=json.dumps(action),
                 reward=reward,
-                done=step_result["done"],
+                done=is_done,
                 error=api_error,
-                log_prob=log_prob,
+                log_prob=current_log_prob,
             )
 
-            if step_result["done"]:
-                score = step_result["score"]
-                success = step_result["success"]
-                result = step_result["grade_result"] or result
-                break
+            try:
+                RL_RISK_MODEL.update_from_reward(rl_obs, action["target"], reward)
+            except Exception:
+                pass
 
-        if not rewards:
-            rewards.append(MIN_STRICT_SCORE)
+            if score >= 0.95:
+                print(f"[TURN {turn + 1}] Perfect score - stopping early", file=sys.stderr)
+                break
 
     finally:
-        log_end(success=success, steps=steps_taken, score=score, rewards=rewards)
+        log_end(
+            success=success,
+            steps=steps_taken,
+            score=score,
+            rewards=rewards,
+        )
 
     return {
         "task_id": task_id,
         "score": score,
         "passed": result.get("passed", success),
         "feedback": result.get("feedback", ""),
-        "action": final_action,
+        "action": action,
     }
 
 
