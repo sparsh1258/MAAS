@@ -49,6 +49,276 @@ def root():
         return FileResponse(PREVIEW_FILE)
     return {"message": "Prenatal Health Monitor API is running"}
 
+
+@app.get("/openenv-demo", include_in_schema=False)
+def openenv_demo():
+    return HTMLResponse(
+        """
+        <html>
+          <head>
+            <title>MAAS OpenEnv Demo</title>
+            <meta name="viewport" content="width=device-width, initial-scale=1" />
+            <style>
+              :root { color-scheme: light; }
+              body {
+                margin: 0;
+                font-family: "Segoe UI", Arial, sans-serif;
+                background: linear-gradient(180deg, #fff8f5 0%, #f8fafc 100%);
+                color: #1f2937;
+              }
+              .shell {
+                max-width: 1100px;
+                margin: 0 auto;
+                padding: 32px 20px 48px;
+              }
+              .hero, .card {
+                background: rgba(255, 255, 255, 0.95);
+                border: 1px solid #e5e7eb;
+                border-radius: 24px;
+                box-shadow: 0 16px 40px rgba(15, 23, 42, 0.08);
+              }
+              .hero {
+                padding: 28px;
+                margin-bottom: 22px;
+              }
+              .hero h1 {
+                margin: 0 0 10px;
+                font-size: 36px;
+                color: #0f172a;
+              }
+              .hero p {
+                margin: 0;
+                max-width: 760px;
+                line-height: 1.6;
+                color: #475569;
+              }
+              .links {
+                display: flex;
+                flex-wrap: wrap;
+                gap: 10px;
+                margin-top: 18px;
+              }
+              .links a, button {
+                border: none;
+                border-radius: 999px;
+                padding: 10px 16px;
+                font: inherit;
+                font-weight: 700;
+                cursor: pointer;
+                text-decoration: none;
+                transition: transform 0.15s ease, box-shadow 0.15s ease;
+              }
+              .links a, .primary {
+                background: linear-gradient(135deg, #e07590, #c9a8e8);
+                color: white;
+                box-shadow: 0 10px 24px rgba(224, 117, 144, 0.25);
+              }
+              .secondary {
+                background: #eef2ff;
+                color: #4338ca;
+              }
+              .muted {
+                background: #f8fafc;
+                color: #334155;
+              }
+              .links a:hover, button:hover {
+                transform: translateY(-1px);
+              }
+              .grid {
+                display: grid;
+                grid-template-columns: 1.1fr 0.9fr;
+                gap: 20px;
+              }
+              .card {
+                padding: 22px;
+              }
+              .card h2 {
+                margin: 0 0 14px;
+                font-size: 20px;
+                color: #0f172a;
+              }
+              .stack {
+                display: flex;
+                flex-direction: column;
+                gap: 12px;
+              }
+              .actions {
+                display: flex;
+                flex-wrap: wrap;
+                gap: 10px;
+              }
+              textarea, pre {
+                width: 100%;
+                box-sizing: border-box;
+                border-radius: 18px;
+                border: 1px solid #dbe4f0;
+                background: #0f172a;
+                color: #e2e8f0;
+                padding: 14px;
+                font: 13px/1.5 Consolas, "Courier New", monospace;
+              }
+              textarea {
+                min-height: 140px;
+                resize: vertical;
+              }
+              pre {
+                min-height: 220px;
+                overflow: auto;
+                white-space: pre-wrap;
+                word-break: break-word;
+              }
+              .status {
+                display: inline-flex;
+                align-items: center;
+                gap: 8px;
+                border-radius: 999px;
+                padding: 8px 12px;
+                background: #dcfce7;
+                color: #166534;
+                font-weight: 700;
+              }
+              .hint {
+                font-size: 14px;
+                color: #64748b;
+                line-height: 1.6;
+              }
+              @media (max-width: 900px) {
+                .grid {
+                  grid-template-columns: 1fr;
+                }
+              }
+            </style>
+          </head>
+          <body>
+            <div class="shell">
+              <div class="hero">
+                <div class="status">Live OpenEnv deployment</div>
+                <h1>MAAS Multi-Turn Demo</h1>
+                <p>
+                  This page lets judges run the deployed maternal-health environment end-to-end:
+                  start a trajectory, inspect partial state, take OpenEnv actions, and watch
+                  the episode update across turns.
+                </p>
+                <div class="links">
+                  <a href="/docs" target="_blank" rel="noreferrer">API Docs</a>
+                  <a href="/training-report" target="_blank" rel="noreferrer">Training Report</a>
+                  <a href="/health" target="_blank" rel="noreferrer">Health Check</a>
+                </div>
+              </div>
+
+              <div class="grid">
+                <div class="card">
+                  <h2>Episode Controls</h2>
+                  <div class="stack">
+                    <div class="actions">
+                      <button class="primary" onclick="resetEpisode()">Reset Episode</button>
+                      <button class="secondary" onclick="loadState()">Refresh State</button>
+                      <button class="muted" onclick="applyPreset('bp')">Request BP Recheck</button>
+                      <button class="muted" onclick="applyPreset('kicks')">Request Kick Count</button>
+                      <button class="muted" onclick="applyPreset('advance')">Advance Day</button>
+                      <button class="muted" onclick="applyPreset('phc')">Refer to PHC</button>
+                      <button class="muted" onclick="applyPreset('diagnose')">Diagnose: Preeclampsia</button>
+                    </div>
+                    <div class="hint">
+                      Use a preset action or edit the JSON manually, then submit a step.
+                    </div>
+                    <textarea id="actionBox">{
+  "action_type": "request_bp_recheck"
+}</textarea>
+                    <div class="actions">
+                      <button class="primary" onclick="submitStep()">Submit Step</button>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="card">
+                  <h2>Judge Flow</h2>
+                  <div class="stack hint">
+                    <div>1. Click <strong>Reset Episode</strong> to start a new trajectory.</div>
+                    <div>2. Use one or two information-gathering actions such as BP recheck or kick count.</div>
+                    <div>3. Inspect <strong>Current State</strong> to see cumulative reward and revealed observations.</div>
+                    <div>4. Finish with a diagnosis action to show the final reward and rationale.</div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="grid" style="margin-top: 20px;">
+                <div class="card">
+                  <h2>Last Response</h2>
+                  <pre id="responseBox">Press "Reset Episode" to begin.</pre>
+                </div>
+                <div class="card">
+                  <h2>Current State</h2>
+                  <pre id="stateBox">No active trajectory yet.</pre>
+                </div>
+              </div>
+            </div>
+
+            <script>
+              const presets = {
+                bp: { action_type: "request_bp_recheck" },
+                kicks: { action_type: "request_kick_count" },
+                advance: { action_type: "advance_day" },
+                phc: { action_type: "refer_to_phc" },
+                diagnose: {
+                  action_type: "diagnose",
+                  condition: "preeclampsia",
+                  urgency: "go_to_hospital_today",
+                  rationale: "Danger signs plus elevated blood pressure warrant same-day escalation."
+                }
+              };
+
+              function formatJson(payload) {
+                return JSON.stringify(payload, null, 2);
+              }
+
+              function applyPreset(name) {
+                document.getElementById("actionBox").value = formatJson(presets[name]);
+              }
+
+              async function loadState() {
+                const response = await fetch("/state");
+                const payload = await response.json();
+                document.getElementById("stateBox").textContent = formatJson(payload);
+                return payload;
+              }
+
+              async function resetEpisode() {
+                const response = await fetch("/reset", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({})
+                });
+                const payload = await response.json();
+                document.getElementById("responseBox").textContent = formatJson(payload);
+                await loadState();
+              }
+
+              async function submitStep() {
+                let action;
+                try {
+                  action = JSON.parse(document.getElementById("actionBox").value);
+                } catch (error) {
+                  document.getElementById("responseBox").textContent = "Invalid JSON in action box.";
+                  return;
+                }
+                const response = await fetch("/step", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify(action)
+                });
+                const payload = await response.json();
+                document.getElementById("responseBox").textContent = formatJson(payload);
+                await loadState();
+              }
+
+              loadState();
+            </script>
+          </body>
+        </html>
+        """
+    )
+
 @app.get("/health", tags=["System"])
 def healthcheck(request: Request):
     payload = {"status": "healthy"}

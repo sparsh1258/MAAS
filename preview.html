@@ -88,6 +88,46 @@ body::before{
 .landing-card-label{margin-top:16px;font-size:18px;font-weight:700;line-height:1.35}
 .landing-card-user .landing-card-label{color:#6a1b9a}
 .landing-card-asha .landing-card-label{color:#1b5e20}
+.judge-rail{
+  position:fixed;
+  top:16px;
+  right:16px;
+  z-index:45;
+  display:flex;
+  flex-wrap:wrap;
+  justify-content:flex-end;
+  gap:8px;
+  max-width:min(92vw,560px);
+}
+.judge-pill{
+  display:inline-flex;
+  align-items:center;
+  gap:8px;
+  border-radius:999px;
+  padding:10px 14px;
+  text-decoration:none;
+  font-size:12px;
+  font-weight:800;
+  letter-spacing:.04em;
+  background:rgba(255,255,255,.92);
+  color:#6a1b9a;
+  box-shadow:0 12px 28px rgba(74,20,140,.12);
+  border:1px solid rgba(255,255,255,.96);
+}
+.judge-pill-primary{
+  background:linear-gradient(135deg,var(--rose-deep),var(--lav-mid));
+  color:#fff;
+}
+@media (max-width:700px){
+  .judge-rail{
+    position:relative;
+    top:auto;
+    right:auto;
+    padding:14px 14px 0;
+    justify-content:center;
+    max-width:none;
+  }
+}
 
 .portal-screen{position:relative;z-index:1}
 .portal-back{
@@ -396,6 +436,12 @@ body::before{
 <div class="blob blob1"></div>
 <div class="blob blob2"></div>
 <div class="blob blob3"></div>
+<div class="judge-rail">
+  <a class="judge-pill judge-pill-primary" href="/openenv-demo">OpenEnv Demo</a>
+  <a class="judge-pill" href="/docs">API Docs</a>
+  <a class="judge-pill" href="/training-report">Training Report</a>
+  <a class="judge-pill" href="/health">Health</a>
+</div>
 
 <section class="landing-screen" id="landing-screen">
   <div class="landing-inner">
