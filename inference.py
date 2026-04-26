@@ -22,6 +22,7 @@ Usage:
 """
 
 import json
+import math
 import os
 import re
 import sys
@@ -37,6 +38,7 @@ from tasks import TASKS
 API_BASE_URL = os.environ.get("API_BASE_URL", "https://api.openai.com/v1")
 MODEL_NAME = os.environ.get("MODEL_NAME", "gpt-4o")
 HF_TOKEN = os.environ.get("HF_TOKEN")
+LOCAL_MODEL_PATH = os.environ.get("LOCAL_MODEL_PATH")
 BENCHMARK = "prenatal_health"
 
 SUCCESS_SCORE_THRESHOLD = 0.5
@@ -78,14 +80,21 @@ FALLBACK_DIAGNOSE_ACTION = {
 }
 
 
-if not HF_TOKEN:
-    print("[ERROR] HF_TOKEN environment variable is required.", file=sys.stderr)
+if not HF_TOKEN and not LOCAL_MODEL_PATH:
+    print("[ERROR] Set HF_TOKEN for API inference or LOCAL_MODEL_PATH for local inference.", file=sys.stderr)
     sys.exit(1)
 
-client = OpenAI(
-    api_key=HF_TOKEN,
-    base_url=API_BASE_URL,
+client = (
+    OpenAI(
+        api_key=HF_TOKEN,
+        base_url=API_BASE_URL,
+    )
+    if HF_TOKEN
+    else None
 )
+
+_LOCAL_MODEL = None
+_LOCAL_TOKENIZER = None
 
 
 def log_start(task: str, env: str, model: str) -> None:
@@ -108,6 +117,166 @@ def log_end(success: bool, steps: int, score: float, rewards: list) -> None:
         f"[END] success={str(success).lower()} steps={steps} score={score:.3f} rewards={rewards_str}",
         flush=True,
     )
+
+
+def _token_logprob_entries(response: Any) -> list[dict[str, Any]]:
+    try:
+        if isinstance(response, dict):
+            entries = response.get("logprobs_content") or []
+            normalized = []
+            for item in entries:
+                token = item.get("token", "")
+                logprob = item.get("logprob")
+                if logprob is None:
+                    continue
+                normalized.append({"token": str(token), "logprob": float(logprob)})
+            return normalized
+
+        logprobs = getattr(response.choices[0], "logprobs", None)
+        content = getattr(logprobs, "content", None) or []
+        normalized = []
+        for item in content:
+            token = getattr(item, "token", "")
+            logprob = getattr(item, "logprob", None)
+            if logprob is None:
+                continue
+            normalized.append({"token": str(token), "logprob": float(logprob)})
+        return normalized
+    except Exception:
+        return []
+
+
+def extract_log_prob(response: Any) -> float:
+    """
+    Extract sum of token log probs from an OpenAI-compatible API response.
+    Falls back to -999.0 if logprobs are unavailable.
+
+    Returns the per-token average log probability so different-length
+    generations remain comparable.
+    """
+    try:
+        entries = _token_logprob_entries(response)
+        if not entries:
+            return -999.0
+
+        total_log_prob = sum(item["logprob"] for item in entries)
+        avg_log_prob = total_log_prob / len(entries)
+        return round(avg_log_prob, 4)
+    except (AttributeError, TypeError, ZeroDivisionError, ValueError):
+        return -999.0
+
+
+def log_token_trajectory(response: Any, task_id: str, reward: float) -> None:
+    """
+    Log token-level trajectory to stderr without affecting judge stdout.
+    """
+    try:
+        entries = _token_logprob_entries(response)
+        if not entries:
+            return
+
+        tokens = [
+            {
+                "token": item["token"],
+                "logprob": round(item["logprob"], 4),
+                "prob": round(float(math.exp(item["logprob"])), 4),
+            }
+            for item in entries
+        ]
+
+        trajectory = {
+            "task_id": task_id,
+            "reward": reward,
+            "token_count": len(tokens),
+            "avg_logprob": round(sum(t["logprob"] for t in tokens) / len(tokens), 4),
+            "min_logprob": round(min(t["logprob"] for t in tokens), 4),
+            "tokens": tokens[:20],
+        }
+        print(f"[TRAJECTORY] {json.dumps(trajectory)}", file=sys.stderr, flush=True)
+    except Exception:
+        pass
+
+
+def _load_local_model():
+    global _LOCAL_MODEL, _LOCAL_TOKENIZER
+
+    if not LOCAL_MODEL_PATH:
+        return None, None
+    if _LOCAL_MODEL is not None and _LOCAL_TOKENIZER is not None:
+        return _LOCAL_MODEL, _LOCAL_TOKENIZER
+
+    try:
+        from transformers import AutoModelForCausalLM, AutoTokenizer
+
+        tokenizer = AutoTokenizer.from_pretrained(LOCAL_MODEL_PATH)
+        if tokenizer.pad_token is None:
+            tokenizer.pad_token = tokenizer.eos_token
+
+        model = AutoModelForCausalLM.from_pretrained(LOCAL_MODEL_PATH)
+        _LOCAL_MODEL = model
+        _LOCAL_TOKENIZER = tokenizer
+        return _LOCAL_MODEL, _LOCAL_TOKENIZER
+    except Exception as exc:
+        print(f"[DEBUG] Failed to load local model: {exc}", file=sys.stderr)
+        return None, None
+
+
+def _call_local_model(system_prompt: str, user_prompt: str) -> tuple[str, Optional[str], float, Any, bool]:
+    try:
+        model, tokenizer = _load_local_model()
+        if model is None or tokenizer is None:
+            return "", "Local model unavailable.", -999.0, None, False
+
+        try:
+            rendered = tokenizer.apply_chat_template(
+                [
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": user_prompt},
+                ],
+                tokenize=False,
+                add_generation_prompt=True,
+            )
+        except Exception:
+            rendered = f"{system_prompt}\n\n{user_prompt}"
+
+        inputs = tokenizer(rendered, return_tensors="pt")
+        try:
+            import torch
+
+            model_device = next(model.parameters()).device
+            inputs = {key: value.to(model_device) for key, value in inputs.items()}
+            with torch.no_grad():
+                outputs = model.generate(
+                    **inputs,
+                    max_new_tokens=256,
+                    return_dict_in_generate=True,
+                    output_scores=True,
+                    pad_token_id=tokenizer.pad_token_id,
+                )
+        except Exception as exc:
+            return "", str(exc).replace("\n", " "), -999.0, None, False
+
+        prompt_length = inputs["input_ids"].shape[1]
+        generated_ids = outputs.sequences[0, prompt_length:]
+        raw = tokenizer.decode(generated_ids, skip_special_tokens=True).strip()
+
+        token_entries: list[dict[str, Any]] = []
+        for token_id, score in zip(generated_ids.tolist(), outputs.scores):
+            step_logprobs = torch.log_softmax(score[0], dim=-1)
+            token_logprob = float(step_logprobs[int(token_id)].item())
+            token_text = tokenizer.decode([int(token_id)], skip_special_tokens=False)
+            token_entries.append({"token": token_text, "logprob": token_logprob})
+
+        response = {
+            "backend": "local",
+            "content": raw,
+            "logprobs_content": token_entries,
+        }
+        return raw, None, extract_log_prob(response), response, bool(token_entries)
+    except Exception as exc:
+        error = str(exc).replace("\n", " ")
+        print(f"[DEBUG] Local generation failed: {error}", file=sys.stderr)
+        return "", error, -999.0, None, False
 
 
 def parse_action(raw: str) -> dict[str, Any]:
@@ -305,23 +474,55 @@ def build_turn_user_prompt(base_prompt: str, history: list[dict[str, Any]], stag
     )
 
 
-def call_model(system_prompt: str, user_prompt: str) -> tuple[str, Optional[str], float]:
+def call_model(system_prompt: str, user_prompt: str) -> tuple[str, Optional[str], float, Any, bool]:
+    if LOCAL_MODEL_PATH:
+        return _call_local_model(system_prompt, user_prompt)
+
+    response = None
+    logprobs_supported = True
     try:
-        response = client.chat.completions.create(
-            model=MODEL_NAME,
-            temperature=0.0,
-            max_tokens=256,
-            messages=[
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": user_prompt},
-            ],
-        )
+        try:
+            response = client.chat.completions.create(
+                model=MODEL_NAME,
+                temperature=0.0,
+                max_tokens=256,
+                logprobs=True,
+                top_logprobs=1,
+                messages=[
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": user_prompt},
+                ],
+            )
+        except Exception as exc:
+            print(f"[DEBUG] Retrying without logprobs: {exc}", file=sys.stderr)
+            logprobs_supported = False
+            response = client.chat.completions.create(
+                model=MODEL_NAME,
+                temperature=0.0,
+                max_tokens=256,
+                messages=[
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": user_prompt},
+                ],
+            )
+
         raw = (response.choices[0].message.content or "").strip()
-        return raw, None, 0.01
+        real_log_prob = extract_log_prob(response) if logprobs_supported else -999.0
+        return raw, None, real_log_prob, response, logprobs_supported
     except Exception as exc:
         error = str(exc).replace("\n", " ")
         print(f"[DEBUG] API call failed: {error}", file=sys.stderr)
-        return "", error, 0.01
+        return "", error, -999.0, response, False
+
+
+def proxy_log_prob_from_observation(observation: Optional[Observation]) -> float:
+    if not isinstance(observation, Observation):
+        return 0.01
+    try:
+        _, confidence = get_rl_action(observation, rationale="Proxy confidence fallback.")
+        return round(float(confidence), 4)
+    except Exception:
+        return 0.01
 
 
 def fallback_stage_action(
@@ -533,6 +734,7 @@ def run_agent(task: dict) -> dict:
     steps_taken = 0
     score = 0.0
     success = False
+    LOGPROBS_SUPPORTED = True
     log_start(task=task_id, env=BENCHMARK, model=MODEL_NAME)
 
     final_action = FALLBACK_DIAGNOSE_ACTION.copy()
@@ -551,34 +753,43 @@ def run_agent(task: dict) -> dict:
                 system_prompt = SYSTEM_PROMPT
                 user_prompt = prompt_fn()
 
-            raw_output, api_error, log_prob = call_model(system_prompt, user_prompt)
+            raw_output, api_error, real_log_prob, response, LOGPROBS_SUPPORTED = call_model(
+                system_prompt,
+                user_prompt,
+            )
             if raw_output:
                 proposed_action = parse_action(raw_output)
                 visible_observation = episode["visible_observation"] if episode else None
                 hidden_signals = list(visible_observation.withheld_signals) if visible_observation else []
-                action, fallback_log_prob = coerce_action_to_stage(
+                action, _ = coerce_action_to_stage(
                     proposed_action,
                     stage,
                     visible_observation,
                     hidden_signals,
                 )
-                if fallback_log_prob != 0.01:
-                    log_prob = fallback_log_prob
             else:
                 visible_observation = episode["visible_observation"] if episode else None
                 hidden_signals = list(visible_observation.withheld_signals) if visible_observation else []
-                action, log_prob = fallback_stage_action(
+                action, _ = fallback_stage_action(
                     stage,
                     visible_observation,
                     hidden_signals,
                     rationale="Fallback action due to API failure.",
                 )
 
+            if real_log_prob != -999.0:
+                log_prob = real_log_prob
+            else:
+                proxy_observation = visible_observation if episode else observation
+                log_prob = proxy_log_prob_from_observation(proxy_observation)
+
             step_result = apply_episode_step(episode, action, grade_fn)
             reward = float(step_result["reward"])
             rewards.append(reward)
             steps_taken = step_number
             final_action = step_result["action"]
+
+            log_token_trajectory(response, task_id, reward)
 
             history.append(
                 {
