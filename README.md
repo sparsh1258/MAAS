@@ -259,7 +259,10 @@ The repo includes checked-in evidence that MAAS was actually trained and evaluat
 - Baseline vs trained summary: [`results/baseline_vs_trained.json`](results/baseline_vs_trained.json)
 - Single-step GRPO summary: [`results/grpo_training_summary.json`](results/grpo_training_summary.json)
 - Single-step GRPO plot helper: [`results/plot_grpo_metrics.py`](results/plot_grpo_metrics.py)
-- Latest HF GRPO artifacts: [sparsh122/maas-grpo-qwen05b-fix2](https://huggingface.co/sparsh122/maas-grpo-qwen05b-fix2)
+- Latest HF GRPO artifacts (post-fix baseline): [sparsh122/maas-grpo-qwen05b-fix2](https://huggingface.co/sparsh122/maas-grpo-qwen05b-fix2)
+- **Hackathon GRPO run (this submission):** [sparsh122/maas-grpo-hackathon-final](https://huggingface.co/sparsh122/maas-grpo-hackathon-final)
+  - job: [69eddd79d2c8bd8662bcfb93](https://huggingface.co/jobs/sparsh122/69eddd79d2c8bd8662bcfb93)
+  - metrics: [`training_summary.json`](https://huggingface.co/sparsh122/maas-grpo-hackathon-final/blob/main/training_summary.json)
 - 1.5B run evidence (reward/quality charts + metrics):
   - [`results/final_1p5b_reward_chart.svg`](results/final_1p5b_reward_chart.svg)
   - [`results/final_1p5b_quality_chart.svg`](results/final_1p5b_quality_chart.svg)
