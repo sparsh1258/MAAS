@@ -11,6 +11,14 @@ app_port: 7860
 
 MAAS is an OpenEnv-compatible maternal-health environment where an agent must triage prenatal risk under partial observability, gather missing evidence across multiple days, and make the safest escalation decision. The project is framed as a professional workflow task rather than a one-shot classifier: the agent operates inside a multi-turn loop, pays a cost for information gathering, and is penalized for unsafe under-escalation.
 
+## Submission Links
+
+- Live Hugging Face Space: [sparsh122/MATERNAAI](https://huggingface.co/spaces/sparsh122/MATERNAAI)
+- Short writeup: [`results/mini_writeup.md`](results/mini_writeup.md)
+- Slide deck: [OpenEnv Hackathon Deck](https://docs.google.com/presentation/d/1KzV0MxZYYA6PXXJ-nAcSRUn5staJkfQvEgHF1QVl5as/preview?pru=AAABnedodns*3ITAIB6zwg6GBoSPLOY7LQ&slide=id.g3e610e50443_9_233)
+- Multi-turn notebook: [`niva_grpo_multiturn_training.ipynb`](niva_grpo_multiturn_training.ipynb)
+- Single-step notebook: [`niva_grpo_training.ipynb`](niva_grpo_training.ipynb)
+
 ## What Judges Should Know
 
 - **Environment type:** multi-turn OpenEnv loop for maternal-health triage
@@ -35,10 +43,20 @@ MAAS is an OpenEnv-compatible maternal-health environment where an agent must tr
 - Single-step notebook: [`niva_grpo_training.ipynb`](niva_grpo_training.ipynb)
 - Benchmark summary: [`results/benchmark_summary.md`](results/benchmark_summary.md)
 - Demo script: [`results/demo_script.md`](results/demo_script.md)
+- Short writeup: [`results/mini_writeup.md`](results/mini_writeup.md)
 - Submission evidence bundle: [`results/submission_evidence.md`](results/submission_evidence.md)
+- Live Space: [sparsh122/MATERNAAI](https://huggingface.co/spaces/sparsh122/MATERNAAI)
 - Hugging Face code mirror: [sparsh122/MAAS](https://huggingface.co/sparsh122/MAAS)
 - Latest GRPO artifacts: [sparsh122/maas-grpo-qwen05b-fix2](https://huggingface.co/sparsh122/maas-grpo-qwen05b-fix2)
 - Slides: [OpenEnv Hackathon Deck](https://docs.google.com/presentation/d/1KzV0MxZYYA6PXXJ-nAcSRUn5staJkfQvEgHF1QVl5as/preview?pru=AAABnedodns*3ITAIB6zwg6GBoSPLOY7LQ&slide=id.g3e610e50443_9_233)
+
+## Submission Checklist
+
+- public Hugging Face Space linked above
+- `openenv.yaml` plus runnable `/reset`, `/step`, `/state`, `/health` endpoints
+- checked-in PNG training evidence in `results/`
+- runnable RL scripts and notebooks
+- short writeup, slide deck, and judge-facing benchmark docs linked from this README
 
 ## The OpenEnv Loop
 
@@ -158,20 +176,22 @@ https://huggingface.co/spaces/sparsh122/MATERNAAI
 - Reward curve: [`results/grpo_reward_curve.png`](results/grpo_reward_curve.png)
 - Loss curve: [`results/grpo_loss_curve.png`](results/grpo_loss_curve.png)
 - Demo training curve: [`results/maas_deep_policy_demo/training_curve.png`](results/maas_deep_policy_demo/training_curve.png)
+- Additional graph generators:
+  - [`results/plot_grpo_metrics.py`](results/plot_grpo_metrics.py)
+  - [`results/make_deadline_graphs.py`](results/make_deadline_graphs.py)
 
 ### Inline Plots
-
-![GRPO reward curve](results/grpo_reward_curve.png)
-
-Caption: step-level GRPO reward trace from the checked-in single-step baseline training run.
-
-![GRPO loss curve](results/grpo_loss_curve.png)
-
-Caption: loss curve from the same checked-in GRPO training summary.
 
 ![Demo training curve](results/maas_deep_policy_demo/training_curve.png)
 
 Caption: earlier demo training curve showing the model / reward loop running end to end.
+
+The validator-required reward/loss PNGs are checked in above. The stronger post-fix GRPO evidence for the 1.5B run lives in:
+
+- [`results/final_1p5b_run_summary.md`](results/final_1p5b_run_summary.md)
+- [`results/final_1p5b_run_metrics.csv`](results/final_1p5b_run_metrics.csv)
+- [`results/final_1p5b_reward_chart.svg`](results/final_1p5b_reward_chart.svg)
+- [`results/final_1p5b_quality_chart.svg`](results/final_1p5b_quality_chart.svg)
 
 ### Key Evidence Files
 

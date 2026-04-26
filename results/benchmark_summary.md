@@ -21,6 +21,12 @@ MAAS is a multi-turn maternal-health OpenEnv benchmark in which an agent must tr
 
 ## Current Evidence In Repo
 
+Primary public links:
+
+- Hugging Face Space: [sparsh122/MATERNAAI](https://huggingface.co/spaces/sparsh122/MATERNAAI)
+- Short writeup: [`mini_writeup.md`](mini_writeup.md)
+- Slide deck: [OpenEnv Hackathon Deck](https://docs.google.com/presentation/d/1KzV0MxZYYA6PXXJ-nAcSRUn5staJkfQvEgHF1QVl5as/preview?pru=AAABnedodns*3ITAIB6zwg6GBoSPLOY7LQ&slide=id.g3e610e50443_9_233)
+
 ### Environment Evidence
 
 - Multi-turn manifest: [`../openenv.yaml`](../openenv.yaml)

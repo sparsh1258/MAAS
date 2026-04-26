@@ -6,6 +6,7 @@ This file collects the main artifacts a reviewer needs for the OpenEnv hackathon
 
 - Benchmark summary: [`benchmark_summary.md`](benchmark_summary.md)
 - Demo script: [`demo_script.md`](demo_script.md)
+- Short writeup: [`mini_writeup.md`](mini_writeup.md)
 
 ## Training Scripts
 
@@ -36,6 +37,7 @@ This file collects the main artifacts a reviewer needs for the OpenEnv hackathon
 
 ## Hugging Face Artifacts
 
+- Public demo Space: [sparsh122/MATERNAAI](https://huggingface.co/spaces/sparsh122/MATERNAAI)
 - HF repo mirror / code snapshot: [sparsh122/MAAS](https://huggingface.co/sparsh122/MAAS)
 - Latest post-fix GRPO artifacts: [sparsh122/maas-grpo-qwen05b-fix2](https://huggingface.co/sparsh122/maas-grpo-qwen05b-fix2)
 - Earlier post-fix GRPO artifacts: [sparsh122/maas-grpo-qwen05b-fix1](https://huggingface.co/sparsh122/maas-grpo-qwen05b-fix1)
@@ -71,10 +73,10 @@ From the latest post-fix HF GRPO run (`69ed2261d70108f37acdef0e`):
 - The latest 3-epoch run `fix2` confirms the HF pipeline is healthy and uploads reliably, but meaningful task improvement is still not proven.
 - The best training next step is to inspect the uploaded completions and adjust prompt / reward / task diversity before launching another GRPO rerun.
 
-## Space Note
+## Public Demo
 
-- `sparsh122/MAAS` is a Hugging Face model repo mirror, not a Space URL.
-- The live demo should only be promoted as the primary public Space once the actual Space app is synced and booting.
+- Primary public Space URL: [sparsh122/MATERNAAI](https://huggingface.co/spaces/sparsh122/MATERNAAI)
+- Code mirror / model artifacts remain separately linked above for reproducibility.
 
 ## What Changed in the Environment
 
@@ -89,6 +91,7 @@ From the latest post-fix HF GRPO run (`69ed2261d70108f37acdef0e`):
 ## Presentation Material
 
 - Slide deck: [OpenEnv Hackathon Deck](https://docs.google.com/presentation/d/1KzV0MxZYYA6PXXJ-nAcSRUn5staJkfQvEgHF1QVl5as/preview?pru=AAABnedodns*3ITAIB6zwg6GBoSPLOY7LQ&slide=id.g3e610e50443_9_233)
+- Short writeup: [`mini_writeup.md`](mini_writeup.md)
 
 ## Judge-Facing Interpretation
 
