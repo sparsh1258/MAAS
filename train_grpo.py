@@ -152,12 +152,38 @@ def _first_label_match(raw_text: str, labels: tuple[str, ...]) -> str | None:
     return matches[0][1]
 
 
+def _coerce_action_scalar(value: Any, valid_labels: tuple[str, ...] | None = None) -> str | None:
+    if isinstance(value, str):
+        candidate = value.strip()
+        if not candidate:
+            return None
+        if valid_labels is None:
+            return candidate
+        return _first_label_match(candidate, valid_labels) or candidate
+    if isinstance(value, list):
+        for item in value:
+            coerced = _coerce_action_scalar(item, valid_labels)
+            if coerced:
+                return coerced
+        return None
+    return None
+
+
 def _normalize_action_payload(payload: dict[str, Any]) -> ActionModel:
     # The OpenEnv `ActionModel` in this repo uses `target` for the condition label.
-    condition = payload.get("condition") or payload.get("target")
-    urgency = payload.get("urgency")
+    condition = _coerce_action_scalar(payload.get("condition") or payload.get("target"), VALID_CONDITIONS)
+    urgency = _coerce_action_scalar(payload.get("urgency"), VALID_URGENCIES)
     action_type = payload.get("action_type")
-    if action_type not in {"assess", "diagnose"}:
+    if isinstance(action_type, list):
+        action_type = _coerce_action_scalar(action_type)
+    if not isinstance(action_type, str) or action_type not in {
+        "assess",
+        "diagnose",
+        "advance_day",
+        "request_bp_recheck",
+        "request_kick_count",
+        "refer_to_phc",
+    }:
         action_type = "diagnose" if (condition or urgency) else "assess"
     return ActionModel(
         action_type=action_type or "diagnose",
