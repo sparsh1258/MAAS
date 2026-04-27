@@ -1,56 +1,40 @@
 # MAAS Mini Writeup
 
-## Problem
+MAAS is an OpenEnv-compatible maternal-health triage environment built for
+Theme 3.1: professional world-modeling tasks. Instead of a one-step classifier,
+the agent works through a three-day partially observable prenatal episode,
+decides whether to gather more evidence, and then chooses both a diagnosis and
+an urgency tier.
 
-Maternal-health triage in low-resource settings is not a one-shot classification problem. Clinically relevant evidence appears over time, some symptoms are only visible after follow-up, and the cost of unsafe under-escalation is high. MAAS frames this as an OpenEnv workflow task rather than a static prediction benchmark.
+The deployed environment is live on Hugging Face Spaces and exposes real
+`/reset`, `/step`, and `/state` endpoints. The key design idea is safety under
+uncertainty: requesting more evidence costs a small amount, but missing a
+danger case should cost much more. That makes the benchmark more about safe
+workflow behavior than label prediction.
 
-## Environment
+The repo includes:
 
-MAAS is a multi-turn prenatal-health environment with a Gym-style `reset -> step -> state` loop. Each episode unfolds over three days.
+- `MultiTurnPrenatalEnvironment` with temporal state and five actions
+- live patient / ASHA and coordinator portals
+- GRPO and PPO training scripts
+- Colab-ready notebooks
+- checked-in GRPO run summaries, reward curves, and training metrics
 
-- Day 1 exposes only basic vitals and kick count.
-- Day 2 reveals symptoms.
-- Day 3 reveals history flags plus later-episode context such as meals, sleep, and energy.
+The strongest current evidence shows that the online RL loop ran end to end with
+non-zero gradients and non-zero reward variance on real runs. The honest caveat
+is that the latest checked-in evidence proves trainability more strongly than it
+proves stable final policy superiority on the newest multi-turn benchmark.
 
-The agent must choose among:
+Most relevant graphs:
 
-- `request_bp_recheck`
-- `request_kick_count`
-- `advance_day`
-- `refer_to_phc`
-- `diagnose`
+- `final_1p5b_reward_chart.svg`
+- `final_1p5b_quality_chart.svg`
+- `final_1p5b_training_health_chart.svg`
 
-This makes the benchmark partially observable, stateful, and aligned with professional workflow reasoning.
+Links:
 
-## Safety Framing
-
-The reward is safety-first.
-
-- Danger flags are prioritized.
-- Information gathering has a small cost.
-- Appropriate PHC referral gets intermediate reward.
-- Final diagnosis reward combines condition accuracy, urgency alignment, and safety alignment.
-- Under-escalating a danger case is penalized more than asking for another signal.
-
-## Training Evidence
-
-The repo contains:
-
-- runnable GRPO and PPO training scripts
-- Colab notebooks for the single-step and multi-turn paths
-- checked-in PNG training evidence required by the validator
-- stronger 1.5B GRPO run summaries and metrics in `results/final_1p5b_run_summary.md` and `results/final_1p5b_run_metrics.csv`
-
-The current evidence proves that:
-
-- the environment is real
-- the RL loop runs end to end
-- reward shaping and JSON-structured outputs are wired into training
-
-The current evidence does **not** claim that MAAS is already a clinically production-ready policy. The strongest contribution is the benchmark design, safety-aware reward shaping, deployment packaging, and reproducible training workflow.
-
-## Submission Links
-
-- Hugging Face Space: [sparsh122/maas-openenv](https://huggingface.co/spaces/sparsh122/maas-openenv)
-- Slide deck: [OpenEnv Hackathon Deck](https://docs.google.com/presentation/d/1KzV0MxZYYA6PXXJ-nAcSRUn5staJkfQvEgHF1QVl5as/preview?pru=AAABnedodns*3ITAIB6zwg6GBoSPLOY7LQ&slide=id.g3e610e50443_9_233)
-- Main README: [`../README.md`](../README.md)
+- OpenEnv Space: `https://huggingface.co/spaces/sparsh122/maas-openenv`
+- Patient + ASHA portal: `https://huggingface.co/spaces/nancyyyyyyy/niva-prenatal-health`
+- Coordinator portal: `https://sparsh122-maternaai.hf.space/coordinator`
+- Main README: `../README.md`
+- Full blog: `../blog.md`

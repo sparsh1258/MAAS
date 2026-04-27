@@ -15,7 +15,12 @@ An agent must reason over incomplete prenatal data, request missing signals, car
 ## Quick Links
 
 - **Live OpenEnv API (Docker Space):** [https://huggingface.co/spaces/sparsh122/maas-openenv](https://huggingface.co/spaces/sparsh122/maas-openenv) — FastAPI on port 7860; OpenEnv endpoints `/reset`, `/step`, `/state`; demo UI at `/openenv-demo`.
-- **Short writeup (mini-blog):** [`results/mini_writeup.md`](results/mini_writeup.md)
+- Full submission blog: [`blog.md`](blog.md)
+- Short writeup (mini-blog): [`results/mini_writeup.md`](results/mini_writeup.md)
+- Live OpenEnv Space: [https://huggingface.co/spaces/sparsh122/maas-openenv](https://huggingface.co/spaces/sparsh122/maas-openenv)
+- Live OpenEnv demo: [https://sparsh122-maas-openenv.hf.space/openenv-demo](https://sparsh122-maas-openenv.hf.space/openenv-demo)
+- Patient + ASHA portal: [https://huggingface.co/spaces/nancyyyyyyy/niva-prenatal-health](https://huggingface.co/spaces/nancyyyyyyy/niva-prenatal-health)
+- Coordinator portal: [https://sparsh122-maternaai.hf.space/coordinator](https://sparsh122-maternaai.hf.space/coordinator)
 - Hugging Face repo mirror: [https://huggingface.co/sparsh122/MAAS](https://huggingface.co/sparsh122/MAAS)
 - Latest HF GRPO artifacts: [https://huggingface.co/sparsh122/maas-grpo-qwen05b-fix2](https://huggingface.co/sparsh122/maas-grpo-qwen05b-fix2)
 - OpenEnv manifest: [`openenv.yaml`](openenv.yaml)
@@ -286,6 +291,24 @@ Current checked-in baseline summary from `baseline_report.md`:
 ![MAAS training curve](results/maas_deep_policy_demo/training_curve.png)
 
 Caption: training loss drops over epochs while validation condition/urgency accuracy remains high on the held-out demo split (RL policy demo path, not LLM GRPO).
+
+### Online RL Graphs
+
+The graphs below are the most relevant online RL evidence because they are
+generated from the completed 18-step Hugging Face Jobs GRPO run recorded in
+`results/final_1p5b_run_metrics.csv`.
+
+![Final 1.5B reward dynamics](results/final_1p5b_reward_chart.svg)
+
+Caption: mean reward and reward variance across the completed GRPO run.
+
+![Final 1.5B output quality signals](results/final_1p5b_quality_chart.svg)
+
+Caption: benchmark score, exact JSON rate, and safety reward across the same run.
+
+![Final 1.5B training health](results/final_1p5b_training_health_chart.svg)
+
+Caption: gradient norm plus an indicator for zero-variance reward batches.
 
 ## Running the Environment Locally
 
