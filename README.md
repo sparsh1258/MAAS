@@ -316,6 +316,22 @@ Caption: legacy baseline average score versus the current 1.5B GRPO run's
 average, best, and final benchmark scores. This is included for transparency,
 not as a claim that the current trained run already beats the baseline.
 
+### Judge Evaluation Prompt
+
+```text
+You are evaluating a maternal health triage RL agent trained with GRPO
+on a 3-day prenatal environment.
+
+Run evaluation on the following benchmark tasks and report:
+- baseline (untrained) score per task
+- trained model score per task
+- delta
+- which cases showed safety improvement (urgency alignment)
+
+Format as a clean markdown table. Be strict — do not round up scores.
+Report exact numbers from eval runs.
+```
+
 ## Running the Environment Locally
 
 ### Install

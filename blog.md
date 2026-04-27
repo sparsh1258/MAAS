@@ -183,6 +183,22 @@ average, best, and final benchmark scores. This chart is intentionally strict:
 it makes the current gap visible instead of pretending the latest trained run
 has already cleared the baseline cleanly.
 
+### Judge evaluation prompt
+
+```text
+You are evaluating a maternal health triage RL agent trained with GRPO
+on a 3-day prenatal environment.
+
+Run evaluation on the following benchmark tasks and report:
+- baseline (untrained) score per task
+- trained model score per task
+- delta
+- which cases showed safety improvement (urgency alignment)
+
+Format as a clean markdown table. Be strict — do not round up scores.
+Report exact numbers from eval runs.
+```
+
 ### 3. Current limitation
 
 The current evidence supports a strong claim about trainability and benchmark
