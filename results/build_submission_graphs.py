@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import csv
+import re
 from pathlib import Path
 
 import matplotlib.pyplot as plt
@@ -8,9 +9,11 @@ import matplotlib.pyplot as plt
 
 ROOT = Path(__file__).resolve().parent
 METRICS_CSV = ROOT / "final_1p5b_run_metrics.csv"
+BASELINE_OUTPUT = ROOT / "baseline_output.txt"
 REWARD_CHART = ROOT / "final_1p5b_reward_chart.svg"
 QUALITY_CHART = ROOT / "final_1p5b_quality_chart.svg"
 HEALTH_CHART = ROOT / "final_1p5b_training_health_chart.svg"
+BASELINE_COMPARISON_CHART = ROOT / "baseline_vs_trained_benchmark_chart.svg"
 
 
 def load_rows() -> list[dict[str, float]]:
@@ -20,6 +23,20 @@ def load_rows() -> list[dict[str, float]]:
         for row in reader:
             rows.append({key: float(value) for key, value in row.items()})
         return rows
+
+
+def load_baseline_average() -> float:
+    score_pattern = re.compile(r"score=([0-9.]+)")
+    scores: list[float] = []
+    with BASELINE_OUTPUT.open("r", encoding="utf-8") as handle:
+        for line in handle:
+            match = score_pattern.search(line)
+            if match:
+                scores.append(float(match.group(1)))
+
+    if not scores:
+        raise SystemExit("No baseline scores found in baseline_output.txt")
+    return sum(scores) / len(scores)
 
 
 def style_axes(ax, title: str, ylabel: str) -> None:
@@ -93,17 +110,68 @@ def build_health_chart(rows: list[dict[str, float]]) -> None:
     plt.close(fig)
 
 
+def build_baseline_comparison_chart(rows: list[dict[str, float]], baseline_average: float) -> None:
+    avg_benchmark = sum(row["mean_benchmark_score"] for row in rows) / len(rows)
+    best_benchmark = max(row["mean_benchmark_score"] for row in rows)
+    final_benchmark = rows[-1]["mean_benchmark_score"]
+
+    labels = [
+        "Legacy baseline\navg score",
+        "GRPO run\navg benchmark",
+        "GRPO run\nbest benchmark",
+        "GRPO run\nfinal benchmark",
+    ]
+    values = [baseline_average, avg_benchmark, best_benchmark, final_benchmark]
+    colors = ["#475569", "#2563eb", "#0f766e", "#dc2626"]
+
+    fig, ax = plt.subplots(figsize=(9.4, 5.3))
+    bars = ax.bar(labels, values, color=colors, width=0.68)
+    style_axes(ax, "Baseline vs Trained Benchmark Signals", "Score")
+    ax.set_ylim(0, max(values) + 0.08)
+
+    # This is intentionally explicit: the baseline comes from a smaller legacy run.
+    ax.text(
+        0.02,
+        0.98,
+        "Baseline is the checked-in 3-task fallback run.\nGRPO values come from the 18-step 1.5B online RL run.",
+        transform=ax.transAxes,
+        va="top",
+        ha="left",
+        fontsize=9.5,
+        color="#374151",
+        bbox={"facecolor": "white", "edgecolor": "#d1d5db", "boxstyle": "round,pad=0.35"},
+    )
+
+    for bar, value in zip(bars, values):
+        ax.text(
+            bar.get_x() + bar.get_width() / 2,
+            value + 0.01,
+            f"{value:.3f}",
+            ha="center",
+            va="bottom",
+            fontsize=10,
+            weight="bold",
+        )
+
+    fig.tight_layout()
+    fig.savefig(BASELINE_COMPARISON_CHART, bbox_inches="tight")
+    plt.close(fig)
+
+
 def main() -> None:
     rows = load_rows()
     if not rows:
         raise SystemExit("No metric rows found in final_1p5b_run_metrics.csv")
+    baseline_average = load_baseline_average()
     build_reward_chart(rows)
     build_quality_chart(rows)
     build_health_chart(rows)
+    build_baseline_comparison_chart(rows, baseline_average)
     print("Wrote:")
     print(f"- {REWARD_CHART}")
     print(f"- {QUALITY_CHART}")
     print(f"- {HEALTH_CHART}")
+    print(f"- {BASELINE_COMPARISON_CHART}")
 
 
 if __name__ == "__main__":

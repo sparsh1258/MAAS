@@ -310,6 +310,12 @@ Caption: benchmark score, exact JSON rate, and safety reward across the same run
 
 Caption: gradient norm plus an indicator for zero-variance reward batches.
 
+![Baseline vs trained benchmark comparison](results/baseline_vs_trained_benchmark_chart.svg)
+
+Caption: legacy baseline average score versus the current 1.5B GRPO run's
+average, best, and final benchmark scores. This is included for transparency,
+not as a claim that the current trained run already beats the baseline.
+
 ## Running the Environment Locally
 
 ### Install

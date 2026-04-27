@@ -176,6 +176,13 @@ Caption: Gradient norm stayed non-zero on most steps, with only isolated
 zero-variance batches. That supports the claim that the GRPO loop was actually
 training rather than silently collapsing.
 
+![Baseline vs trained benchmark comparison](results/baseline_vs_trained_benchmark_chart.svg)
+
+Caption: Legacy baseline average score versus the current 1.5B GRPO run's
+average, best, and final benchmark scores. This chart is intentionally strict:
+it makes the current gap visible instead of pretending the latest trained run
+has already cleared the baseline cleanly.
+
 ### 3. Current limitation
 
 The current evidence supports a strong claim about trainability and benchmark

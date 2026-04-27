@@ -30,6 +30,12 @@ Most relevant graphs:
 - `final_1p5b_reward_chart.svg`
 - `final_1p5b_quality_chart.svg`
 - `final_1p5b_training_health_chart.svg`
+- `baseline_vs_trained_benchmark_chart.svg`
+
+The baseline comparison graph is deliberately conservative: it compares the
+checked-in legacy baseline average against the current 1.5B GRPO run's average,
+best, and final benchmark scores, so judges can see both the real progress and
+the remaining gap honestly.
 
 Links:
 
