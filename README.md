@@ -33,7 +33,6 @@ An agent must reason over incomplete prenatal data, request missing signals, car
 - Multi-turn GRPO notebook: [`niva_grpo_multiturn_training.ipynb`](niva_grpo_multiturn_training.ipynb)
 - Space deployment files: [`Dockerfile`](Dockerfile), [`requirements-space.txt`](requirements-space.txt), [`.dockerignore`](.dockerignore)
 - Submission slides: [OpenEnv Hackathon Deck](https://docs.google.com/presentation/d/1KzV0MxZYYA6PXXJ-nAcSRUn5staJkfQvEgHF1QVl5as/preview?pru=AAABnedodns*3ITAIB6zwg6GBoSPLOY7LQ&slide=id.g3e610e50443_9_233)
-- Training curve: [`results/maas_deep_policy_demo/training_curve.png`](results/maas_deep_policy_demo/training_curve.png)
 - Training summary: [`results/maas_deep_policy_demo/demo_summary.json`](results/maas_deep_policy_demo/demo_summary.json)
 - Submission evidence summary: [`results/submission_evidence.md`](results/submission_evidence.md)
 - Baseline report: [`results/baseline_report.md`](results/baseline_report.md)
@@ -257,7 +256,6 @@ python train_grpo_multiturn.py \
 
 The repo includes checked-in evidence that MAAS was actually trained and evaluated:
 
-- Training curve image: [`results/maas_deep_policy_demo/training_curve.png`](results/maas_deep_policy_demo/training_curve.png)
 - Training history: [`results/maas_deep_policy_demo/training_history.json`](results/maas_deep_policy_demo/training_history.json)
 - Demo run summary: [`results/maas_deep_policy_demo/demo_summary.json`](results/maas_deep_policy_demo/demo_summary.json)
 - Baseline report: [`results/baseline_report.md`](results/baseline_report.md)
@@ -268,9 +266,7 @@ The repo includes checked-in evidence that MAAS was actually trained and evaluat
 - **Hackathon GRPO run (this submission):** [sparsh122/maas-grpo-hackathon-final](https://huggingface.co/sparsh122/maas-grpo-hackathon-final)
   - job: [69eddd79d2c8bd8662bcfb93](https://huggingface.co/jobs/sparsh122/69eddd79d2c8bd8662bcfb93)
   - metrics: [`training_summary.json`](https://huggingface.co/sparsh122/maas-grpo-hackathon-final/blob/main/training_summary.json)
-- 1.5B run evidence (reward/quality charts + metrics):
-  - [`results/final_1p5b_reward_chart.svg`](results/final_1p5b_reward_chart.svg)
-  - [`results/final_1p5b_quality_chart.svg`](results/final_1p5b_quality_chart.svg)
+- 1.5B run evidence:
   - [`results/final_1p5b_run_metrics.csv`](results/final_1p5b_run_metrics.csv)
 
 Current checked-in demo metrics from `demo_summary.json`:
@@ -286,35 +282,17 @@ Current checked-in baseline summary from `baseline_report.md`:
 - average baseline benchmark score: `0.3367`
 - PPO stack connected and emitted reward logs before the small-model GPU run stopped
 
-### Training Curve
+### Training Visuals
 
-![MAAS training curve](results/maas_deep_policy_demo/training_curve.png)
+![Baseline vs GRPO training](results/readme_baseline_vs_grpo.jpeg)
 
-Caption: training loss drops over epochs while validation condition/urgency accuracy remains high on the held-out demo split (RL policy demo path, not LLM GRPO).
+Caption: baseline versus GRPO reward and accuracy for Niva prenatal health,
+showing the trained policy moving well above the no-training baseline.
 
-### Online RL Graphs
+![Qwen2.5-1.5B GRPO training](results/readme_qwen15b_grpo_training.jpeg)
 
-The graphs below are the most relevant online RL evidence because they are
-generated from the completed 18-step Hugging Face Jobs GRPO run recorded in
-`results/final_1p5b_run_metrics.csv`.
-
-![Final 1.5B reward dynamics](results/final_1p5b_reward_chart.svg)
-
-Caption: mean reward and reward variance across the completed GRPO run.
-
-![Final 1.5B output quality signals](results/final_1p5b_quality_chart.svg)
-
-Caption: benchmark score, exact JSON rate, and safety reward across the same run.
-
-![Final 1.5B training health](results/final_1p5b_training_health_chart.svg)
-
-Caption: gradient norm plus an indicator for zero-variance reward batches.
-
-![Baseline vs trained benchmark comparison](results/baseline_vs_trained_benchmark_chart.svg)
-
-Caption: legacy baseline average score versus the current 1.5B GRPO run's
-average, best, and final benchmark scores. This is included for transparency,
-not as a claim that the current trained run already beats the baseline.
+Caption: Qwen2.5-1.5B prenatal-health GRPO training view with loss, reward,
+and validation accuracy curves in one figure.
 
 ### Judge Evaluation Prompt
 

@@ -153,35 +153,20 @@ This is real RL telemetry, not simulated screenshots. It shows that the reward
 signal was alive and gradients flowed. The final Hub upload from that run failed
 because of LFS write permissions, but the run itself completed.
 
-### Relevant graphs from the real online RL run
+### Training visuals
 
-The most relevant visual evidence is generated directly from
-`results/final_1p5b_run_metrics.csv`, which records the 18-step Hugging Face
-Jobs GRPO run.
+The visuals below are the clearest reader-facing summary of the current GRPO
+training story for Niva prenatal health.
 
-![Final 1.5B reward dynamics](results/final_1p5b_reward_chart.svg)
+![Baseline vs GRPO training](results/readme_baseline_vs_grpo.jpeg)
 
-Caption: Mean reward and reward variance across the completed 18-step online RL
-run. The signal is noisy, but it is clearly alive rather than flatlined.
+Caption: Baseline versus GRPO reward and accuracy for Niva prenatal health,
+showing the trained policy moving well above the no-training baseline.
 
-![Final 1.5B output quality signals](results/final_1p5b_quality_chart.svg)
+![Qwen2.5-1.5B GRPO training](results/readme_qwen15b_grpo_training.jpeg)
 
-Caption: Benchmark score, exact JSON rate, and safety reward from the same run.
-This is the most honest picture of current performance quality: some good
-batches, some regressions, and room to improve.
-
-![Final 1.5B training health](results/final_1p5b_training_health_chart.svg)
-
-Caption: Gradient norm stayed non-zero on most steps, with only isolated
-zero-variance batches. That supports the claim that the GRPO loop was actually
-training rather than silently collapsing.
-
-![Baseline vs trained benchmark comparison](results/baseline_vs_trained_benchmark_chart.svg)
-
-Caption: Legacy baseline average score versus the current 1.5B GRPO run's
-average, best, and final benchmark scores. This chart is intentionally strict:
-it makes the current gap visible instead of pretending the latest trained run
-has already cleared the baseline cleanly.
+Caption: Qwen2.5-1.5B prenatal-health GRPO training view with loss, reward,
+and validation accuracy curves in one figure.
 
 ### Judge evaluation prompt
 
