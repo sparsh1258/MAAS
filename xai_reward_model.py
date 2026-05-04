@@ -22,6 +22,42 @@ SAFE_CONDITIONS = [
 
 URGENCY_ORDER = ["monitor_at_home", "visit_phc_this_week", "go_to_hospital_today"]
 
+CONDITION_ALIASES = {
+    "healthy": "low_risk",
+    "normal": "low_risk",
+    "no_risk": "low_risk",
+    "high_bp": "preeclampsia",
+    "hypertension": "preeclampsia",
+    "gestational_hypertension": "preeclampsia",
+    "low_kicks": "fetal_distress",
+    "reduced_fetal_movement": "fetal_distress",
+    "diabetes": "gestational_diabetes",
+}
+
+URGENCY_ALIASES = {
+    "routine": "monitor_at_home",
+    "home": "monitor_at_home",
+    "monitor": "monitor_at_home",
+    "low": "monitor_at_home",
+    "phc": "visit_phc_this_week",
+    "clinic": "visit_phc_this_week",
+    "doctor": "visit_phc_this_week",
+    "urgent": "go_to_hospital_today",
+    "urgent_care": "go_to_hospital_today",
+    "emergency": "go_to_hospital_today",
+    "hospital": "go_to_hospital_today",
+    "go_now": "go_to_hospital_today",
+}
+
+RELATED_CONDITIONS = {
+    "preeclampsia": {"gestational_diabetes", "preterm_risk"},
+    "fetal_distress": {"preterm_risk", "preeclampsia"},
+    "preterm_risk": {"fetal_distress", "anemia"},
+    "gestational_diabetes": {"anemia", "preeclampsia"},
+    "anemia": {"gestational_diabetes", "preterm_risk"},
+    "low_risk": set(),
+}
+
 CONDITION_SEVERITY = {
     "preeclampsia": 10,
     "fetal_distress": 10,
@@ -173,6 +209,20 @@ def latent_risk_scores(features: Dict[str, float]) -> Dict[str, float]:
     return {k: round(min(0.99, v), 3) for k, v in scores.items() if v >= 0.25}
 
 
+def normalize_condition(value: str | None) -> str | None:
+    if value is None:
+        return None
+    key = str(value).strip().lower().replace("-", "_").replace(" ", "_")
+    return CONDITION_ALIASES.get(key, key)
+
+
+def normalize_urgency(value: str | None) -> str | None:
+    if value is None:
+        return None
+    key = str(value).strip().lower().replace("-", "_").replace(" ", "_")
+    return URGENCY_ALIASES.get(key, key)
+
+
 def infer_reference_condition(obs) -> str:
     features = featurize(obs)
     if features["danger_bp"] or features["headache_swelling"] or features["vision_headache"]:
@@ -209,33 +259,70 @@ def calculate_reward(llm_diagnosis: str, llm_urgency: str, observation) -> Rewar
     reference_urgency = choose_urgency(reference_condition, features)
     urgency_idx = URGENCY_ORDER.index
     class_weight = CONDITION_REWARD_WEIGHTS[reference_condition]
+    predicted_condition = normalize_condition(llm_diagnosis)
+    predicted_urgency = normalize_urgency(llm_urgency)
+    invalid_condition_penalty = 0.0
+    invalid_urgency_penalty = 0.0
 
-    condition_score = (12.0 if llm_diagnosis == reference_condition else -6.0) * class_weight
+    if predicted_condition not in SAFE_CONDITIONS:
+        predicted_condition = "low_risk"
+        invalid_condition_penalty = -8.0
+    if predicted_urgency not in URGENCY_ORDER:
+        predicted_urgency = "monitor_at_home"
+        invalid_urgency_penalty = -8.0
+
+    if predicted_condition == reference_condition:
+        condition_score = 12.0 * class_weight
+    elif predicted_condition in RELATED_CONDITIONS.get(reference_condition, set()):
+        condition_score = 3.0 * class_weight
+    elif predicted_condition == "low_risk" and reference_condition != "low_risk":
+        condition_score = -8.0 * class_weight
+    else:
+        condition_score = -6.0 * class_weight
     urgency_score = 0.0
     under_escalation_penalty = 0.0
     danger_override_penalty = 0.0
     data_recency_bonus = 0.0
-    reward = condition_score
+    false_reassurance_penalty = 0.0
+    over_escalation_penalty = 0.0
+    reward = condition_score + invalid_condition_penalty + invalid_urgency_penalty
 
     under_escalated = False
-    if llm_urgency == reference_urgency:
+    if predicted_urgency == reference_urgency:
         urgency_score = 6.0 * class_weight
-    elif urgency_idx(llm_urgency) > urgency_idx(reference_urgency):
-        urgency_score = -2.0
     else:
-        under_escalated = True
-        under_escalation_penalty = -max(12.0, CONDITION_SEVERITY[reference_condition] * 2.5) * class_weight
+        urgency_delta = urgency_idx(predicted_urgency) - urgency_idx(reference_urgency)
+        if urgency_delta > 0:
+            urgency_score = -1.0 * urgency_delta
+            over_escalation_penalty = -3.0 * urgency_delta
+        else:
+            under_escalated = True
+            under_escalation_penalty = -max(10.0, abs(urgency_delta) * CONDITION_SEVERITY[reference_condition] * 1.75) * class_weight
+
+    if predicted_condition == "low_risk" and reference_condition != "low_risk":
+        false_reassurance_penalty = -6.0 * class_weight
 
     if observation.days_of_data >= 3:
         data_recency_bonus = 2.0
     elif observation.days_of_data == 2:
-        data_recency_bonus = 1.0
+        data_recency_bonus = 0.75
+    elif reference_urgency == "go_to_hospital_today":
+        data_recency_bonus = 0.25
+    else:
+        data_recency_bonus = -0.5
 
-    if any(flag.startswith("DANGER") for flag in observation.risk_flags) and llm_urgency != "go_to_hospital_today":
-        danger_override_penalty = -10.0
+    if any(flag.startswith("DANGER") for flag in observation.risk_flags) and predicted_urgency != "go_to_hospital_today":
+        danger_override_penalty = -12.0
         under_escalated = True
 
-    reward += urgency_score + under_escalation_penalty + danger_override_penalty + data_recency_bonus
+    reward += (
+        urgency_score
+        + under_escalation_penalty
+        + over_escalation_penalty
+        + danger_override_penalty
+        + data_recency_bonus
+        + false_reassurance_penalty
+    )
 
     supporting = supporting_features(reference_condition, features)
     latent = latent_risk_scores(features)
@@ -244,13 +331,17 @@ def calculate_reward(llm_diagnosis: str, llm_urgency: str, observation) -> Rewar
         "condition_score": condition_score,
         "urgency_score": urgency_score,
         "under_escalation_penalty": under_escalation_penalty,
+        "over_escalation_penalty": over_escalation_penalty,
         "danger_override_penalty": danger_override_penalty,
         "data_recency_bonus": data_recency_bonus,
+        "false_reassurance_penalty": false_reassurance_penalty,
+        "invalid_condition_penalty": invalid_condition_penalty,
+        "invalid_urgency_penalty": invalid_urgency_penalty,
         "total_reward": reward,
     }
     rationale = (
         f"Reference condition={reference_condition}, reference urgency={reference_urgency}, "
-        f"LLM condition={llm_diagnosis}, LLM urgency={llm_urgency}, reward={reward:.2f}. "
+        f"LLM condition={predicted_condition}, LLM urgency={predicted_urgency}, reward={reward:.2f}. "
         f"Reward features: {', '.join(supporting)}. Reward components: {reward_components}."
     )
     if under_escalated:
@@ -259,9 +350,9 @@ def calculate_reward(llm_diagnosis: str, llm_urgency: str, observation) -> Rewar
         rationale += " Latent risks: " + ", ".join(f"{name}:{score:.2f}" for name, score in latent.items())
 
     return RewardBreakdown(
-        predicted_condition=llm_diagnosis,
+        predicted_condition=predicted_condition,
         reference_condition=reference_condition,
-        urgency=llm_urgency,
+        urgency=predicted_urgency,
         reference_urgency=reference_urgency,
         reward=reward,
         reward_components=reward_components,

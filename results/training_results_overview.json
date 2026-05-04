@@ -1,0 +1,17 @@
+{
+  "source_metrics": "results/final_1p5b_run_metrics.csv",
+  "steps": 18,
+  "best_mean_reward": 3.306,
+  "best_benchmark_score": 0.255,
+  "best_exact_json_rate": 1.0,
+  "final_step": {
+    "step": 18.0,
+    "mean_reward": -2.612,
+    "reward_std": 2.375,
+    "mean_benchmark_score": 0.0575,
+    "exact_json_rate": 0.75,
+    "mean_safety_reward": -0.95,
+    "grad_norm": 5.875
+  },
+  "interpretation": "Training telemetry is real run evidence, not proof of robust multi-turn model mastery."
+}

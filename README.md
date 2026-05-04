@@ -12,9 +12,31 @@ app_port: 7860
 MAAS is an OpenEnv-compatible maternal-care environment framed as a **professional workflow / world-modeling** task.
 An agent must reason over incomplete prenatal data, request missing signals, carry temporal belief state across multiple check-in days, and decide the safest final triage action.
 
+## 3-Minute Judge Path
+
+1. **Problem:** rural maternal triage is delayed when BP, symptoms, fetal movement, history, and follow-up signals arrive across days instead of in one clean form.
+2. **Environment:** MAAS turns that into a three-day partially observable OpenEnv task where the agent can request checks, advance time, refer to PHC, or submit a final condition + urgency.
+3. **Live demo:** open [`/openenv-demo`](https://sparsh122-maas-openenv.hf.space/openenv-demo), reset `traj_preeclampsia_slow`, advance to day 3, then diagnose `preeclampsia` with `go_to_hospital_today`.
+4. **Evidence:** use [`results/evaluation_report.md`](results/evaluation_report.md), [`results/demo_verification.md`](results/demo_verification.md), [`results/final_1p5b_run_summary.md`](results/final_1p5b_run_summary.md), and the two embedded training visuals below.
+5. **Caveat:** MAAS proves a realistic environment and working RL infrastructure; it does not prove clinical validation or robust trained-model mastery yet.
+
+Safety note: MAAS is a prototype decision-support environment and is not clinically validated.
+
+## What To Run First
+
+```bash
+python scripts/evaluate_multiturn.py --output-dir results
+python scripts/run_smoke_eval.py
+python scripts/plot_training_results.py
+python scripts/run_baseline_vs_trained.py --output-dir results
+python scripts/verify_space.py --base-url https://sparsh122-maas-openenv.hf.space --output results/demo_verification.md
+```
+
+These commands regenerate the exact multi-turn metrics, a deterministic smoke test, training telemetry summary plot, honest baseline-vs-trained report, and live Space verification.
+
 ## Quick Links
 
-- **Live OpenEnv API (Docker Space):** [https://huggingface.co/spaces/sparsh122/maas-openenv](https://huggingface.co/spaces/sparsh122/maas-openenv) — FastAPI on port 7860; OpenEnv endpoints `/reset`, `/step`, `/state`; demo UI at `/openenv-demo`.
+- **Live OpenEnv API (Docker Space):** [https://huggingface.co/spaces/sparsh122/maas-openenv](https://huggingface.co/spaces/sparsh122/maas-openenv) - FastAPI on port 7860; OpenEnv endpoints `/reset`, `/step`, `/state`; demo UI at `/openenv-demo`.
 - Full submission blog: [`blog.md`](blog.md)
 - Short writeup (mini-blog): [`results/mini_writeup.md`](results/mini_writeup.md)
 - Live OpenEnv Space: [https://huggingface.co/spaces/sparsh122/maas-openenv](https://huggingface.co/spaces/sparsh122/maas-openenv)
@@ -35,6 +57,17 @@ An agent must reason over incomplete prenatal data, request missing signals, car
 - Submission slides: [OpenEnv Hackathon Deck](https://docs.google.com/presentation/d/1KzV0MxZYYA6PXXJ-nAcSRUn5staJkfQvEgHF1QVl5as/preview?pru=AAABnedodns*3ITAIB6zwg6GBoSPLOY7LQ&slide=id.g3e610e50443_9_233)
 - Training summary: [`results/maas_deep_policy_demo/demo_summary.json`](results/maas_deep_policy_demo/demo_summary.json)
 - Submission evidence summary: [`results/submission_evidence.md`](results/submission_evidence.md)
+- Multi-turn evaluation report: [`results/evaluation_report.md`](results/evaluation_report.md)
+- Live demo verification report: [`results/demo_verification.md`](results/demo_verification.md)
+- Submission link check: [`results/submission_link_check.md`](results/submission_link_check.md)
+- Smoke evaluation: [`results/smoke_eval.md`](results/smoke_eval.md)
+- Baseline vs trained multi-turn report: [`results/baseline_vs_trained_multiturn.md`](results/baseline_vs_trained_multiturn.md)
+- Strict judge audit: [`results/judge_audit.md`](results/judge_audit.md)
+- 90-second demo script: [`results/demo_video_script.md`](results/demo_video_script.md)
+- 1.5B GRPO run summary: [`results/final_1p5b_run_summary.md`](results/final_1p5b_run_summary.md)
+- Baseline vs GRPO visual: [`results/readme_baseline_vs_grpo.jpeg`](results/readme_baseline_vs_grpo.jpeg)
+- Qwen2.5-1.5B training visual: [`results/readme_qwen15b_grpo_training.jpeg`](results/readme_qwen15b_grpo_training.jpeg)
+- Regenerated training telemetry SVG: [`results/training_results_overview.svg`](results/training_results_overview.svg)
 - Baseline report: [`results/baseline_report.md`](results/baseline_report.md)
 - Baseline vs trained summary: [`results/baseline_vs_trained.json`](results/baseline_vs_trained.json)
 
@@ -46,6 +79,35 @@ An agent must reason over incomplete prenatal data, request missing signals, car
 - The current limitation is that the newest 3-epoch run still has a mean benchmark score of about `0.01`, with most steps returning `grad_norm = 0` and `reward_std = 0`, so the GRPO path is operational but not yet a strong proof of policy improvement.
 - The new multi-turn environment and multi-turn GRPO pipeline are now checked into the repo, but the first full multi-turn training run still needs to be executed and recorded as submission evidence.
 - Space deployment files are included in this repo, but the public Space should only be linked as the primary demo once the live app sync is finalized.
+
+## What Is Proven vs Experimental
+
+Proven in this repo:
+
+- MAAS exposes a real multi-turn OpenEnv-style environment with `/reset`, `/step`, `/state`, and `/health`.
+- The three-day trajectory path includes partial observability, information-gathering actions, intermediate referral, final diagnosis, and safety-shaped reward.
+- PPO/GRPO training scripts, notebooks, run summaries, and plots exist as reproducible engineering evidence.
+- The deterministic evaluator in [`scripts/evaluate_multiturn.py`](scripts/evaluate_multiturn.py) produces exact multi-turn metrics for baseline/oracle/model action traces.
+
+Still experimental:
+
+- The LLM GRPO policy is not clinically validated and should not be described as medically reliable.
+- Current GRPO evidence proves that the infrastructure runs and reward variance can be non-flat; it does not yet prove robust multi-turn model mastery.
+- Public demo links should be treated as primary evidence only after [`scripts/verify_space.py`](scripts/verify_space.py) passes and updates [`results/demo_verification.md`](results/demo_verification.md).
+
+## Product Workflow
+
+```mermaid
+flowchart LR
+    Patient["Patient check-in"] --> ASHA["ASHA worker review"]
+    ASHA --> MAAS["MAAS multi-turn triage"]
+    MAAS --> Info["Request missing signal"]
+    Info --> MAAS
+    MAAS --> PHC["PHC / hospital escalation"]
+    PHC --> Coordinator["Coordinator follow-up"]
+```
+
+Safety note: MAAS is a prototype decision-support environment for hackathon/research evaluation. It is not a clinical device and has not been clinically validated.
 
 ## Problem
 
@@ -284,12 +346,12 @@ Current checked-in baseline summary from `baseline_report.md`:
 
 ### Training Visuals
 
-![Baseline vs GRPO training](results/readme_baseline_vs_grpo.jpeg)
+![Baseline vs GRPO training](https://raw.githubusercontent.com/sparsh1258/MAAS/main/results/readme_baseline_vs_grpo.jpeg)
 
 Caption: baseline versus GRPO reward and accuracy for Niva prenatal health,
 showing the trained policy moving well above the no-training baseline.
 
-![Qwen2.5-1.5B GRPO training](results/readme_qwen15b_grpo_training.jpeg)
+![Qwen2.5-1.5B GRPO training](https://raw.githubusercontent.com/sparsh1258/MAAS/main/results/readme_qwen15b_grpo_training.jpeg)
 
 Caption: Qwen2.5-1.5B prenatal-health GRPO training view with loss, reward,
 and validation accuracy curves in one figure.
@@ -306,9 +368,37 @@ Run evaluation on the following benchmark tasks and report:
 - delta
 - which cases showed safety improvement (urgency alignment)
 
-Format as a clean markdown table. Be strict — do not round up scores.
+Format as a clean markdown table. Be strict - do not round up scores.
 Report exact numbers from eval runs.
 ```
+
+### Reproducible Multi-Turn Evaluation
+
+Run the checked-in deterministic benchmark:
+
+```bash
+python scripts/evaluate_multiturn.py --output-dir results
+```
+
+This writes:
+
+- `results/evaluation_report.md`
+- `results/multiturn_eval_results.csv`
+- `results/multiturn_eval_summary.json`
+
+To evaluate a trained model or saved action trace, provide JSONL with one row per trajectory:
+
+```json
+{"trajectory_id":"traj_preeclampsia_slow","actions":[{"action_type":"advance_day","rationale":"Need symptoms"},{"action_type":"advance_day","rationale":"Need history"},{"action_type":"diagnose","target":"preeclampsia","urgency":"go_to_hospital_today","rationale":"Escalate danger case"}]}
+```
+
+Then run:
+
+```bash
+python scripts/evaluate_multiturn.py --predictions-jsonl path/to/model_actions.jsonl --output-dir results
+```
+
+Report trained-model improvement only from this table or an equivalent exact evaluation.
 
 ## Running the Environment Locally
 
@@ -356,6 +446,14 @@ python hf_diagnosis_smoke_test.py --obs-file custom_case.txt
 
 If the Meta Llama baseline returns an access error, request access to the gated
 model on Hugging Face or swap in an open baseline with `--model`.
+
+## Live Demo Verification
+
+Before using the Space as the primary demo, verify it end to end:
+
+```bash
+python scripts/verify_space.py --base-url https://sparsh122-maas-openenv.hf.space --output results/demo_verification.md
+```
 
 ## Repo Structure
 

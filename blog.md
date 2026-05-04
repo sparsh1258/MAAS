@@ -14,6 +14,10 @@ rarely one-shot pattern-matching problems. Evidence appears over time, some
 signals are missing or delayed, and the most important failure mode is not
 "slightly lower accuracy." It is unsafe under-escalation.
 
+Safety note: MAAS is a prototype decision-support environment for hackathon and
+research evaluation. It is not clinically validated and should not be used as a
+medical device.
+
 ## The Environment
 
 The live environment is deployed on Hugging Face Spaces and exposes a standard
@@ -82,6 +86,12 @@ logic.
 
 The important design principle is simple: missing a danger case must hurt more
 than spending one more step gathering evidence or escalating cautiously.
+
+The latest reward pass also makes evaluation less brittle: common urgency
+aliases such as `urgent_care` normalize to supported labels, invalid model
+labels receive explicit penalties instead of crashing the reward calculation,
+and the multi-turn final reward includes a trajectory-target alignment term so
+case-level labels remain auditable.
 
 ## The Full System Beyond the RL Environment
 
@@ -158,12 +168,13 @@ because of LFS write permissions, but the run itself completed.
 The visuals below are the clearest reader-facing summary of the current GRPO
 training story for Niva prenatal health.
 
-![Baseline vs GRPO training](results/readme_baseline_vs_grpo.jpeg)
+![Baseline vs GRPO training](https://raw.githubusercontent.com/sparsh1258/MAAS/main/results/readme_baseline_vs_grpo.jpeg)
 
 Caption: Baseline versus GRPO reward and accuracy for Niva prenatal health,
-showing the trained policy moving well above the no-training baseline.
+showing the training signal and benchmark direction observed in the recorded
+runs. Treat this as training evidence, not clinical validation.
 
-![Qwen2.5-1.5B GRPO training](results/readme_qwen15b_grpo_training.jpeg)
+![Qwen2.5-1.5B GRPO training](https://raw.githubusercontent.com/sparsh1258/MAAS/main/results/readme_qwen15b_grpo_training.jpeg)
 
 Caption: Qwen2.5-1.5B prenatal-health GRPO training view with loss, reward,
 and validation accuracy curves in one figure.
@@ -184,6 +195,21 @@ Format as a clean markdown table. Be strict — do not round up scores.
 Report exact numbers from eval runs.
 ```
 
+### Deterministic multi-turn evaluation
+
+The repo now includes `scripts/evaluate_multiturn.py`, which runs the checked-in
+three-day trajectories through deterministic policies and writes:
+
+- `results/evaluation_report.md`
+- `results/multiturn_eval_results.csv`
+- `results/multiturn_eval_summary.json`
+
+The important use is practical: before claiming a trained model improved MAAS,
+save its action traces as JSONL and run the same evaluator with
+`--predictions-jsonl`. That produces exact condition accuracy, urgency accuracy,
+under-escalation rate, over-escalation rate, JSON-validity rate, mean reward,
+and mean step count.
+
 ### 3. Current limitation
 
 The current evidence supports a strong claim about trainability and benchmark
@@ -196,6 +222,29 @@ The honest conclusion is:
 - the online RL pipeline runs end to end
 - the benchmark still needs a cleaner, current multi-turn before/after result
   to prove robust learning on the latest environment
+- live demo links should be verified with `scripts/verify_space.py` before
+  being treated as the main public proof
+
+Current exact multi-turn evaluator results:
+
+- `conservative_visible_baseline`: mean reward `0.9551`, condition accuracy
+  `1.0000`, urgency accuracy `1.0000`, under-escalation rate `0.0000`
+- `day1_fast_baseline`: mean reward `0.4723`, condition accuracy `0.1250`,
+  urgency accuracy `0.1250`, under-escalation rate `0.8750`
+- `oracle`: mean reward `0.9551`, condition accuracy `1.0000`, urgency
+  accuracy `1.0000`, under-escalation rate `0.0000`
+
+This is useful evidence about the environment: acting from day 1 is unsafe, and
+waiting for the full three-day context solves the checked-in trajectories. It is
+not yet a trained-model before/after win.
+
+The latest reproducibility pass also adds:
+
+- `results/smoke_eval.md` for a fast oracle smoke test over all eight trajectories
+- `results/baseline_vs_trained_multiturn.md` for a same-evaluator before/after table
+- `results/training_results_overview.svg` regenerated from raw training CSV
+- `results/submission_link_check.md` for live link status
+- `results/judge_audit.md` for a strict, non-generous rubric simulation
 
 ## Why This Fits Theme 3.1
 

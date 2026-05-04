@@ -1,0 +1,1381 @@
+{
+  "ok": true,
+  "cases": [
+    {
+      "trajectory_id": "traj_anemia_gradual",
+      "passed": true,
+      "final_reward": 1.0,
+      "trace": [
+        {
+          "event": "reset",
+          "trajectory_id": "traj_anemia_gradual",
+          "day": 1,
+          "target_condition": "anemia",
+          "target_urgency": "visit_phc_this_week"
+        },
+        {
+          "action": {
+            "action_type": "advance_day",
+            "rationale": "Smoke test day 2 transition."
+          },
+          "reward": 0.0,
+          "done": false,
+          "day": 2,
+          "predicted_condition": null,
+          "urgency": null,
+          "reference_condition": "anemia",
+          "reference_urgency": "visit_phc_this_week",
+          "under_escalated": false,
+          "reward_components": {
+            "advance_reward": 0.0,
+            "step_log": {
+              "day": 2,
+              "action": {
+                "action_type": "advance_day",
+                "target": null,
+                "urgency": null,
+                "rationale": "Smoke test day 2 transition."
+              },
+              "observation_revealed": "advanced to day 2",
+              "step_reward": 0.0,
+              "cumulative_reward": 0.0,
+              "done": false
+            }
+          }
+        },
+        {
+          "action": {
+            "action_type": "advance_day",
+            "rationale": "Smoke test day 3 transition."
+          },
+          "reward": 0.0,
+          "done": false,
+          "day": 3,
+          "predicted_condition": null,
+          "urgency": null,
+          "reference_condition": "anemia",
+          "reference_urgency": "visit_phc_this_week",
+          "under_escalated": false,
+          "reward_components": {
+            "advance_reward": 0.0,
+            "step_log": {
+              "day": 3,
+              "action": {
+                "action_type": "advance_day",
+                "target": null,
+                "urgency": null,
+                "rationale": "Smoke test day 3 transition."
+              },
+              "observation_revealed": "advanced to day 3",
+              "step_reward": 0.0,
+              "cumulative_reward": 0.0,
+              "done": false
+            }
+          }
+        },
+        {
+          "action": {
+            "action_type": "diagnose",
+            "target": "anemia",
+            "urgency": "visit_phc_this_week",
+            "rationale": "Smoke test oracle final diagnosis."
+          },
+          "reward": 1.0,
+          "done": true,
+          "day": 3,
+          "predicted_condition": "anemia",
+          "urgency": "visit_phc_this_week",
+          "reference_condition": "anemia",
+          "reference_urgency": "visit_phc_this_week",
+          "under_escalated": false,
+          "reward_components": {
+            "class_weight": 1.0,
+            "condition_score": 12.0,
+            "urgency_score": 6.0,
+            "under_escalation_penalty": 0.0,
+            "over_escalation_penalty": 0.0,
+            "danger_override_penalty": 0.0,
+            "data_recency_bonus": 2.0,
+            "false_reassurance_penalty": 0.0,
+            "invalid_condition_penalty": 0.0,
+            "invalid_urgency_penalty": 0.0,
+            "total_reward": 1.0,
+            "raw_reward": 20.0,
+            "adjusted_raw_reward": 23.5,
+            "reference_condition": "anemia",
+            "reference_urgency": "visit_phc_this_week",
+            "trajectory_reference_condition": "anemia",
+            "trajectory_reference_urgency": "visit_phc_this_week",
+            "trajectory_condition_score": 2.0,
+            "trajectory_urgency_score": 1.5,
+            "trajectory_under_escalation_penalty": 0.0,
+            "trajectory_over_escalation_penalty": 0.0,
+            "premature_diagnosis_penalty": 0.0,
+            "latent_risks": {
+              "maternal_infection": 0.25,
+              "dehydration": 0.66,
+              "maternal_exhaustion": 0.6,
+              "nutrition_deficit": 0.8
+            },
+            "step_log": {
+              "day": 3,
+              "action": {
+                "action_type": "diagnose",
+                "target": "anemia",
+                "urgency": "visit_phc_this_week",
+                "rationale": "Smoke test oracle final diagnosis."
+              },
+              "observation_revealed": "final diagnosis submitted",
+              "step_reward": 1.0,
+              "cumulative_reward": 1.0,
+              "done": true
+            },
+            "episode_trace": [
+              {
+                "day": 2,
+                "action": {
+                  "action_type": "advance_day",
+                  "target": null,
+                  "urgency": null,
+                  "rationale": "Smoke test day 2 transition."
+                },
+                "observation_revealed": "advanced to day 2",
+                "step_reward": 0.0,
+                "cumulative_reward": 0.0,
+                "done": false
+              },
+              {
+                "day": 3,
+                "action": {
+                  "action_type": "advance_day",
+                  "target": null,
+                  "urgency": null,
+                  "rationale": "Smoke test day 3 transition."
+                },
+                "observation_revealed": "advanced to day 3",
+                "step_reward": 0.0,
+                "cumulative_reward": 0.0,
+                "done": false
+              },
+              {
+                "day": 3,
+                "action": {
+                  "action_type": "diagnose",
+                  "target": "anemia",
+                  "urgency": "visit_phc_this_week",
+                  "rationale": "Smoke test oracle final diagnosis."
+                },
+                "observation_revealed": "final diagnosis submitted",
+                "step_reward": 1.0,
+                "cumulative_reward": 1.0,
+                "done": true
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "trajectory_id": "traj_fetal_distress_sudden",
+      "passed": true,
+      "final_reward": 1.0,
+      "trace": [
+        {
+          "event": "reset",
+          "trajectory_id": "traj_fetal_distress_sudden",
+          "day": 1,
+          "target_condition": "fetal_distress",
+          "target_urgency": "go_to_hospital_today"
+        },
+        {
+          "action": {
+            "action_type": "advance_day",
+            "rationale": "Smoke test day 2 transition."
+          },
+          "reward": 0.0,
+          "done": false,
+          "day": 2,
+          "predicted_condition": null,
+          "urgency": null,
+          "reference_condition": "fetal_distress",
+          "reference_urgency": "go_to_hospital_today",
+          "under_escalated": false,
+          "reward_components": {
+            "advance_reward": 0.0,
+            "step_log": {
+              "day": 2,
+              "action": {
+                "action_type": "advance_day",
+                "target": null,
+                "urgency": null,
+                "rationale": "Smoke test day 2 transition."
+              },
+              "observation_revealed": "advanced to day 2",
+              "step_reward": 0.0,
+              "cumulative_reward": 0.0,
+              "done": false
+            }
+          }
+        },
+        {
+          "action": {
+            "action_type": "advance_day",
+            "rationale": "Smoke test day 3 transition."
+          },
+          "reward": 0.0,
+          "done": false,
+          "day": 3,
+          "predicted_condition": null,
+          "urgency": null,
+          "reference_condition": "fetal_distress",
+          "reference_urgency": "go_to_hospital_today",
+          "under_escalated": false,
+          "reward_components": {
+            "advance_reward": 0.0,
+            "step_log": {
+              "day": 3,
+              "action": {
+                "action_type": "advance_day",
+                "target": null,
+                "urgency": null,
+                "rationale": "Smoke test day 3 transition."
+              },
+              "observation_revealed": "advanced to day 3",
+              "step_reward": 0.0,
+              "cumulative_reward": 0.0,
+              "done": false
+            }
+          }
+        },
+        {
+          "action": {
+            "action_type": "diagnose",
+            "target": "fetal_distress",
+            "urgency": "go_to_hospital_today",
+            "rationale": "Smoke test oracle final diagnosis."
+          },
+          "reward": 1.0,
+          "done": true,
+          "day": 3,
+          "predicted_condition": "fetal_distress",
+          "urgency": "go_to_hospital_today",
+          "reference_condition": "fetal_distress",
+          "reference_urgency": "go_to_hospital_today",
+          "under_escalated": false,
+          "reward_components": {
+            "class_weight": 1.25,
+            "condition_score": 15.0,
+            "urgency_score": 7.5,
+            "under_escalation_penalty": 0.0,
+            "over_escalation_penalty": 0.0,
+            "danger_override_penalty": 0.0,
+            "data_recency_bonus": 2.0,
+            "false_reassurance_penalty": 0.0,
+            "invalid_condition_penalty": 0.0,
+            "invalid_urgency_penalty": 0.0,
+            "total_reward": 1.0,
+            "raw_reward": 24.5,
+            "adjusted_raw_reward": 28.0,
+            "reference_condition": "fetal_distress",
+            "reference_urgency": "go_to_hospital_today",
+            "trajectory_reference_condition": "fetal_distress",
+            "trajectory_reference_urgency": "go_to_hospital_today",
+            "trajectory_condition_score": 2.0,
+            "trajectory_urgency_score": 1.5,
+            "trajectory_under_escalation_penalty": 0.0,
+            "trajectory_over_escalation_penalty": 0.0,
+            "premature_diagnosis_penalty": 0.0,
+            "latent_risks": {},
+            "step_log": {
+              "day": 3,
+              "action": {
+                "action_type": "diagnose",
+                "target": "fetal_distress",
+                "urgency": "go_to_hospital_today",
+                "rationale": "Smoke test oracle final diagnosis."
+              },
+              "observation_revealed": "final diagnosis submitted",
+              "step_reward": 1.0,
+              "cumulative_reward": 1.0,
+              "done": true
+            },
+            "episode_trace": [
+              {
+                "day": 2,
+                "action": {
+                  "action_type": "advance_day",
+                  "target": null,
+                  "urgency": null,
+                  "rationale": "Smoke test day 2 transition."
+                },
+                "observation_revealed": "advanced to day 2",
+                "step_reward": 0.0,
+                "cumulative_reward": 0.0,
+                "done": false
+              },
+              {
+                "day": 3,
+                "action": {
+                  "action_type": "advance_day",
+                  "target": null,
+                  "urgency": null,
+                  "rationale": "Smoke test day 3 transition."
+                },
+                "observation_revealed": "advanced to day 3",
+                "step_reward": 0.0,
+                "cumulative_reward": 0.0,
+                "done": false
+              },
+              {
+                "day": 3,
+                "action": {
+                  "action_type": "diagnose",
+                  "target": "fetal_distress",
+                  "urgency": "go_to_hospital_today",
+                  "rationale": "Smoke test oracle final diagnosis."
+                },
+                "observation_revealed": "final diagnosis submitted",
+                "step_reward": 1.0,
+                "cumulative_reward": 1.0,
+                "done": true
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "trajectory_id": "traj_gestational_diabetes_noisy",
+      "passed": true,
+      "final_reward": 1.0,
+      "trace": [
+        {
+          "event": "reset",
+          "trajectory_id": "traj_gestational_diabetes_noisy",
+          "day": 1,
+          "target_condition": "gestational_diabetes",
+          "target_urgency": "visit_phc_this_week"
+        },
+        {
+          "action": {
+            "action_type": "advance_day",
+            "rationale": "Smoke test day 2 transition."
+          },
+          "reward": 0.0,
+          "done": false,
+          "day": 2,
+          "predicted_condition": null,
+          "urgency": null,
+          "reference_condition": "gestational_diabetes",
+          "reference_urgency": "visit_phc_this_week",
+          "under_escalated": false,
+          "reward_components": {
+            "advance_reward": 0.0,
+            "step_log": {
+              "day": 2,
+              "action": {
+                "action_type": "advance_day",
+                "target": null,
+                "urgency": null,
+                "rationale": "Smoke test day 2 transition."
+              },
+              "observation_revealed": "advanced to day 2",
+              "step_reward": 0.0,
+              "cumulative_reward": 0.0,
+              "done": false
+            }
+          }
+        },
+        {
+          "action": {
+            "action_type": "advance_day",
+            "rationale": "Smoke test day 3 transition."
+          },
+          "reward": 0.0,
+          "done": false,
+          "day": 3,
+          "predicted_condition": null,
+          "urgency": null,
+          "reference_condition": "gestational_diabetes",
+          "reference_urgency": "visit_phc_this_week",
+          "under_escalated": false,
+          "reward_components": {
+            "advance_reward": 0.0,
+            "step_log": {
+              "day": 3,
+              "action": {
+                "action_type": "advance_day",
+                "target": null,
+                "urgency": null,
+                "rationale": "Smoke test day 3 transition."
+              },
+              "observation_revealed": "advanced to day 3",
+              "step_reward": 0.0,
+              "cumulative_reward": 0.0,
+              "done": false
+            }
+          }
+        },
+        {
+          "action": {
+            "action_type": "diagnose",
+            "target": "gestational_diabetes",
+            "urgency": "visit_phc_this_week",
+            "rationale": "Smoke test oracle final diagnosis."
+          },
+          "reward": 1.0,
+          "done": true,
+          "day": 3,
+          "predicted_condition": "gestational_diabetes",
+          "urgency": "visit_phc_this_week",
+          "reference_condition": "gestational_diabetes",
+          "reference_urgency": "visit_phc_this_week",
+          "under_escalated": false,
+          "reward_components": {
+            "class_weight": 1.0,
+            "condition_score": 12.0,
+            "urgency_score": 6.0,
+            "under_escalation_penalty": 0.0,
+            "over_escalation_penalty": 0.0,
+            "danger_override_penalty": 0.0,
+            "data_recency_bonus": 2.0,
+            "false_reassurance_penalty": 0.0,
+            "invalid_condition_penalty": 0.0,
+            "invalid_urgency_penalty": 0.0,
+            "total_reward": 1.0,
+            "raw_reward": 20.0,
+            "adjusted_raw_reward": 23.5,
+            "reference_condition": "gestational_diabetes",
+            "reference_urgency": "visit_phc_this_week",
+            "trajectory_reference_condition": "gestational_diabetes",
+            "trajectory_reference_urgency": "visit_phc_this_week",
+            "trajectory_condition_score": 2.0,
+            "trajectory_urgency_score": 1.5,
+            "trajectory_under_escalation_penalty": 0.0,
+            "trajectory_over_escalation_penalty": 0.0,
+            "premature_diagnosis_penalty": 0.0,
+            "latent_risks": {
+              "maternal_infection": 0.25,
+              "dehydration": 0.63,
+              "intrahepatic_cholestasis": 0.29,
+              "maternal_exhaustion": 0.6
+            },
+            "step_log": {
+              "day": 3,
+              "action": {
+                "action_type": "diagnose",
+                "target": "gestational_diabetes",
+                "urgency": "visit_phc_this_week",
+                "rationale": "Smoke test oracle final diagnosis."
+              },
+              "observation_revealed": "final diagnosis submitted",
+              "step_reward": 1.0,
+              "cumulative_reward": 1.0,
+              "done": true
+            },
+            "episode_trace": [
+              {
+                "day": 2,
+                "action": {
+                  "action_type": "advance_day",
+                  "target": null,
+                  "urgency": null,
+                  "rationale": "Smoke test day 2 transition."
+                },
+                "observation_revealed": "advanced to day 2",
+                "step_reward": 0.0,
+                "cumulative_reward": 0.0,
+                "done": false
+              },
+              {
+                "day": 3,
+                "action": {
+                  "action_type": "advance_day",
+                  "target": null,
+                  "urgency": null,
+                  "rationale": "Smoke test day 3 transition."
+                },
+                "observation_revealed": "advanced to day 3",
+                "step_reward": 0.0,
+                "cumulative_reward": 0.0,
+                "done": false
+              },
+              {
+                "day": 3,
+                "action": {
+                  "action_type": "diagnose",
+                  "target": "gestational_diabetes",
+                  "urgency": "visit_phc_this_week",
+                  "rationale": "Smoke test oracle final diagnosis."
+                },
+                "observation_revealed": "final diagnosis submitted",
+                "step_reward": 1.0,
+                "cumulative_reward": 1.0,
+                "done": true
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "trajectory_id": "traj_low_risk_reassuring",
+      "passed": true,
+      "final_reward": 1.0,
+      "trace": [
+        {
+          "event": "reset",
+          "trajectory_id": "traj_low_risk_reassuring",
+          "day": 1,
+          "target_condition": "low_risk",
+          "target_urgency": "monitor_at_home"
+        },
+        {
+          "action": {
+            "action_type": "advance_day",
+            "rationale": "Smoke test day 2 transition."
+          },
+          "reward": 0.0,
+          "done": false,
+          "day": 2,
+          "predicted_condition": null,
+          "urgency": null,
+          "reference_condition": "low_risk",
+          "reference_urgency": "monitor_at_home",
+          "under_escalated": false,
+          "reward_components": {
+            "advance_reward": 0.0,
+            "step_log": {
+              "day": 2,
+              "action": {
+                "action_type": "advance_day",
+                "target": null,
+                "urgency": null,
+                "rationale": "Smoke test day 2 transition."
+              },
+              "observation_revealed": "advanced to day 2",
+              "step_reward": 0.0,
+              "cumulative_reward": 0.0,
+              "done": false
+            }
+          }
+        },
+        {
+          "action": {
+            "action_type": "advance_day",
+            "rationale": "Smoke test day 3 transition."
+          },
+          "reward": 0.0,
+          "done": false,
+          "day": 3,
+          "predicted_condition": null,
+          "urgency": null,
+          "reference_condition": "low_risk",
+          "reference_urgency": "monitor_at_home",
+          "under_escalated": false,
+          "reward_components": {
+            "advance_reward": 0.0,
+            "step_log": {
+              "day": 3,
+              "action": {
+                "action_type": "advance_day",
+                "target": null,
+                "urgency": null,
+                "rationale": "Smoke test day 3 transition."
+              },
+              "observation_revealed": "advanced to day 3",
+              "step_reward": 0.0,
+              "cumulative_reward": 0.0,
+              "done": false
+            }
+          }
+        },
+        {
+          "action": {
+            "action_type": "diagnose",
+            "target": "low_risk",
+            "urgency": "monitor_at_home",
+            "rationale": "Smoke test oracle final diagnosis."
+          },
+          "reward": 1.0,
+          "done": true,
+          "day": 3,
+          "predicted_condition": "low_risk",
+          "urgency": "monitor_at_home",
+          "reference_condition": "low_risk",
+          "reference_urgency": "monitor_at_home",
+          "under_escalated": false,
+          "reward_components": {
+            "class_weight": 0.9,
+            "condition_score": 10.8,
+            "urgency_score": 5.4,
+            "under_escalation_penalty": 0.0,
+            "over_escalation_penalty": 0.0,
+            "danger_override_penalty": 0.0,
+            "data_recency_bonus": 2.0,
+            "false_reassurance_penalty": 0.0,
+            "invalid_condition_penalty": 0.0,
+            "invalid_urgency_penalty": 0.0,
+            "total_reward": 1.0,
+            "raw_reward": 18.200000000000003,
+            "adjusted_raw_reward": 21.700000000000003,
+            "reference_condition": "low_risk",
+            "reference_urgency": "monitor_at_home",
+            "trajectory_reference_condition": "low_risk",
+            "trajectory_reference_urgency": "monitor_at_home",
+            "trajectory_condition_score": 2.0,
+            "trajectory_urgency_score": 1.5,
+            "trajectory_under_escalation_penalty": 0.0,
+            "trajectory_over_escalation_penalty": 0.0,
+            "premature_diagnosis_penalty": 0.0,
+            "latent_risks": {},
+            "step_log": {
+              "day": 3,
+              "action": {
+                "action_type": "diagnose",
+                "target": "low_risk",
+                "urgency": "monitor_at_home",
+                "rationale": "Smoke test oracle final diagnosis."
+              },
+              "observation_revealed": "final diagnosis submitted",
+              "step_reward": 1.0,
+              "cumulative_reward": 1.0,
+              "done": true
+            },
+            "episode_trace": [
+              {
+                "day": 2,
+                "action": {
+                  "action_type": "advance_day",
+                  "target": null,
+                  "urgency": null,
+                  "rationale": "Smoke test day 2 transition."
+                },
+                "observation_revealed": "advanced to day 2",
+                "step_reward": 0.0,
+                "cumulative_reward": 0.0,
+                "done": false
+              },
+              {
+                "day": 3,
+                "action": {
+                  "action_type": "advance_day",
+                  "target": null,
+                  "urgency": null,
+                  "rationale": "Smoke test day 3 transition."
+                },
+                "observation_revealed": "advanced to day 3",
+                "step_reward": 0.0,
+                "cumulative_reward": 0.0,
+                "done": false
+              },
+              {
+                "day": 3,
+                "action": {
+                  "action_type": "diagnose",
+                  "target": "low_risk",
+                  "urgency": "monitor_at_home",
+                  "rationale": "Smoke test oracle final diagnosis."
+                },
+                "observation_revealed": "final diagnosis submitted",
+                "step_reward": 1.0,
+                "cumulative_reward": 1.0,
+                "done": true
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "trajectory_id": "traj_mixed_signals_hard",
+      "passed": true,
+      "final_reward": 0.640625,
+      "trace": [
+        {
+          "event": "reset",
+          "trajectory_id": "traj_mixed_signals_hard",
+          "day": 1,
+          "target_condition": "fetal_distress",
+          "target_urgency": "go_to_hospital_today"
+        },
+        {
+          "action": {
+            "action_type": "advance_day",
+            "rationale": "Smoke test day 2 transition."
+          },
+          "reward": 0.0,
+          "done": false,
+          "day": 2,
+          "predicted_condition": null,
+          "urgency": null,
+          "reference_condition": "fetal_distress",
+          "reference_urgency": "go_to_hospital_today",
+          "under_escalated": false,
+          "reward_components": {
+            "advance_reward": 0.0,
+            "step_log": {
+              "day": 2,
+              "action": {
+                "action_type": "advance_day",
+                "target": null,
+                "urgency": null,
+                "rationale": "Smoke test day 2 transition."
+              },
+              "observation_revealed": "advanced to day 2",
+              "step_reward": 0.0,
+              "cumulative_reward": 0.0,
+              "done": false
+            }
+          }
+        },
+        {
+          "action": {
+            "action_type": "advance_day",
+            "rationale": "Smoke test day 3 transition."
+          },
+          "reward": 0.0,
+          "done": false,
+          "day": 3,
+          "predicted_condition": null,
+          "urgency": null,
+          "reference_condition": "fetal_distress",
+          "reference_urgency": "go_to_hospital_today",
+          "under_escalated": false,
+          "reward_components": {
+            "advance_reward": 0.0,
+            "step_log": {
+              "day": 3,
+              "action": {
+                "action_type": "advance_day",
+                "target": null,
+                "urgency": null,
+                "rationale": "Smoke test day 3 transition."
+              },
+              "observation_revealed": "advanced to day 3",
+              "step_reward": 0.0,
+              "cumulative_reward": 0.0,
+              "done": false
+            }
+          }
+        },
+        {
+          "action": {
+            "action_type": "diagnose",
+            "target": "fetal_distress",
+            "urgency": "go_to_hospital_today",
+            "rationale": "Smoke test oracle final diagnosis."
+          },
+          "reward": 0.640625,
+          "done": true,
+          "day": 3,
+          "predicted_condition": "fetal_distress",
+          "urgency": "go_to_hospital_today",
+          "reference_condition": "fetal_distress",
+          "reference_urgency": "go_to_hospital_today",
+          "under_escalated": false,
+          "reward_components": {
+            "class_weight": 1.25,
+            "condition_score": -7.5,
+            "urgency_score": 7.5,
+            "under_escalation_penalty": 0.0,
+            "over_escalation_penalty": 0.0,
+            "danger_override_penalty": 0.0,
+            "data_recency_bonus": 2.0,
+            "false_reassurance_penalty": 0.0,
+            "invalid_condition_penalty": 0.0,
+            "invalid_urgency_penalty": 0.0,
+            "total_reward": 0.640625,
+            "raw_reward": 2.0,
+            "adjusted_raw_reward": 5.5,
+            "reference_condition": "preeclampsia",
+            "reference_urgency": "go_to_hospital_today",
+            "trajectory_reference_condition": "fetal_distress",
+            "trajectory_reference_urgency": "go_to_hospital_today",
+            "trajectory_condition_score": 2.0,
+            "trajectory_urgency_score": 1.5,
+            "trajectory_under_escalation_penalty": 0.0,
+            "trajectory_over_escalation_penalty": 0.0,
+            "premature_diagnosis_penalty": 0.0,
+            "latent_risks": {
+              "intrahepatic_cholestasis": 0.305,
+              "maternal_exhaustion": 0.6
+            },
+            "step_log": {
+              "day": 3,
+              "action": {
+                "action_type": "diagnose",
+                "target": "fetal_distress",
+                "urgency": "go_to_hospital_today",
+                "rationale": "Smoke test oracle final diagnosis."
+              },
+              "observation_revealed": "final diagnosis submitted",
+              "step_reward": 0.6406,
+              "cumulative_reward": 0.6406,
+              "done": true
+            },
+            "episode_trace": [
+              {
+                "day": 2,
+                "action": {
+                  "action_type": "advance_day",
+                  "target": null,
+                  "urgency": null,
+                  "rationale": "Smoke test day 2 transition."
+                },
+                "observation_revealed": "advanced to day 2",
+                "step_reward": 0.0,
+                "cumulative_reward": 0.0,
+                "done": false
+              },
+              {
+                "day": 3,
+                "action": {
+                  "action_type": "advance_day",
+                  "target": null,
+                  "urgency": null,
+                  "rationale": "Smoke test day 3 transition."
+                },
+                "observation_revealed": "advanced to day 3",
+                "step_reward": 0.0,
+                "cumulative_reward": 0.0,
+                "done": false
+              },
+              {
+                "day": 3,
+                "action": {
+                  "action_type": "diagnose",
+                  "target": "fetal_distress",
+                  "urgency": "go_to_hospital_today",
+                  "rationale": "Smoke test oracle final diagnosis."
+                },
+                "observation_revealed": "final diagnosis submitted",
+                "step_reward": 0.6406,
+                "cumulative_reward": 0.6406,
+                "done": true
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "trajectory_id": "traj_preeclampsia_fast",
+      "passed": true,
+      "final_reward": 1.0,
+      "trace": [
+        {
+          "event": "reset",
+          "trajectory_id": "traj_preeclampsia_fast",
+          "day": 1,
+          "target_condition": "preeclampsia",
+          "target_urgency": "go_to_hospital_today"
+        },
+        {
+          "action": {
+            "action_type": "advance_day",
+            "rationale": "Smoke test day 2 transition."
+          },
+          "reward": 0.0,
+          "done": false,
+          "day": 2,
+          "predicted_condition": null,
+          "urgency": null,
+          "reference_condition": "preeclampsia",
+          "reference_urgency": "go_to_hospital_today",
+          "under_escalated": false,
+          "reward_components": {
+            "advance_reward": 0.0,
+            "step_log": {
+              "day": 2,
+              "action": {
+                "action_type": "advance_day",
+                "target": null,
+                "urgency": null,
+                "rationale": "Smoke test day 2 transition."
+              },
+              "observation_revealed": "advanced to day 2",
+              "step_reward": 0.0,
+              "cumulative_reward": 0.0,
+              "done": false
+            }
+          }
+        },
+        {
+          "action": {
+            "action_type": "advance_day",
+            "rationale": "Smoke test day 3 transition."
+          },
+          "reward": 0.0,
+          "done": false,
+          "day": 3,
+          "predicted_condition": null,
+          "urgency": null,
+          "reference_condition": "preeclampsia",
+          "reference_urgency": "go_to_hospital_today",
+          "under_escalated": false,
+          "reward_components": {
+            "advance_reward": 0.0,
+            "step_log": {
+              "day": 3,
+              "action": {
+                "action_type": "advance_day",
+                "target": null,
+                "urgency": null,
+                "rationale": "Smoke test day 3 transition."
+              },
+              "observation_revealed": "advanced to day 3",
+              "step_reward": 0.0,
+              "cumulative_reward": 0.0,
+              "done": false
+            }
+          }
+        },
+        {
+          "action": {
+            "action_type": "diagnose",
+            "target": "preeclampsia",
+            "urgency": "go_to_hospital_today",
+            "rationale": "Smoke test oracle final diagnosis."
+          },
+          "reward": 1.0,
+          "done": true,
+          "day": 3,
+          "predicted_condition": "preeclampsia",
+          "urgency": "go_to_hospital_today",
+          "reference_condition": "preeclampsia",
+          "reference_urgency": "go_to_hospital_today",
+          "under_escalated": false,
+          "reward_components": {
+            "class_weight": 1.25,
+            "condition_score": 15.0,
+            "urgency_score": 7.5,
+            "under_escalation_penalty": 0.0,
+            "over_escalation_penalty": 0.0,
+            "danger_override_penalty": 0.0,
+            "data_recency_bonus": 2.0,
+            "false_reassurance_penalty": 0.0,
+            "invalid_condition_penalty": 0.0,
+            "invalid_urgency_penalty": 0.0,
+            "total_reward": 1.0,
+            "raw_reward": 24.5,
+            "adjusted_raw_reward": 28.0,
+            "reference_condition": "preeclampsia",
+            "reference_urgency": "go_to_hospital_today",
+            "trajectory_reference_condition": "preeclampsia",
+            "trajectory_reference_urgency": "go_to_hospital_today",
+            "trajectory_condition_score": 2.0,
+            "trajectory_urgency_score": 1.5,
+            "trajectory_under_escalation_penalty": 0.0,
+            "trajectory_over_escalation_penalty": 0.0,
+            "premature_diagnosis_penalty": 0.0,
+            "latent_risks": {
+              "intrahepatic_cholestasis": 0.32,
+              "maternal_exhaustion": 0.6
+            },
+            "step_log": {
+              "day": 3,
+              "action": {
+                "action_type": "diagnose",
+                "target": "preeclampsia",
+                "urgency": "go_to_hospital_today",
+                "rationale": "Smoke test oracle final diagnosis."
+              },
+              "observation_revealed": "final diagnosis submitted",
+              "step_reward": 1.0,
+              "cumulative_reward": 1.0,
+              "done": true
+            },
+            "episode_trace": [
+              {
+                "day": 2,
+                "action": {
+                  "action_type": "advance_day",
+                  "target": null,
+                  "urgency": null,
+                  "rationale": "Smoke test day 2 transition."
+                },
+                "observation_revealed": "advanced to day 2",
+                "step_reward": 0.0,
+                "cumulative_reward": 0.0,
+                "done": false
+              },
+              {
+                "day": 3,
+                "action": {
+                  "action_type": "advance_day",
+                  "target": null,
+                  "urgency": null,
+                  "rationale": "Smoke test day 3 transition."
+                },
+                "observation_revealed": "advanced to day 3",
+                "step_reward": 0.0,
+                "cumulative_reward": 0.0,
+                "done": false
+              },
+              {
+                "day": 3,
+                "action": {
+                  "action_type": "diagnose",
+                  "target": "preeclampsia",
+                  "urgency": "go_to_hospital_today",
+                  "rationale": "Smoke test oracle final diagnosis."
+                },
+                "observation_revealed": "final diagnosis submitted",
+                "step_reward": 1.0,
+                "cumulative_reward": 1.0,
+                "done": true
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "trajectory_id": "traj_preeclampsia_slow",
+      "passed": true,
+      "final_reward": 1.0,
+      "trace": [
+        {
+          "event": "reset",
+          "trajectory_id": "traj_preeclampsia_slow",
+          "day": 1,
+          "target_condition": "preeclampsia",
+          "target_urgency": "go_to_hospital_today"
+        },
+        {
+          "action": {
+            "action_type": "advance_day",
+            "rationale": "Smoke test day 2 transition."
+          },
+          "reward": 0.0,
+          "done": false,
+          "day": 2,
+          "predicted_condition": null,
+          "urgency": null,
+          "reference_condition": "preeclampsia",
+          "reference_urgency": "go_to_hospital_today",
+          "under_escalated": false,
+          "reward_components": {
+            "advance_reward": 0.0,
+            "step_log": {
+              "day": 2,
+              "action": {
+                "action_type": "advance_day",
+                "target": null,
+                "urgency": null,
+                "rationale": "Smoke test day 2 transition."
+              },
+              "observation_revealed": "advanced to day 2",
+              "step_reward": 0.0,
+              "cumulative_reward": 0.0,
+              "done": false
+            }
+          }
+        },
+        {
+          "action": {
+            "action_type": "advance_day",
+            "rationale": "Smoke test day 3 transition."
+          },
+          "reward": 0.0,
+          "done": false,
+          "day": 3,
+          "predicted_condition": null,
+          "urgency": null,
+          "reference_condition": "preeclampsia",
+          "reference_urgency": "go_to_hospital_today",
+          "under_escalated": false,
+          "reward_components": {
+            "advance_reward": 0.0,
+            "step_log": {
+              "day": 3,
+              "action": {
+                "action_type": "advance_day",
+                "target": null,
+                "urgency": null,
+                "rationale": "Smoke test day 3 transition."
+              },
+              "observation_revealed": "advanced to day 3",
+              "step_reward": 0.0,
+              "cumulative_reward": 0.0,
+              "done": false
+            }
+          }
+        },
+        {
+          "action": {
+            "action_type": "diagnose",
+            "target": "preeclampsia",
+            "urgency": "go_to_hospital_today",
+            "rationale": "Smoke test oracle final diagnosis."
+          },
+          "reward": 1.0,
+          "done": true,
+          "day": 3,
+          "predicted_condition": "preeclampsia",
+          "urgency": "go_to_hospital_today",
+          "reference_condition": "preeclampsia",
+          "reference_urgency": "go_to_hospital_today",
+          "under_escalated": false,
+          "reward_components": {
+            "class_weight": 1.25,
+            "condition_score": 15.0,
+            "urgency_score": 7.5,
+            "under_escalation_penalty": 0.0,
+            "over_escalation_penalty": 0.0,
+            "danger_override_penalty": 0.0,
+            "data_recency_bonus": 2.0,
+            "false_reassurance_penalty": 0.0,
+            "invalid_condition_penalty": 0.0,
+            "invalid_urgency_penalty": 0.0,
+            "total_reward": 1.0,
+            "raw_reward": 24.5,
+            "adjusted_raw_reward": 28.0,
+            "reference_condition": "preeclampsia",
+            "reference_urgency": "go_to_hospital_today",
+            "trajectory_reference_condition": "preeclampsia",
+            "trajectory_reference_urgency": "go_to_hospital_today",
+            "trajectory_condition_score": 2.0,
+            "trajectory_urgency_score": 1.5,
+            "trajectory_under_escalation_penalty": 0.0,
+            "trajectory_over_escalation_penalty": 0.0,
+            "premature_diagnosis_penalty": 0.0,
+            "latent_risks": {
+              "maternal_exhaustion": 0.35
+            },
+            "step_log": {
+              "day": 3,
+              "action": {
+                "action_type": "diagnose",
+                "target": "preeclampsia",
+                "urgency": "go_to_hospital_today",
+                "rationale": "Smoke test oracle final diagnosis."
+              },
+              "observation_revealed": "final diagnosis submitted",
+              "step_reward": 1.0,
+              "cumulative_reward": 1.0,
+              "done": true
+            },
+            "episode_trace": [
+              {
+                "day": 2,
+                "action": {
+                  "action_type": "advance_day",
+                  "target": null,
+                  "urgency": null,
+                  "rationale": "Smoke test day 2 transition."
+                },
+                "observation_revealed": "advanced to day 2",
+                "step_reward": 0.0,
+                "cumulative_reward": 0.0,
+                "done": false
+              },
+              {
+                "day": 3,
+                "action": {
+                  "action_type": "advance_day",
+                  "target": null,
+                  "urgency": null,
+                  "rationale": "Smoke test day 3 transition."
+                },
+                "observation_revealed": "advanced to day 3",
+                "step_reward": 0.0,
+                "cumulative_reward": 0.0,
+                "done": false
+              },
+              {
+                "day": 3,
+                "action": {
+                  "action_type": "diagnose",
+                  "target": "preeclampsia",
+                  "urgency": "go_to_hospital_today",
+                  "rationale": "Smoke test oracle final diagnosis."
+                },
+                "observation_revealed": "final diagnosis submitted",
+                "step_reward": 1.0,
+                "cumulative_reward": 1.0,
+                "done": true
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "trajectory_id": "traj_preterm_subtle",
+      "passed": true,
+      "final_reward": 1.0,
+      "trace": [
+        {
+          "event": "reset",
+          "trajectory_id": "traj_preterm_subtle",
+          "day": 1,
+          "target_condition": "preterm_risk",
+          "target_urgency": "visit_phc_this_week"
+        },
+        {
+          "action": {
+            "action_type": "advance_day",
+            "rationale": "Smoke test day 2 transition."
+          },
+          "reward": 0.0,
+          "done": false,
+          "day": 2,
+          "predicted_condition": null,
+          "urgency": null,
+          "reference_condition": "preterm_risk",
+          "reference_urgency": "visit_phc_this_week",
+          "under_escalated": false,
+          "reward_components": {
+            "advance_reward": 0.0,
+            "step_log": {
+              "day": 2,
+              "action": {
+                "action_type": "advance_day",
+                "target": null,
+                "urgency": null,
+                "rationale": "Smoke test day 2 transition."
+              },
+              "observation_revealed": "advanced to day 2",
+              "step_reward": 0.0,
+              "cumulative_reward": 0.0,
+              "done": false
+            }
+          }
+        },
+        {
+          "action": {
+            "action_type": "advance_day",
+            "rationale": "Smoke test day 3 transition."
+          },
+          "reward": 0.0,
+          "done": false,
+          "day": 3,
+          "predicted_condition": null,
+          "urgency": null,
+          "reference_condition": "preterm_risk",
+          "reference_urgency": "visit_phc_this_week",
+          "under_escalated": false,
+          "reward_components": {
+            "advance_reward": 0.0,
+            "step_log": {
+              "day": 3,
+              "action": {
+                "action_type": "advance_day",
+                "target": null,
+                "urgency": null,
+                "rationale": "Smoke test day 3 transition."
+              },
+              "observation_revealed": "advanced to day 3",
+              "step_reward": 0.0,
+              "cumulative_reward": 0.0,
+              "done": false
+            }
+          }
+        },
+        {
+          "action": {
+            "action_type": "diagnose",
+            "target": "preterm_risk",
+            "urgency": "visit_phc_this_week",
+            "rationale": "Smoke test oracle final diagnosis."
+          },
+          "reward": 1.0,
+          "done": true,
+          "day": 3,
+          "predicted_condition": "preterm_risk",
+          "urgency": "visit_phc_this_week",
+          "reference_condition": "preterm_risk",
+          "reference_urgency": "visit_phc_this_week",
+          "under_escalated": false,
+          "reward_components": {
+            "class_weight": 1.15,
+            "condition_score": 13.799999999999999,
+            "urgency_score": 6.8999999999999995,
+            "under_escalation_penalty": 0.0,
+            "over_escalation_penalty": 0.0,
+            "danger_override_penalty": 0.0,
+            "data_recency_bonus": 2.0,
+            "false_reassurance_penalty": 0.0,
+            "invalid_condition_penalty": 0.0,
+            "invalid_urgency_penalty": 0.0,
+            "total_reward": 1.0,
+            "raw_reward": 22.699999999999996,
+            "adjusted_raw_reward": 26.199999999999996,
+            "reference_condition": "preterm_risk",
+            "reference_urgency": "visit_phc_this_week",
+            "trajectory_reference_condition": "preterm_risk",
+            "trajectory_reference_urgency": "visit_phc_this_week",
+            "trajectory_condition_score": 2.0,
+            "trajectory_urgency_score": 1.5,
+            "trajectory_under_escalation_penalty": 0.0,
+            "trajectory_over_escalation_penalty": 0.0,
+            "premature_diagnosis_penalty": 0.0,
+            "latent_risks": {
+              "maternal_infection": 0.55,
+              "dehydration": 0.51,
+              "placental_abruption": 0.35,
+              "maternal_exhaustion": 0.35
+            },
+            "step_log": {
+              "day": 3,
+              "action": {
+                "action_type": "diagnose",
+                "target": "preterm_risk",
+                "urgency": "visit_phc_this_week",
+                "rationale": "Smoke test oracle final diagnosis."
+              },
+              "observation_revealed": "final diagnosis submitted",
+              "step_reward": 1.0,
+              "cumulative_reward": 1.0,
+              "done": true
+            },
+            "episode_trace": [
+              {
+                "day": 2,
+                "action": {
+                  "action_type": "advance_day",
+                  "target": null,
+                  "urgency": null,
+                  "rationale": "Smoke test day 2 transition."
+                },
+                "observation_revealed": "advanced to day 2",
+                "step_reward": 0.0,
+                "cumulative_reward": 0.0,
+                "done": false
+              },
+              {
+                "day": 3,
+                "action": {
+                  "action_type": "advance_day",
+                  "target": null,
+                  "urgency": null,
+                  "rationale": "Smoke test day 3 transition."
+                },
+                "observation_revealed": "advanced to day 3",
+                "step_reward": 0.0,
+                "cumulative_reward": 0.0,
+                "done": false
+              },
+              {
+                "day": 3,
+                "action": {
+                  "action_type": "diagnose",
+                  "target": "preterm_risk",
+                  "urgency": "visit_phc_this_week",
+                  "rationale": "Smoke test oracle final diagnosis."
+                },
+                "observation_revealed": "final diagnosis submitted",
+                "step_reward": 1.0,
+                "cumulative_reward": 1.0,
+                "done": true
+              }
+            ]
+          }
+        }
+      ]
+    }
+  ],
+  "case_count": 8
+}

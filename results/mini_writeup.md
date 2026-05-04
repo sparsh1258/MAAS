@@ -20,10 +20,23 @@ The repo includes:
 - Colab-ready notebooks
 - checked-in GRPO run summaries, reward curves, and training metrics
 
-The strongest current evidence shows that the online RL loop ran end to end with
-non-zero gradients and non-zero reward variance on real runs. The honest caveat
-is that the latest checked-in evidence proves trainability more strongly than it
-proves stable final policy superiority on the newest multi-turn benchmark.
+The strongest current claim is a realistic, safety-sensitive, multi-turn OpenEnv
+environment for maternal triage. The weaker claim is model performance: GRPO
+infrastructure runs, but robust trained-model improvement still needs exact
+multi-turn before/after proof from the same evaluator.
+
+Current deterministic multi-turn evaluation from `evaluation_report.md`:
+
+- `conservative_visible_baseline`: mean reward `0.9551`, condition accuracy
+  `1.0000`, urgency accuracy `1.0000`, under-escalation rate `0.0000`
+- `day1_fast_baseline`: mean reward `0.4723`, condition accuracy `0.1250`,
+  urgency accuracy `0.1250`, under-escalation rate `0.8750`
+- `oracle`: mean reward `0.9551`, condition accuracy `1.0000`, urgency
+  accuracy `1.0000`, under-escalation rate `0.0000`
+
+These numbers show that waiting for full evidence is much safer than one-shot
+day-1 diagnosis on the checked-in trajectories. They do not yet prove that a
+trained GRPO model beats the deterministic baseline.
 
 Most relevant graphs:
 
@@ -31,6 +44,8 @@ Most relevant graphs:
 - `final_1p5b_quality_chart.svg`
 - `final_1p5b_training_health_chart.svg`
 - `baseline_vs_trained_benchmark_chart.svg`
+- `evaluation_report.md`
+- `demo_verification.md`
 
 The baseline comparison graph is deliberately conservative: it compares the
 checked-in legacy baseline average against the current 1.5B GRPO run's average,

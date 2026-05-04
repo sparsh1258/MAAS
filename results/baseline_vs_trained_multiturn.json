@@ -1,0 +1,42 @@
+{
+  "summary_source": "results\\multiturn_eval_summary.json",
+  "model_rows_present": false,
+  "trained_rows_present": false,
+  "claim_trained_improvement": false,
+  "policies": [
+    {
+      "policy": "conservative_visible_baseline",
+      "cases": 8,
+      "mean_reward": 0.9551,
+      "condition_accuracy": 1.0,
+      "urgency_accuracy": 1.0,
+      "under_escalation_rate": 0.0,
+      "over_escalation_rate": 0.0,
+      "json_valid_rate": 1.0,
+      "mean_steps": 3
+    },
+    {
+      "policy": "day1_fast_baseline",
+      "cases": 8,
+      "mean_reward": 0.4723,
+      "condition_accuracy": 0.125,
+      "urgency_accuracy": 0.125,
+      "under_escalation_rate": 0.875,
+      "over_escalation_rate": 0.0,
+      "json_valid_rate": 1.0,
+      "mean_steps": 1
+    },
+    {
+      "policy": "oracle",
+      "cases": 8,
+      "mean_reward": 0.9551,
+      "condition_accuracy": 1.0,
+      "urgency_accuracy": 1.0,
+      "under_escalation_rate": 0.0,
+      "over_escalation_rate": 0.0,
+      "json_valid_rate": 1.0,
+      "mean_steps": 3
+    }
+  ],
+  "interpretation": "A trained before/after claim is supported only if trained-model or model_predictions rows are present and outperform the matched baseline under the same eight trajectories."
+}

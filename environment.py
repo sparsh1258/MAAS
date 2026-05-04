@@ -18,6 +18,8 @@ from xai_reward_model import (
     featurize,
     infer_reference_condition,
     latent_risk_scores,
+    normalize_condition,
+    normalize_urgency,
     supporting_features,
 )
 
@@ -1490,8 +1492,47 @@ class MultiTurnPrenatalEnvironment(OpenEnvEnvironment):
         prompt = self.last_prompt or self._build_prompt()
         obs = prompt.observation
         breakdown = calculate_reward(condition, urgency, obs)
+        trajectory_condition_score = 0.0
+        trajectory_urgency_score = 0.0
+        trajectory_under_escalation_penalty = 0.0
+        trajectory_over_escalation_penalty = 0.0
+        premature_diagnosis_penalty = 0.0
+        if self.current_trajectory is not None:
+            if condition == self.current_trajectory.target_condition:
+                trajectory_condition_score = 2.0
+            else:
+                trajectory_condition_score = -2.0
+            if urgency == self.current_trajectory.target_urgency:
+                trajectory_urgency_score = 1.5
+            elif (
+                urgency in URGENCY_ORDER
+                and self.current_trajectory.target_urgency in URGENCY_ORDER
+                and URGENCY_ORDER.index(urgency) < URGENCY_ORDER.index(self.current_trajectory.target_urgency)
+            ):
+                trajectory_under_escalation_penalty = -6.0
+            elif (
+                urgency in URGENCY_ORDER
+                and self.current_trajectory.target_urgency in URGENCY_ORDER
+                and URGENCY_ORDER.index(urgency) > URGENCY_ORDER.index(self.current_trajectory.target_urgency)
+            ):
+                urgency_delta = URGENCY_ORDER.index(urgency) - URGENCY_ORDER.index(self.current_trajectory.target_urgency)
+                trajectory_over_escalation_penalty = -2.0 * urgency_delta
+            if self.current_day < len(self.current_trajectory.days):
+                hidden_case_is_risky = self.current_trajectory.target_condition != "low_risk"
+                if hidden_case_is_risky and condition == "low_risk":
+                    premature_diagnosis_penalty = -10.0
+                elif hidden_case_is_risky and urgency != "go_to_hospital_today":
+                    premature_diagnosis_penalty = -5.0
+        adjusted_raw_reward = (
+            float(breakdown.reward)
+            + trajectory_condition_score
+            + trajectory_urgency_score
+            + trajectory_under_escalation_penalty
+            + trajectory_over_escalation_penalty
+            + premature_diagnosis_penalty
+        )
         normalized = self._normalize_reward_openenv(
-            raw_reward=breakdown.reward,
+            raw_reward=adjusted_raw_reward,
             observation=obs,
             predicted_condition=condition,
             predicted_urgency=urgency,
@@ -1501,9 +1542,17 @@ class MultiTurnPrenatalEnvironment(OpenEnvEnvironment):
         comps.update(
             {
                 "raw_reward": breakdown.reward,
+                "adjusted_raw_reward": adjusted_raw_reward,
                 "total_reward": normalized,
                 "reference_condition": breakdown.reference_condition,
                 "reference_urgency": breakdown.reference_urgency,
+                "trajectory_reference_condition": self.current_trajectory.target_condition if self.current_trajectory else None,
+                "trajectory_reference_urgency": self.current_trajectory.target_urgency if self.current_trajectory else None,
+                "trajectory_condition_score": trajectory_condition_score,
+                "trajectory_urgency_score": trajectory_urgency_score,
+                "trajectory_under_escalation_penalty": trajectory_under_escalation_penalty,
+                "trajectory_over_escalation_penalty": trajectory_over_escalation_penalty,
+                "premature_diagnosis_penalty": premature_diagnosis_penalty,
                 "latent_risks": breakdown.latent_risks,
             }
         )
@@ -1516,11 +1565,13 @@ class MultiTurnPrenatalEnvironment(OpenEnvEnvironment):
             raise RuntimeError("No active trajectory. Call reset() first.")
 
         action_model = action if isinstance(action, ActionModel) else ActionModel(**action)
-        action_type = action_model.action_type or "diagnose"
+        action_type = str(action_model.action_type or "diagnose").strip().lower()
+        target_value = normalize_condition(action_model.condition or action_model.target)
+        urgency_value = normalize_urgency(action_model.urgency)
         action_dict = {
             "action_type": action_type,
-            "target": action_model.condition or action_model.target,
-            "urgency": action_model.urgency,
+            "target": target_value,
+            "urgency": urgency_value,
             "rationale": action_model.rationale,
         }
 
@@ -1547,9 +1598,14 @@ class MultiTurnPrenatalEnvironment(OpenEnvEnvironment):
 
         if action_type == "request_bp_recheck":
             day = self._current_day_state()
+            repeated = self.current_day in self.bp_rechecks
             self.bp_rechecks.add(self.current_day)
-            reward = -0.05
-            revealed = f"BP recheck: {day.bp_systolic}/{day.bp_diastolic} mmHg"
+            reward = -0.15 if repeated else -0.05
+            revealed = (
+                f"Repeated BP recheck: {day.bp_systolic}/{day.bp_diastolic} mmHg"
+                if repeated
+                else f"BP recheck: {day.bp_systolic}/{day.bp_diastolic} mmHg"
+            )
             step_log = self._log_step(action_dict, revealed, reward, False)
             prompt = self._build_prompt()
             return StepResult(
@@ -1557,7 +1613,12 @@ class MultiTurnPrenatalEnvironment(OpenEnvEnvironment):
                 text_observation=prompt.text_observation,
                 prompt=prompt,
                 reward=reward,
-                reward_components={"request_cost": reward, "step_log": step_log, "revealed_signal": "bp_recheck"},
+                reward_components={
+                    "request_cost": reward,
+                    "repeated_request_penalty": -0.10 if repeated else 0.0,
+                    "step_log": step_log,
+                    "revealed_signal": "bp_recheck",
+                },
                 done=False,
                 predicted_condition=None,
                 urgency=None,
@@ -1570,9 +1631,10 @@ class MultiTurnPrenatalEnvironment(OpenEnvEnvironment):
 
         if action_type == "request_kick_count":
             day = self._current_day_state()
+            repeated = self.current_day in self.kick_requests
             self.kick_requests.add(self.current_day)
-            reward = -0.05
-            revealed = f"Kick count recheck: {day.kick_count}"
+            reward = -0.15 if repeated else -0.05
+            revealed = f"Repeated kick count recheck: {day.kick_count}" if repeated else f"Kick count recheck: {day.kick_count}"
             step_log = self._log_step(action_dict, revealed, reward, False)
             prompt = self._build_prompt()
             return StepResult(
@@ -1580,7 +1642,12 @@ class MultiTurnPrenatalEnvironment(OpenEnvEnvironment):
                 text_observation=prompt.text_observation,
                 prompt=prompt,
                 reward=reward,
-                reward_components={"request_cost": reward, "step_log": step_log, "revealed_signal": "kick_count"},
+                reward_components={
+                    "request_cost": reward,
+                    "repeated_request_penalty": -0.10 if repeated else 0.0,
+                    "step_log": step_log,
+                    "revealed_signal": "kick_count",
+                },
                 done=False,
                 predicted_condition=None,
                 urgency=None,
@@ -1659,13 +1726,13 @@ class MultiTurnPrenatalEnvironment(OpenEnvEnvironment):
         if action_type != "diagnose":
             raise ValueError(f"Unknown action_type: {action_type}")
 
-        target_condition = action_model.condition or action_model.target
+        target_condition = target_value
         if target_condition not in SAFE_CONDITIONS:
             raise ValueError(f"Unknown condition: {target_condition}")
-        if action_model.urgency not in URGENCY_ORDER:
-            raise ValueError(f"Unknown urgency: {action_model.urgency}")
+        if urgency_value not in URGENCY_ORDER:
+            raise ValueError(f"Unknown urgency: {urgency_value}")
 
-        components = self._final_reward_components(target_condition, action_model.urgency)
+        components = self._final_reward_components(target_condition, urgency_value)
         final_reward = float(components["total_reward"])
         self.done = True
         step_log = self._log_step(action_dict, "final diagnosis submitted", final_reward, True)
@@ -1673,6 +1740,12 @@ class MultiTurnPrenatalEnvironment(OpenEnvEnvironment):
         reward_components = dict(components)
         reward_components["step_log"] = step_log
         reward_components["episode_trace"] = list(self.step_logs)
+        reference_urgency = self.current_trajectory.target_urgency
+        under_escalated = (
+            urgency_value in URGENCY_ORDER
+            and reference_urgency in URGENCY_ORDER
+            and URGENCY_ORDER.index(urgency_value) < URGENCY_ORDER.index(reference_urgency)
+        )
 
         return StepResult(
             observation=prompt.observation,
@@ -1682,13 +1755,13 @@ class MultiTurnPrenatalEnvironment(OpenEnvEnvironment):
             reward_components=reward_components,
             done=True,
             predicted_condition=target_condition,
-            urgency=action_model.urgency,
+            urgency=urgency_value,
             diet_advice=DIET_ADVICE.get(target_condition, []),
             rationale=action_model.rationale or "Final diagnosis submitted.",
             reference_condition=self.current_trajectory.target_condition,
             reference_urgency=self.current_trajectory.target_urgency,
-            latent_risks={},
-            under_escalated=self._danger_present() and action_model.urgency != "go_to_hospital_today",
+            latent_risks=components.get("latent_risks", {}),
+            under_escalated=under_escalated,
         )
 
     def state(self) -> dict[str, Any]:

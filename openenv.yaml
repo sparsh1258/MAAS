@@ -72,29 +72,46 @@ observation_space:
 reward:
   description: >
     Reward is calculated inside the environment using a deterministic triage rubric
-    plus competition upgrades. The final diagnosis reward includes condition + urgency
-    alignment, danger-flag escalation bonuses, latent-risk consistency bonus, and a
-    hard under-triage penalty.
+    plus trajectory-level target checks. The final diagnosis reward includes visible
+    observation scoring, condition + urgency alignment against the hidden trajectory
+    target, danger escalation bonuses, latent-risk consistency, over-escalation cost,
+    under-escalation penalties, and premature false-reassurance penalties.
   range: [0.0, 1.0]
   notes:
     - request_bp_recheck: -0.05
     - request_kick_count: -0.05
+    - repeated request on the same day: additional -0.10
     - advance_day: 0.0
     - refer_to_phc: +0.3 when PHC timing is appropriate, -0.2 when it is too slow
-    - Danger bonus: +3.0 if DANGER flag present and agent escalates to hospital today with correct diagnosis
-    - Latent risk bonus: +1.5 if clinically consistent latent risk is identified by the reward model and diagnosis aligns
-    - Under-triage penalty: -8.0 if agent predicts low_risk when any DANGER flag is present
+    - trajectory_condition_score: +2.0 for target match, -2.0 otherwise
+    - trajectory_urgency_score: +1.5 for target urgency match
+    - trajectory_under_escalation_penalty: -6.0 when urgency is below target urgency
+    - trajectory_over_escalation_penalty: -2.0 per urgency tier above target urgency
+    - premature_diagnosis_penalty: up to -10.0 for low-risk reassurance before hidden danger evidence is revealed
     - Normalization: (reward + 15) / 32 clipped to [0.0, 1.0]
+  audit_fields:
+    - raw_reward
+    - adjusted_raw_reward
+    - trajectory_condition_score
+    - trajectory_urgency_score
+    - trajectory_under_escalation_penalty
+    - trajectory_over_escalation_penalty
+    - premature_diagnosis_penalty
 
 evaluation:
-  benchmark_method: batch_evaluate
+  benchmark_method: scripts/evaluate_multiturn.py
   metrics:
     - mean_reward
-    - accuracy
-    - safety_rate
+    - condition_accuracy
+    - urgency_accuracy
+    - under_escalation_rate
+    - over_escalation_rate
+    - json_valid_rate
+    - mean_steps
 
 environment_stats:
-  total_scenarios: 420
+  multi_turn_trajectories: 8
+  static_task_files: 15
   conditions_covered: 6
   difficulty_levels: 4
   regional_variants: 4
@@ -131,9 +148,10 @@ tasks:
   - task_15_expert_triage
 
 training:
-  baseline_script: train_grpo.py
+  baseline_script: scripts/evaluate_multiturn.py
   notebook: niva_grpo_training.ipynb
-  optional_script: train_grpo_multiturn.py
+  grpo_script: train_grpo.py
+  multiturn_grpo_script: train_grpo_multiturn.py
   optional_notebook: niva_grpo_multiturn_training.ipynb
   trainer: Hugging Face TRL GRPO with optional Unsloth acceleration
   loop: >
